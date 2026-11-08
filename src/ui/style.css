@@ -118,6 +118,21 @@ fieldset { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 10px; 
 legend { color: var(--muted); padding: 0 4px; }
 fieldset label { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 3px 0; }
 fieldset label span { color: var(--text); }
+.field { margin: 2px 0; }
+.field-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+.field-row > span { flex: 1; }
+button.info {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+}
+button.info.on { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+.help { margin: 2px 0 8px; color: var(--muted); font-size: 12px; }
 .row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; align-items: center; }
 .row input[type='text'] { flex: 1; }
 ul.changes { margin: 0; padding-left: 18px; }

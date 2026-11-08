@@ -1,10 +1,17 @@
 import { clampGene, GENE_LABELS, randomGenome } from '../sim/genome';
 import { fullName, uniqueSurnames } from '../sim/names';
-import { KIN_WEIGHT_LABELS, RULE_FIELDS, SURNAME_RULE_LABELS } from '../sim/rules';
+import {
+  KIN_WEIGHT_LABELS,
+  KIN_WEIGHTS_DESCRIPTION,
+  RULE_FIELDS,
+  SURNAME_RULE_DESCRIPTION,
+  SURNAME_RULE_LABELS,
+} from '../sim/rules';
 import { GENE_KEYS, type GeneKey, type KinWeights, type Rules, type World } from '../sim/types';
 import { assignHues, spawnSeed } from '../sim/world';
 
 const fmt = (v: number) => String(Number(v.toFixed(4)));
+const escAttr = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 // ---------------------------------------------------------------------------------------------
 // Rules form
@@ -18,26 +25,64 @@ export class RulesPanel {
     private readonly root: HTMLElement,
     private readonly onChange: RuleChange,
   ) {
+    // Each field: label, a "?" toggle and the input on one row; the description below, hidden
+    // until toggled. The description is also the row's hover tooltip.
+    const field = (label: string, control: string, description: string) => `
+      <div class="field" title="${escAttr(description)}">
+        <div class="field-row">
+          <span>${label}</span>
+          <button type="button" class="info" aria-label="Vis beskrivelse av ${escAttr(label)}">?</button>
+          ${control}
+        </div>
+        <p class="help" hidden>${description}</p>
+      </div>`;
     const groups = RULE_FIELDS.map(
       (g) => `<fieldset><legend>${g.group}</legend>${g.fields
-        .map(
-          (f) => `<label><span>${f.label}</span>
-            <input type="number" data-key="${f.key}" min="${f.min}" max="${f.max}" step="${f.step}"></label>`,
+        .map((f) =>
+          field(
+            f.label,
+            `<input type="number" aria-label="${escAttr(f.label)}" data-key="${f.key}" min="${f.min}" max="${f.max}" step="${f.step}">`,
+            f.description,
+          ),
         )
         .join('')}</fieldset>`,
     ).join('');
-    const surname = `<label><span>Etternavn arves fra</span><select data-key="surnameRule">${Object.entries(
-      SURNAME_RULE_LABELS,
-    )
-      .map(([v, l]) => `<option value="${v}">${l}</option>`)
-      .join('')}</select></label>`;
+    const surname = field(
+      'Etternavn arves fra',
+      `<select aria-label="Etternavn arves fra" data-key="surnameRule">${Object.entries(SURNAME_RULE_LABELS)
+        .map(([v, l]) => `<option value="${v}">${l}</option>`)
+        .join('')}</select>`,
+      SURNAME_RULE_DESCRIPTION,
+    );
     const kin = Object.entries(KIN_WEIGHT_LABELS)
-      .map(([k, l]) => `<label><span>${l}</span><input type="number" step="0.05" min="0" max="3" data-kin="${k}"></label>`)
+      .map(
+        ([k, l]) =>
+          `<div class="field-row"><span>${l}</span><input type="number" aria-label="Slektsvekt ${escAttr(l)}" step="0.05" min="0" max="3" data-kin="${k}"></div>`,
+      )
       .join('');
-    root.innerHTML = `<p class="muted">Endring av en regel lager en ny gren fra tidspunktet som vises (eller endrer utkastet når du redigerer en gren).</p>
+    root.innerHTML = `<p class="muted">Endring av en regel lager en ny gren fra tidspunktet som vises (eller endrer utkastet når du redigerer en gren). Hold musepekeren over en regel eller klikk ? for å se hva den gjør.</p>
+      <label class="check"><input type="checkbox" class="show-all-help"> Vis alle beskrivelser</label>
       ${groups}
       <fieldset><legend>Arv</legend>${surname}</fieldset>
-      <fieldset><legend>Slektsvekter (tas i bruk i v3)</legend>${kin}</fieldset>`;
+      <fieldset><legend>Slektsvekter (tas i bruk i v3)</legend>
+        <p class="help">${KIN_WEIGHTS_DESCRIPTION}</p>
+        ${kin}
+      </fieldset>`;
+
+    root.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button.info');
+      if (!btn) return;
+      const help = btn.closest('.field')!.querySelector<HTMLElement>('.help')!;
+      help.hidden = !help.hidden;
+      btn.classList.toggle('on', !help.hidden);
+    });
+    root.querySelector<HTMLInputElement>('.show-all-help')!.addEventListener('change', (e) => {
+      const on = (e.target as HTMLInputElement).checked;
+      for (const f of root.querySelectorAll<HTMLElement>('.field')) {
+        f.querySelector<HTMLElement>('.help')!.hidden = !on;
+        f.querySelector('button.info')!.classList.toggle('on', on);
+      }
+    });
 
     root.addEventListener('change', (e) => {
       const el = e.target as HTMLInputElement | HTMLSelectElement;
