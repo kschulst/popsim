@@ -8,18 +8,29 @@ import { capacityOf, radiusOf } from './world';
 
 export type ParentsOf = (id: number) => [number, number] | null | undefined;
 
+/**
+ * Empty cells get food with probability fertility × (spontaneous + spread × food neighbours).
+ * Neighbour counts use the state at the start of the tick.
+ */
 const regrowFood = (w: World): void => {
-  const { foodCap, foodRegrowRate, foodSpontaneous } = w.rules;
-  const { food, fertility } = w;
-  for (let i = 0; i < food.length; i++) {
-    const cap = foodCap * fertility[i];
-    let f = food[i];
-    if (cap <= 0) {
-      food[i] = 0;
-      continue;
+  const { foodSpreadRate, foodSpontaneous } = w.rules;
+  const { cols, rows, fertility } = w;
+  const prev = w.food.slice();
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const i = r * cols + c;
+      if (prev[i]) continue;
+      let n = 0;
+      for (let dr = -1; dr <= 1; dr++) {
+        const rr = r + dr;
+        if (rr < 0 || rr >= rows) continue;
+        for (let dc = -1; dc <= 1; dc++) {
+          const cc = c + dc;
+          if ((dr || dc) && cc >= 0 && cc < cols) n += prev[rr * cols + cc];
+        }
+      }
+      if (Math.random() < fertility[i] * (foodSpontaneous + foodSpreadRate * n)) w.food[i] = 1;
     }
-    f += foodRegrowRate * rand(0.5, 1.5) * f * (1 - f / cap) + foodSpontaneous * fertility[i];
-    food[i] = f > cap ? cap : f;
   }
 };
 
@@ -32,14 +43,14 @@ const cellIndex = (w: World, x: number, y: number): number => {
 const readyToMate = (a: Actor, w: World): boolean =>
   a.cooldown <= 0 && a.energy >= a.genome.reproThreshold * capacityOf(a, w.rules);
 
-/** Target direction toward the best food cell in sight, or null if nothing worth moving for. */
+/** Nearest food cell within vision, or null if none is visible. */
 const seekFood = (a: Actor, w: World): { x: number; y: number } | null => {
   const { cellSize, cols, rows, food } = w;
   const r = Math.ceil(a.genome.vision / cellSize);
   const acx = Math.floor(a.x / cellSize);
   const acy = Math.floor(a.y / cellSize);
   const v2 = a.genome.vision * a.genome.vision;
-  let best = 0.5;
+  let best = Infinity;
   let bx = 0;
   let by = 0;
   let found = false;
@@ -48,9 +59,10 @@ const seekFood = (a: Actor, w: World): { x: number; y: number } | null => {
       const tx = (cx + 0.5) * cellSize;
       const ty = (cy + 0.5) * cellSize;
       const d2 = (tx - a.x) ** 2 + (ty - a.y) ** 2;
-      if (d2 > v2) continue;
-      const score = food[cy * cols + cx] / (1 + Math.sqrt(d2) * w.rules.distancePenalty);
-      if (score > best) {
+      if (d2 > v2 || !food[cy * cols + cx]) continue;
+      // Random jitter breaks ties between equally distant cells.
+      const score = d2 + Math.random();
+      if (score < best) {
         best = score;
         bx = tx;
         by = ty;
@@ -194,12 +206,9 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
 
     // 4. Eat from the current cell.
     const ci = cellIndex(w, a.x, a.y);
-    if (rules.foodEnergy > 0) {
-      const amount = Math.min(w.food[ci], rules.eatRate * a.genome.size, Math.max(0, cap - a.energy) / rules.foodEnergy);
-      if (amount > 0) {
-        w.food[ci] -= amount;
-        a.energy += amount * rules.foodEnergy;
-      }
+    if (w.food[ci] && a.energy < cap) {
+      w.food[ci] = 0;
+      a.energy = Math.min(cap, a.energy + rules.foodEnergy);
     }
 
     // 5. Mate on contact.

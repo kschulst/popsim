@@ -19,11 +19,9 @@ export interface KinWeights {
 }
 
 export interface Rules {
-  foodCap: number;
-  foodRegrowRate: number;
+  foodSpreadRate: number;
   foodSpontaneous: number;
   foodEnergy: number;
-  eatRate: number;
   energyPerSize: number;
   baseCost: number;
   moveCost: number;
@@ -32,7 +30,6 @@ export interface Rules {
   friction: number;
   steerStrength: number;
   directionNoise: number;
-  distancePenalty: number;
   offspringEnergy: number;
   parentalCostSplit: number;
   mateCooldown: number;
@@ -85,7 +82,8 @@ export interface World {
   cols: number;
   rows: number;
   cellSize: number;
-  food: Float32Array;
+  /** 1 if the cell has food, 0 if empty. */
+  food: Uint8Array;
   fertility: Float32Array;
   actors: Actor[];
   nextId: number;

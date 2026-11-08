@@ -19,7 +19,8 @@ Hver versjon er en git-tag (`v1`, `v2` …) og publiseres frosset under `/vN/` p
 - **Rom**: kontinuerlig 2D-plan med harde kanter. Ved kanten klemmes posisjonen og hastighetskomponenten mot veggen settes til 0.
 - **Tid**: diskrete ticks. Aktørene oppdateres sekvensielt i tilfeldig rekkefølge hver tick.
 - **Tilfeldighet**: kjøringer er ikke-deterministiske (`Math.random`). Tilfeldighet brukes i retning, mutasjon, kjønn, arv, matvekst og oppdateringsrekkefølge.
-- **Miljø**: rutenett (64×48) med matmengde og fruktbarhet per celle. Mat gror logistisk opp til `foodCap × fruktbarhet`, pluss en liten spontan vekst. Tomme celler gror langsomt tilbake, slik at overbeiting påvirker senere generasjoner.
+- **Miljø**: rutenett (64×48). Hver rute har mat eller ikke (binært), og en fast fruktbarhet (0,2–1). En tom rute får mat med sannsynlighet `fruktbarhet × (foodSpontaneous + foodSpreadRate × antall naboruter med mat)`. Et nedbeitet område gror derfor innover fra kantene, og beiting setter varige spor for senere generasjoner. Å spise tømmer ruten og gir `foodEnergy` energi, begrenset av kapasiteten.
+- **Regelbeskrivelser**: hver regel har en beskrivelse i UI-et (hover eller ?-knapp).
 - **Energi**: kapasitet = `energyPerSize × size`. Kostnad per tick = `baseCost × size × (1 + agingFactor × alder/maxAge) + moveCost × size × fart²`. Død ved energi ≤ 0 eller alder ≥ `maxAge`.
 - **Formering**: to aktører av motsatt kjønn i kontakt, begge over `reproThreshold × kapasitet`, ingen nedkjøling og ikke slekt innenfor `incestDepth` ledd. Barnets startenergi betales av foreldrene etter `parentalCostSplit` (andel betalt av hunnen). Kjønn trekkes 50/50. Ingen parbinding.
 - **Arv**: uniform crossover per gen, deretter gaussisk mutasjon med standardavvik `mutationRate × genintervall × mutationScale`, klemt til intervallet.
@@ -38,7 +39,7 @@ Hver versjon er en git-tag (`v1`, `v2` …) og publiseres frosset under `/vN/` p
 ### Atferd (v1, fast)
 
 1. Klar for paring: styr mot nærmeste gyldige partner innenfor `vision`.
-2. Ellers: styr mot cellen med best `mat / (1 + avstand × distancePenalty)` innenfor `vision`.
+2. Ellers: styr mot nærmeste rute med mat innenfor `vision`.
 3. Ingen mat i sikte: tilfeldig vandring.
 
 Retningen får støy (`directionNoise`). Styringen er en akselerasjon mot ønsket hastighet, dempet av `friction`.
@@ -79,7 +80,7 @@ Slektsvekter er naturlover (regler) og endres bare ved forgreining. `w_likhet` o
 
 ## Visualisering
 
-- Verden: Canvas 2D. Prikkstørrelse etter `size`. Fargen kan vises etter avstamning (etternavn, standard), generasjon eller genom. Matfeltet er en grønn bakgrunn.
+- Verden: Canvas 2D. Matruter tegnes som skarpe kvadrater (mat/ikke mat). Prikkstørrelse etter `size`. Fargen kan vises etter avstamning (etternavn, standard), generasjon eller genom.
 - Grafer og tidslinje: D3 med SVG.
 - Inspektør: klikk på en aktør for å se navn, genom, foreldre, barn, søsken og et lite stamtre. Levende slektninger markeres med ring på lerretet.
 

@@ -13,11 +13,9 @@ export const DEFAULT_KIN_WEIGHTS: KinWeights = {
 };
 
 export const DEFAULT_RULES: Rules = {
-  foodCap: 8,
-  foodRegrowRate: 0.015,
-  foodSpontaneous: 0.002,
-  foodEnergy: 1,
-  eatRate: 1,
+  foodSpreadRate: 0.006,
+  foodSpontaneous: 0.0003,
+  foodEnergy: 12,
   energyPerSize: 100,
   baseCost: 0.08,
   moveCost: 0.05,
@@ -26,7 +24,6 @@ export const DEFAULT_RULES: Rules = {
   friction: 0.1,
   steerStrength: 0.25,
   directionNoise: 0.3,
-  distancePenalty: 0.02,
   offspringEnergy: 0.4,
   parentalCostSplit: 0.5,
   mateCooldown: 40,
@@ -52,16 +49,14 @@ export const RULE_FIELDS: { group: string; fields: RuleField[] }[] = [
   {
     group: 'Miljø',
     fields: [
-      { key: 'foodCap', label: 'Mat-tak per celle', min: 0, max: 50, step: 0.5, description: 'Maks mengde mat en rute kan ha. Ganges med rutens fruktbarhet (0,2–1).' },
-      { key: 'foodRegrowRate', label: 'Gjenvekstrate', min: 0, max: 0.2, step: 0.001, description: 'Hvor raskt maten vokser tilbake. Veksten er logistisk: raskest når ruten er halvfull, langsom når den er nesten tom eller nesten full. Derfor tar det lang tid før et nedbeitet område kommer seg.' },
-      { key: 'foodSpontaneous', label: 'Spontan vekst', min: 0, max: 0.05, step: 0.0005, description: 'Fast vekst per tick, uavhengig av hvor mye mat som er igjen. Uten denne kan en helt tom rute aldri gro igjen.' },
-      { key: 'foodEnergy', label: 'Energi per mat', min: 0, max: 5, step: 0.05, description: 'Energi en aktør får per enhet mat den spiser.' },
+      { key: 'foodSpreadRate', label: 'Spredning fra naboer', min: 0, max: 0.2, step: 0.001, description: 'Sannsynlighet per tick for at en tom rute får mat, per naborute (av 8) som har mat. Ganges med rutens fruktbarhet. Et nedbeitet område gror derfor innover fra kantene.' },
+      { key: 'foodSpontaneous', label: 'Spontan vekst', min: 0, max: 0.01, step: 0.0001, description: 'Sannsynlighet per tick for at en tom rute får mat uten naboer med mat. Ganges med fruktbarheten. Uten denne kan et helt nedbeitet område aldri gro igjen.' },
+      { key: 'foodEnergy', label: 'Energi per matrute', min: 0, max: 200, step: 1, description: 'Energi en aktør får når den spiser maten i en rute. Ruten blir tom. Energien over kapasiteten går tapt.' },
     ],
   },
   {
     group: 'Energi og alder',
     fields: [
-      { key: 'eatRate', label: 'Spiserate', min: 0, max: 5, step: 0.05, description: 'Maks mengde mat en aktør kan spise per tick, ganget med størrelsen.' },
       { key: 'energyPerSize', label: 'Kapasitet per størrelse', min: 10, max: 500, step: 5, description: 'Energikapasitet per størrelsesenhet. En aktør med størrelse 2 kan lagre dobbelt så mye energi som en med størrelse 1.' },
       { key: 'baseCost', label: 'Grunnkostnad', min: 0, max: 1, step: 0.005, description: 'Energi som brukes hver tick bare for å leve, ganget med størrelsen. Øker med alderen (se aldringsfaktor).' },
       { key: 'moveCost', label: 'Bevegelseskostnad', min: 0, max: 1, step: 0.005, description: 'Energikostnad for bevegelse per tick: verdi × størrelse × fart². Dobbel fart koster fire ganger så mye.' },
@@ -75,7 +70,6 @@ export const RULE_FIELDS: { group: string; fields: RuleField[] }[] = [
       { key: 'friction', label: 'Friksjon', min: 0, max: 1, step: 0.01, description: 'Andel av farten som går tapt hver tick. Høy friksjon gjør bevegelsene tregere og mer rykkete.' },
       { key: 'steerStrength', label: 'Styrestyrke', min: 0, max: 1, step: 0.01, description: 'Hvor raskt en aktør endrer fart og retning mot målet sitt. 1 betyr umiddelbart, lave verdier gir slakke svinger.' },
       { key: 'directionNoise', label: 'Retningsstøy', min: 0, max: 3, step: 0.05, description: 'Tilfeldig avvik i retningen hver tick (standardavvik i radianer). Høye verdier gjør at aktørene treffer målet sitt dårligere.' },
-      { key: 'distancePenalty', label: 'Avstandsstraff (mat)', min: 0, max: 0.5, step: 0.005, description: 'Hvor mye en aktør foretrekker mat nær seg framfor mer mat lenger unna. 0 betyr at den alltid går mot ruten med mest mat innen synsrekkevidde.' },
     ],
   },
   {

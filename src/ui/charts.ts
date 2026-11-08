@@ -47,7 +47,7 @@ const DEFS: ChartDef[] = [
     series: [{ label: 'klaner', color: '#f2c94c', value: (s) => s.surnames }],
   },
   {
-    title: 'Mat totalt',
+    title: 'Ruter med mat',
     series: [{ label: 'mat', color: '#5fb36d', value: (s) => s.food }],
   },
   ...GENE_KEYS.map(

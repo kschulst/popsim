@@ -97,8 +97,8 @@ export const assignHues = (world: World, surnames: string[]): void => {
 export const createWorld = (config: WorldConfig = DEFAULT_CONFIG): World => {
   const { width, height, cols, rows, rules } = config;
   const fertility = fertilityMap(cols, rows);
-  const food = new Float32Array(cols * rows);
-  for (let i = 0; i < food.length; i++) food[i] = rules.foodCap * fertility[i] * rand(0.3, 1);
+  const food = new Uint8Array(cols * rows);
+  for (let i = 0; i < food.length; i++) food[i] = Math.random() < fertility[i] * 0.6 ? 1 : 0;
   const world: World = {
     tick: 0,
     width,

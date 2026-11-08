@@ -37,27 +37,29 @@ export interface ExportFile {
   branches: BranchJson[];
 }
 
-const f32ToBase64 = (a: Float32Array): string => {
-  const bytes = new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
+const u8ToBase64 = (bytes: Uint8Array): string => {
   let s = '';
   for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(s);
 };
 
-const base64ToF32 = (s: string): Float32Array => {
+const base64ToU8 = (s: string): Uint8Array => {
   const bin = atob(s);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new Float32Array(bytes.buffer);
+  return bytes;
 };
+
+const f32ToBase64 = (a: Float32Array): string => u8ToBase64(new Uint8Array(a.buffer, a.byteOffset, a.byteLength));
+const base64ToF32 = (s: string): Float32Array => new Float32Array(base64ToU8(s).buffer);
 
 const encodeWorld = (w: World): WorldJson => {
   const { fertility: _omit, ...rest } = w;
-  return { ...rest, food: f32ToBase64(w.food) };
+  return { ...rest, food: u8ToBase64(w.food) };
 };
 const decodeWorld = (w: WorldJson, fertility: Float32Array): World => ({
   ...w,
-  food: base64ToF32(w.food),
+  food: base64ToU8(w.food),
   fertility,
 });
 

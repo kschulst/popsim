@@ -44,24 +44,27 @@ export class Renderer {
     }
     const fctx = fc.getContext('2d')!;
     const img = fctx.createImageData(w.cols, w.rows);
-    const cap = Math.max(0.001, w.rules.foodCap);
     for (let i = 0; i < w.food.length; i++) {
-      const f = Math.min(1, w.food[i] / cap);
       const fert = w.fertility[i];
       const o = i * 4;
       if (showFertility) {
-        img.data[o] = 40 + 120 * (1 - fert);
-        img.data[o + 1] = 30 + 50 * fert;
-        img.data[o + 2] = 60 + 140 * fert;
+        // Fertility overlay: dark purple (barren) to blue (fertile); food cells stay marked.
+        img.data[o] = w.food[i] ? 70 : 40 + 60 * (1 - fert);
+        img.data[o + 1] = w.food[i] ? 150 : 30 + 40 * fert;
+        img.data[o + 2] = w.food[i] ? 90 : 60 + 120 * fert;
+      } else if (w.food[i]) {
+        img.data[o] = 46;
+        img.data[o + 1] = 122;
+        img.data[o + 2] = 62;
       } else {
-        img.data[o] = 16 + 20 * f;
-        img.data[o + 1] = 22 + 95 * f;
-        img.data[o + 2] = 24 + 35 * f;
+        img.data[o] = 18;
+        img.data[o + 1] = 22;
+        img.data[o + 2] = 26;
       }
       img.data[o + 3] = 255;
     }
     fctx.putImageData(img, 0, 0);
-    this.ctx.imageSmoothingEnabled = true;
+    this.ctx.imageSmoothingEnabled = false;
     this.ctx.drawImage(fc, this.ox, this.oy, w.width * this.scale, w.height * this.scale);
   }
 

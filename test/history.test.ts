@@ -27,13 +27,13 @@ describe('History', () => {
     const { h, root } = newHistory();
     const draft = cloneWorld(h.stateAt(root.id, 50));
     const removed = draft.actors.pop()!;
-    draft.rules.foodCap = 1;
+    draft.rules.foodEnergy = 1;
     const b = h.fork(root.id, 50, draft, ['test']);
     for (let i = 0; i < 20; i++) h.advance(b.id);
     expect(b.headTick).toBe(70);
     expect(b.registry.death(removed.id)?.cause).toBe('removed');
     expect(root.registry.death(removed.id)?.cause).not.toBe('removed');
-    expect(h.stateAt(root.id, 50).rules.foodCap).not.toBe(1);
+    expect(h.stateAt(root.id, 50).rules.foodEnergy).not.toBe(1);
     expect(h.statsPath(b.id).map((s) => s.tick).slice(48, 52)).toEqual([49, 50, 51, 52]);
   });
 
