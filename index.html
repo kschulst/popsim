@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sim-sala-bim</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='5' cy='6' r='3' fill='%23e8799b'/><rect x='8' y='8' width='5' height='5' transform='rotate(45 10.5 10.5)' fill='%236fa8e8'/></svg>" />
+  </head>
+  <body>
+    <header>
+      <h1>sim-sala-bim <span class="version" id="version"></span></h1>
+      <div class="controls">
+        <button id="btn-start" title="Til starten av grenen">⏮</button>
+        <button id="btn-back" title="Ett steg tilbake (←)">◀</button>
+        <button id="btn-play" class="primary" title="Spill / pause (mellomrom)">▶</button>
+        <button id="btn-fwd" title="Ett steg frem (→)">▶|</button>
+        <button id="btn-end" title="Til enden av grenen">⏭</button>
+        <label class="speed" title="Ticks per bilde">Fart <input id="speed" type="range" min="1" max="30" value="2" /></label>
+        <span id="status" class="status"></span>
+      </div>
+      <div class="controls">
+        <button id="btn-branch" title="Lag en ny gren fra tidspunktet som vises">Forgrein herfra</button>
+        <select id="color-mode" title="Fargekoding"></select>
+        <label class="check"><input type="checkbox" id="show-fertility" /> Fruktbarhet</label>
+        <button id="btn-new" title="Ny kjøring">Ny</button>
+        <button id="btn-export">Eksporter</button>
+        <button id="btn-import">Importer</button>
+        <input id="import-file" type="file" accept=".gz,.json" hidden />
+      </div>
+    </header>
+    <main>
+      <section class="world">
+        <canvas id="world"></canvas>
+      </section>
+      <aside>
+        <nav class="tabs">
+          <button data-tab="inspector" class="on">Aktør</button>
+          <button data-tab="rules">Regler</button>
+          <button data-tab="editor" id="tab-editor" hidden>Ny gren</button>
+        </nav>
+        <div class="tab" id="inspector"></div>
+        <div class="tab" id="rules" hidden></div>
+        <div class="tab" id="editor" hidden></div>
+      </aside>
+    </main>
+    <section class="timeline-wrap">
+      <h3>Historikk</h3>
+      <div id="timeline"></div>
+    </section>
+    <section id="charts" class="charts"></section>
+    <dialog id="new-dialog">
+      <form method="dialog">
+        <h3>Ny kjøring</h3>
+        <p class="muted">Erstatter all historikk i denne fanen. Eksporter først hvis du vil beholde den.</p>
+        <label><span>Antall seeds</span><input id="seed-count" type="number" min="2" max="500" value="20" /></label>
+        <div class="row">
+          <button value="ok" class="primary">Start</button>
+          <button value="cancel">Avbryt</button>
+        </div>
+      </form>
+    </dialog>
+    <script type="module" src="/src/ui/main.ts"></script>
+  </body>
+</html>

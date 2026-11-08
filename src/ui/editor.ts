@@ -1,0 +1,336 @@
+import { clampGene, GENE_LABELS, randomGenome } from '../sim/genome';
+import { fullName, uniqueSurnames } from '../sim/names';
+import { KIN_WEIGHT_LABELS, RULE_FIELDS, SURNAME_RULE_LABELS } from '../sim/rules';
+import { GENE_KEYS, type GeneKey, type KinWeights, type Rules, type World } from '../sim/types';
+import { assignHues, spawnSeed } from '../sim/world';
+
+const fmt = (v: number) => String(Number(v.toFixed(4)));
+
+// ---------------------------------------------------------------------------------------------
+// Rules form
+
+export type RuleChange = (apply: (r: Rules) => void, description: string) => void;
+
+export class RulesPanel {
+  private current: Rules | null = null;
+
+  constructor(
+    private readonly root: HTMLElement,
+    private readonly onChange: RuleChange,
+  ) {
+    const groups = RULE_FIELDS.map(
+      (g) => `<fieldset><legend>${g.group}</legend>${g.fields
+        .map(
+          (f) => `<label><span>${f.label}</span>
+            <input type="number" data-key="${f.key}" min="${f.min}" max="${f.max}" step="${f.step}"></label>`,
+        )
+        .join('')}</fieldset>`,
+    ).join('');
+    const surname = `<label><span>Etternavn arves fra</span><select data-key="surnameRule">${Object.entries(
+      SURNAME_RULE_LABELS,
+    )
+      .map(([v, l]) => `<option value="${v}">${l}</option>`)
+      .join('')}</select></label>`;
+    const kin = Object.entries(KIN_WEIGHT_LABELS)
+      .map(([k, l]) => `<label><span>${l}</span><input type="number" step="0.05" min="0" max="3" data-kin="${k}"></label>`)
+      .join('');
+    root.innerHTML = `<p class="muted">Endring av en regel lager en ny gren fra tidspunktet som vises (eller endrer utkastet når du redigerer en gren).</p>
+      ${groups}
+      <fieldset><legend>Arv</legend>${surname}</fieldset>
+      <fieldset><legend>Slektsvekter (tas i bruk i v3)</legend>${kin}</fieldset>`;
+
+    root.addEventListener('change', (e) => {
+      const el = e.target as HTMLInputElement | HTMLSelectElement;
+      if (el.dataset.key === 'surnameRule') {
+        const v = el.value as Rules['surnameRule'];
+        this.onChange((r) => (r.surnameRule = v), `Regel: etternavn arves fra ${SURNAME_RULE_LABELS[v].toLowerCase()}`);
+      } else if (el.dataset.key) {
+        const key = el.dataset.key as keyof Rules;
+        const field = RULE_FIELDS.flatMap((g) => g.fields).find((f) => f.key === key)!;
+        const v = Number(el.value);
+        if (!Number.isFinite(v)) return;
+        this.onChange((r) => {
+          (r[key] as number) = v;
+        }, `Regel: ${field.label} ${this.current ? fmt(this.current[key] as number) : '?'} → ${fmt(v)}`);
+      } else if (el.dataset.kin) {
+        const key = el.dataset.kin as keyof KinWeights;
+        const v = Number(el.value);
+        if (!Number.isFinite(v)) return;
+        const old = this.current ? fmt(this.current.kinWeights[key]) : '?';
+        this.onChange((r) => (r.kinWeights[key] = v), `Slektsvekt: ${KIN_WEIGHT_LABELS[key]} ${old} → ${fmt(v)}`);
+      }
+    });
+  }
+
+  /** Shows the given rules, leaving the focused input alone. */
+  show(rules: Rules): void {
+    this.current = rules;
+    const focused = document.activeElement;
+    for (const el of this.root.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-key],[data-kin]')) {
+      if (el === focused) continue;
+      const v = el.dataset.key
+        ? (rules as unknown as Record<string, number | string>)[el.dataset.key]
+        : rules.kinWeights[el.dataset.kin as keyof KinWeights];
+      const s = typeof v === 'number' ? fmt(v) : String(v);
+      if (el.value !== s) el.value = s;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Branch editor
+
+export type BrushMode = 'clearFood' | 'fillFood' | 'lessFertile' | 'moreFertile';
+
+const BRUSH_LABELS: Record<BrushMode, string> = {
+  clearFood: 'tøm mat',
+  fillFood: 'fyll mat',
+  lessFertile: 'mindre fruktbar',
+  moreFertile: 'mer fruktbar',
+};
+
+export interface EditorHooks {
+  commit: (name: string) => void;
+  cancel: () => void;
+  changed: () => void;
+}
+
+export class BranchEditor {
+  draft: World | null = null;
+  changes: string[] = [];
+  brushOn = false;
+  brushMode: BrushMode = 'clearFood';
+  brushRadius = 40;
+  private strokes: Partial<Record<BrushMode, number>> = {};
+  private selectedId: number | null = null;
+
+  constructor(
+    private readonly root: HTMLElement,
+    private readonly hooks: EditorHooks,
+  ) {
+    root.addEventListener('click', (e) => this.onClick(e));
+    root.addEventListener('change', (e) => {
+      const el = e.target as HTMLInputElement;
+      if (el.name === 'brushOn') this.brushOn = el.checked;
+      if (el.name === 'brushMode') this.brushMode = el.value as BrushMode;
+      if (el.name === 'brushRadius') this.brushRadius = Number(el.value);
+    });
+  }
+
+  get active(): boolean {
+    return this.draft !== null;
+  }
+
+  start(draft: World): void {
+    this.draft = draft;
+    this.changes = [];
+    this.strokes = {};
+    this.brushOn = false;
+    this.renderAll();
+  }
+
+  stop(): void {
+    this.draft = null;
+    this.root.innerHTML = '';
+  }
+
+  log(change: string): void {
+    this.changes.push(change);
+    this.renderChanges();
+    this.hooks.changed();
+  }
+
+  /** Final list of changes including summarised brush strokes. */
+  allChanges(): string[] {
+    const brush = Object.entries(this.strokes).map(
+      ([m, n]) => `Miljø: ${BRUSH_LABELS[m as BrushMode]} (${n} strøk)`,
+    );
+    return [...this.changes, ...brush];
+  }
+
+  setSelected(id: number | null): void {
+    if (id === this.selectedId) return;
+    this.selectedId = id;
+    if (this.draft) this.renderActor();
+  }
+
+  paint(x: number, y: number): void {
+    const w = this.draft;
+    if (!w) return;
+    const r2 = this.brushRadius ** 2;
+    for (let row = 0; row < w.rows; row++) {
+      for (let col = 0; col < w.cols; col++) {
+        const cx = (col + 0.5) * w.cellSize;
+        const cy = (row + 0.5) * w.cellSize;
+        if ((cx - x) ** 2 + (cy - y) ** 2 > r2) continue;
+        const i = row * w.cols + col;
+        switch (this.brushMode) {
+          case 'clearFood': w.food[i] = 0; break;
+          case 'fillFood': w.food[i] = w.rules.foodCap * w.fertility[i]; break;
+          case 'lessFertile': w.fertility[i] = Math.max(0, w.fertility[i] - 0.1); break;
+          case 'moreFertile': w.fertility[i] = Math.min(1.5, w.fertility[i] + 0.1); break;
+        }
+      }
+    }
+  }
+
+  endStroke(): void {
+    this.strokes[this.brushMode] = (this.strokes[this.brushMode] ?? 0) + 1;
+    this.renderChanges();
+  }
+
+  private renderAll(): void {
+    const geneOptions = GENE_KEYS.map((k) => `<option value="${k}">${GENE_LABELS[k]}</option>`).join('');
+    const brushOptions = Object.entries(BRUSH_LABELS)
+      .map(([v, l]) => `<option value="${v}">${l}</option>`)
+      .join('');
+    this.root.innerHTML = `
+      <div class="editor-head">
+        <strong>Ny gren fra tick ${this.draft!.tick}</strong>
+        <p class="muted">Endre regler (fanen Regler), populasjon, én aktør eller miljøet. Start grenen når du er ferdig.</p>
+      </div>
+      <fieldset><legend>Populasjon</legend>
+        <div class="row">
+          <select name="popGene">${geneOptions}</select>
+          <select name="popOp"><option value="set">sett til</option><option value="mul">gang med</option><option value="add">legg til</option></select>
+          <input name="popValue" type="number" step="0.05" value="1">
+        </div>
+        <div class="row">
+          <select name="popClan"></select>
+          <button data-act="pop">Bruk</button>
+        </div>
+        <div class="row">
+          <input name="seedCount" type="number" min="1" max="200" value="5">
+          <button data-act="seeds">Legg til nye seeds</button>
+        </div>
+      </fieldset>
+      <fieldset class="actor-edit"><legend>Valgt aktør</legend><div class="actor-body"></div></fieldset>
+      <fieldset><legend>Miljø</legend>
+        <label class="check"><input type="checkbox" name="brushOn"> Pensel aktiv (dra i verdenen)</label>
+        <div class="row">
+          <select name="brushMode">${brushOptions}</select>
+          <input name="brushRadius" type="range" min="10" max="150" value="${this.brushRadius}">
+        </div>
+      </fieldset>
+      <fieldset><legend>Endringer</legend><ul class="changes"></ul></fieldset>
+      <div class="row">
+        <input name="branchName" type="text" placeholder="Navn på gren (valgfritt)">
+      </div>
+      <div class="row">
+        <button data-act="commit" class="primary">Start gren</button>
+        <button data-act="cancel">Avbryt</button>
+      </div>`;
+    this.renderClans();
+    this.renderActor();
+    this.renderChanges();
+  }
+
+  private renderClans(): void {
+    const sel = this.root.querySelector<HTMLSelectElement>('[name=popClan]')!;
+    const clans = [...new Set(this.draft!.actors.map((a) => a.surname))].sort();
+    sel.innerHTML = `<option value="">alle klaner</option>` + clans.map((c) => `<option>${c}</option>`).join('');
+  }
+
+  private renderActor(): void {
+    const body = this.root.querySelector('.actor-body');
+    if (!body) return;
+    const a = this.draft?.actors.find((x) => x.id === this.selectedId);
+    if (!a) {
+      body.innerHTML = '<p class="muted">Klikk på en levende aktør for å endre den.</p>';
+      return;
+    }
+    body.innerHTML = `<p>${fullName(a)}</p>
+      ${GENE_KEYS.map(
+        (k) => `<label><span>${GENE_LABELS[k]}</span><input type="number" step="0.01" data-gene="${k}" value="${fmt(a.genome[k])}"></label>`,
+      ).join('')}
+      <label><span>Energi</span><input type="number" step="1" data-field="energy" value="${a.energy.toFixed(0)}"></label>
+      <label><span>Kjønn</span><select data-field="sex"><option value="F"${a.sex === 'F' ? ' selected' : ''}>hunn</option><option value="M"${a.sex === 'M' ? ' selected' : ''}>hann</option></select></label>
+      <div class="row"><button data-act="actor">Bruk</button><button data-act="remove">Fjern aktør</button></div>`;
+  }
+
+  private renderChanges(): void {
+    const ul = this.root.querySelector('.changes');
+    if (!ul) return;
+    const all = this.allChanges();
+    ul.innerHTML = all.length ? all.map((c) => `<li>${c}</li>`).join('') : '<li class="muted">ingen ennå</li>';
+  }
+
+  private val(name: string): string {
+    return this.root.querySelector<HTMLInputElement>(`[name=${name}]`)!.value;
+  }
+
+  private onClick(e: Event): void {
+    const act = (e.target as HTMLElement).closest<HTMLElement>('[data-act]')?.dataset.act;
+    const w = this.draft;
+    if (!act || !w) return;
+    switch (act) {
+      case 'pop': {
+        const gene = this.val('popGene') as GeneKey;
+        const op = this.val('popOp');
+        const v = Number(this.val('popValue'));
+        const clan = this.val('popClan');
+        if (!Number.isFinite(v)) return;
+        let n = 0;
+        for (const a of w.actors) {
+          if (clan && a.surname !== clan) continue;
+          const cur = a.genome[gene];
+          a.genome[gene] = clampGene(gene, op === 'set' ? v : op === 'mul' ? cur * v : cur + v);
+          n++;
+        }
+        const opText = op === 'set' ? 'satt til' : op === 'mul' ? 'ganget med' : 'lagt til';
+        this.log(`Populasjon: ${GENE_LABELS[gene]} ${opText} ${fmt(v)} (${clan || 'alle'}, ${n} aktører)`);
+        this.renderActor();
+        break;
+      }
+      case 'seeds': {
+        const n = Math.max(1, Math.min(200, Number(this.val('seedCount')) || 0));
+        const names = uniqueSurnames(n, Object.keys(w.surnameHues));
+        assignHues(w, names);
+        for (const surname of names) spawnSeed(w, { surname, genome: randomGenome() });
+        this.log(`La til ${n} nye seeds`);
+        this.renderClans();
+        break;
+      }
+      case 'actor': {
+        const a = w.actors.find((x) => x.id === this.selectedId);
+        if (!a) return;
+        const diffs: string[] = [];
+        for (const el of this.root.querySelectorAll<HTMLInputElement>('[data-gene]')) {
+          const k = el.dataset.gene as GeneKey;
+          const v = clampGene(k, Number(el.value));
+          if (Number.isFinite(v) && Math.abs(v - a.genome[k]) > 1e-9) {
+            diffs.push(`${GENE_LABELS[k]} ${fmt(a.genome[k])} → ${fmt(v)}`);
+            a.genome[k] = v;
+          }
+        }
+        const energy = Number(this.root.querySelector<HTMLInputElement>('[data-field=energy]')!.value);
+        if (Number.isFinite(energy) && Math.abs(energy - a.energy) >= 0.5) {
+          diffs.push(`energi ${a.energy.toFixed(0)} → ${energy.toFixed(0)}`);
+          a.energy = energy;
+        }
+        const sex = this.root.querySelector<HTMLSelectElement>('[data-field=sex]')!.value as 'F' | 'M';
+        if (sex !== a.sex) {
+          diffs.push(`kjønn → ${sex === 'F' ? 'hunn' : 'hann'}`);
+          a.sex = sex;
+        }
+        if (diffs.length) this.log(`Aktør ${fullName(a)}: ${diffs.join(', ')}`);
+        this.renderActor();
+        break;
+      }
+      case 'remove': {
+        const a = w.actors.find((x) => x.id === this.selectedId);
+        if (!a) return;
+        w.actors = w.actors.filter((x) => x !== a);
+        this.log(`Fjernet aktør ${fullName(a)}`);
+        this.renderActor();
+        break;
+      }
+      case 'commit':
+        this.hooks.commit(this.val('branchName').trim());
+        break;
+      case 'cancel':
+        this.hooks.cancel();
+        break;
+    }
+  }
+}
