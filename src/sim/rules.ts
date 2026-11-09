@@ -29,7 +29,7 @@ export const DEFAULT_RULES: Rules = {
   mateCooldown: 40,
   mutationScale: 1,
   incestDepth: 1,
-  surnameRule: 'random',
+  surnameRule: 'father',
   kinWeights: { ...DEFAULT_KIN_WEIGHTS },
 };
 
