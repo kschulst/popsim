@@ -20,7 +20,11 @@ interface ChartDef {
 
 const DEFS: ChartDef[] = [
   {
-    title: 'Populasjon',
+    title: 'Total populasjon',
+    series: [{ label: 'totalt', color: '#d8dde4', value: (s) => s.females + s.males }],
+  },
+  {
+    title: 'Populasjon etter kjønn',
     series: [
       { label: 'hunner', color: '#e8799b', value: (s) => s.females },
       { label: 'hanner', color: '#6fa8e8', value: (s) => s.males },
