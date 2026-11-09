@@ -1,8 +1,8 @@
-import { randomGenome } from './genome';
+import { randomDominance, randomGenome } from './genome';
 import { givenName, uniqueSurnames } from './names';
 import { rand } from './random';
 import { DEFAULT_RULES } from './rules';
-import type { Actor, Genome, Rules, Sex, World } from './types';
+import type { Actor, Dominance, Genome, Rules, Sex, World } from './types';
 
 export interface WorldConfig {
   width: number;
@@ -56,6 +56,7 @@ export interface NewActor {
   surname: string;
   sex?: Sex;
   genome?: Genome;
+  dominance?: Dominance;
   x?: number;
   y?: number;
   energyFraction?: number;
@@ -72,6 +73,7 @@ export const spawnSeed = (world: World, opts: NewActor): Actor => {
     generation: 0,
     parents: null,
     genome,
+    dominance: opts.dominance ?? randomDominance(),
     x: opts.x ?? rand(0, world.width),
     y: opts.y ?? rand(0, world.height),
     vx: 0,

@@ -1,4 +1,4 @@
-import type { Actor, DeathCause, Genome, KinWeights, Sex } from './types';
+import type { Actor, DeathCause, Dominance, Genome, KinWeights, Sex } from './types';
 
 export interface LifeRecord {
   id: number;
@@ -9,6 +9,7 @@ export interface LifeRecord {
   parents: [number, number] | null;
   born: number;
   genome: Genome;
+  dominance: Dominance;
 }
 
 export interface Death {
@@ -25,6 +26,7 @@ export const recordOf = (a: Actor): LifeRecord => ({
   parents: a.parents,
   born: a.born,
   genome: { ...a.genome },
+  dominance: { ...a.dominance },
 });
 
 /**

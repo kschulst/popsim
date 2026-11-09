@@ -1,9 +1,10 @@
-import { GENE_KEYS, type Genome, type TickEvents, type TickStats, type World } from './types';
+import { GENE_KEYS, type Dominance, type Genome, type TickEvents, type TickStats, type World } from './types';
 
 export const computeStats = (w: World, ev: TickEvents): TickStats => {
   const n = w.actors.length;
   const mean = {} as Genome;
   const sd = {} as Genome;
+  const dominanceMean = {} as Dominance;
   for (const k of GENE_KEYS) {
     let s = 0;
     for (const a of w.actors) s += a.genome[k];
@@ -12,6 +13,9 @@ export const computeStats = (w: World, ev: TickEvents): TickStats => {
     for (const a of w.actors) v += (a.genome[k] - m) ** 2;
     mean[k] = m;
     sd[k] = n ? Math.sqrt(v / n) : 0;
+    let d = 0;
+    for (const a of w.actors) d += a.dominance[k];
+    dominanceMean[k] = n ? d / n : 0;
   }
   let females = 0;
   let genSum = 0;
@@ -31,6 +35,7 @@ export const computeStats = (w: World, ev: TickEvents): TickStats => {
     males: n - females,
     geneMean: mean,
     geneSd: sd,
+    dominanceMean,
     generationMean: n ? genSum / n : 0,
     generationMax: genMax,
     births: ev.births.length,

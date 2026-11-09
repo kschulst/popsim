@@ -74,10 +74,14 @@ export class Inspector {
     const half = siblings.filter((s) => !sibLabel(s));
 
     const genome = live?.genome ?? rec.genome;
-    const genes = GENE_KEYS.map(
-      (k) => `<tr><td>${GENE_LABELS[k]}</td><td class="num">${genome[k].toFixed(2)}</td>
-        <td><div class="bar"><span style="width:${(normGene(k, genome[k]) * 100).toFixed(0)}%"></span></div></td></tr>`,
-    ).join('');
+    const dominance = live?.dominance ?? rec.dominance;
+    const genes =
+      `<tr class="head"><td></td><td class="num">verdi</td><td></td><td class="num" title="Arvestyrke: hvor sterkt egenskapen slår igjennom hos barna (0,05–1)">arv</td></tr>` +
+      GENE_KEYS.map(
+        (k) => `<tr><td>${GENE_LABELS[k]}</td><td class="num">${genome[k].toFixed(2)}</td>
+        <td><div class="bar"><span style="width:${(normGene(k, genome[k]) * 100).toFixed(0)}%"></span></div></td>
+        <td class="num dom" title="Arvestyrke">${dominance[k].toFixed(2)}</td></tr>`,
+      ).join('');
 
     const counts = new Map<Relation, number>();
     const anc = ancestors(id, 3, parentsOf);

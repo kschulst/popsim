@@ -23,7 +23,7 @@ Hver versjon er en git-tag (`v1`, `v2` …) og publiseres frosset under `/vN/` p
 - **Regelbeskrivelser**: hver regel har en beskrivelse i UI-et (hover eller ?-knapp).
 - **Energi**: kapasitet = `energyPerSize × size`. Kostnad per tick = `baseCost × size × (1 + agingFactor × alder/maxAge) + moveCost × size × fart²`. Død ved energi ≤ 0 eller alder ≥ `maxAge`.
 - **Formering**: to aktører av motsatt kjønn i kontakt, begge over `reproThreshold × kapasitet`, ingen nedkjøling og ikke slekt innenfor `incestDepth` ledd. Barnets startenergi betales av foreldrene etter `parentalCostSplit` (andel betalt av hunnen). Kjønn trekkes 50/50. Ingen parbinding.
-- **Arv**: uniform crossover per gen, deretter gaussisk mutasjon med standardavvik `mutationRate × genintervall × mutationScale`, klemt til intervallet.
+- **Arv**: hver egenskap har en arvestyrke (0,05–1). Barnets verdi er en blanding av foreldrenes, vektet med mors andel av foreldrenes samlede arvestyrke for egenskapen, pluss gaussisk støy (`inheritanceNoise`). Arvestyrken for hver egenskap arves fra én tilfeldig forelder. Deretter muterer begge (standardavvik `mutationRate × intervall × mutationScale`). Hver seed får et eget grunnivå for arvestyrke, så stammene er ulike fra start.
 - **Generasjon**: `max(foreldrenes generasjon) + 1`. Seeds har generasjon 0.
 
 ### Genom (v1)

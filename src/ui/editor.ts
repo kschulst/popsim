@@ -1,4 +1,5 @@
-import { clampGene, GENE_LABELS, randomGenome } from '../sim/genome';
+import { clampGene, DOMINANCE_RANGE, GENE_LABELS, randomGenome } from '../sim/genome';
+import { clamp } from '../sim/random';
 import { fullName, uniqueSurnames } from '../sim/names';
 import {
   KIN_WEIGHT_LABELS,
@@ -225,7 +226,9 @@ export class BranchEditor {
   }
 
   private renderAll(): void {
-    const geneOptions = GENE_KEYS.map((k) => `<option value="${k}">${GENE_LABELS[k]}</option>`).join('');
+    const geneOptions =
+      GENE_KEYS.map((k) => `<option value="${k}">${GENE_LABELS[k]}</option>`).join('') +
+      GENE_KEYS.map((k) => `<option value="dom:${k}">Arvestyrke: ${GENE_LABELS[k].toLowerCase()}</option>`).join('');
     const brushOptions = Object.entries(BRUSH_LABELS)
       .map(([v, l]) => `<option value="${v}">${l}</option>`)
       .join('');
@@ -288,6 +291,9 @@ export class BranchEditor {
       ${GENE_KEYS.map(
         (k) => `<label><span>${GENE_LABELS[k]}</span><input type="number" step="0.01" data-gene="${k}" value="${fmt(a.genome[k])}"></label>`,
       ).join('')}
+      ${GENE_KEYS.map(
+        (k) => `<label><span>Arvestyrke: ${GENE_LABELS[k].toLowerCase()}</span><input type="number" step="0.05" min="${DOMINANCE_RANGE[0]}" max="${DOMINANCE_RANGE[1]}" data-dom="${k}" value="${fmt(a.dominance[k])}"></label>`,
+      ).join('')}
       <label><span>Energi</span><input type="number" step="1" data-field="energy" value="${a.energy.toFixed(0)}"></label>
       <label><span>Kjønn</span><select data-field="sex"><option value="F"${a.sex === 'F' ? ' selected' : ''}>hunn</option><option value="M"${a.sex === 'M' ? ' selected' : ''}>hann</option></select></label>
       <div class="row"><button data-act="actor">Bruk</button><button data-act="remove">Fjern aktør</button></div>`;
@@ -310,20 +316,24 @@ export class BranchEditor {
     if (!act || !w) return;
     switch (act) {
       case 'pop': {
-        const gene = this.val('popGene') as GeneKey;
+        const target = this.val('popGene');
+        const isDom = target.startsWith('dom:');
+        const gene = (isDom ? target.slice(4) : target) as GeneKey;
         const op = this.val('popOp');
         const v = Number(this.val('popValue'));
         const clan = this.val('popClan');
         if (!Number.isFinite(v)) return;
+        const applyOp = (cur: number) => (op === 'set' ? v : op === 'mul' ? cur * v : cur + v);
         let n = 0;
         for (const a of w.actors) {
           if (clan && a.surname !== clan) continue;
-          const cur = a.genome[gene];
-          a.genome[gene] = clampGene(gene, op === 'set' ? v : op === 'mul' ? cur * v : cur + v);
+          if (isDom) a.dominance[gene] = clamp(applyOp(a.dominance[gene]), DOMINANCE_RANGE[0], DOMINANCE_RANGE[1]);
+          else a.genome[gene] = clampGene(gene, applyOp(a.genome[gene]));
           n++;
         }
         const opText = op === 'set' ? 'satt til' : op === 'mul' ? 'ganget med' : 'lagt til';
-        this.log(`Populasjon: ${GENE_LABELS[gene]} ${opText} ${fmt(v)} (${clan || 'alle'}, ${n} aktører)`);
+        const label = isDom ? `Arvestyrke for ${GENE_LABELS[gene].toLowerCase()}` : GENE_LABELS[gene];
+        this.log(`Populasjon: ${label} ${opText} ${fmt(v)} (${clan || 'alle'}, ${n} aktører)`);
         this.renderActor();
         break;
       }
@@ -346,6 +356,14 @@ export class BranchEditor {
           if (Number.isFinite(v) && Math.abs(v - a.genome[k]) > 1e-9) {
             diffs.push(`${GENE_LABELS[k]} ${fmt(a.genome[k])} → ${fmt(v)}`);
             a.genome[k] = v;
+          }
+        }
+        for (const el of this.root.querySelectorAll<HTMLInputElement>('[data-dom]')) {
+          const k = el.dataset.dom as GeneKey;
+          const v = clamp(Number(el.value), DOMINANCE_RANGE[0], DOMINANCE_RANGE[1]);
+          if (Number.isFinite(v) && Math.abs(v - a.dominance[k]) > 1e-9) {
+            diffs.push(`arvestyrke ${GENE_LABELS[k].toLowerCase()} ${fmt(a.dominance[k])} → ${fmt(v)}`);
+            a.dominance[k] = v;
           }
         }
         const energy = Number(this.root.querySelector<HTMLInputElement>('[data-field=energy]')!.value);

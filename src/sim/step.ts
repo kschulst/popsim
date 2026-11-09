@@ -1,5 +1,5 @@
 import { ancestors, kinship, tooClose } from './genealogy';
-import { crossover, mutate } from './genome';
+import { inherit } from './genome';
 import { givenName } from './names';
 import { clamp, gaussian, rand, shuffle } from './random';
 import { SpatialHash } from './spatial';
@@ -93,7 +93,7 @@ const findMate = (a: Actor, w: World, hash: SpatialHash, dead: Set<number>, pare
 const breed = (a: Actor, b: Actor, w: World): Actor | null => {
   const mother = a.sex === 'F' ? a : b;
   const father = a.sex === 'F' ? b : a;
-  const genome = mutate(crossover(mother.genome, father.genome), w.rules.mutationScale);
+  const { genome, dominance } = inherit(mother, father, w.rules.inheritanceNoise, w.rules.mutationScale);
   const cost = w.rules.offspringEnergy * w.rules.energyPerSize * genome.size;
   const motherShare = cost * w.rules.parentalCostSplit;
   const fatherShare = cost - motherShare;
@@ -120,6 +120,7 @@ const breed = (a: Actor, b: Actor, w: World): Actor | null => {
     generation: Math.max(mother.generation, father.generation) + 1,
     parents: [mother.id, father.id],
     genome,
+    dominance,
     x: clamp((mother.x + father.x) / 2 + Math.cos(angle) * 3, 0, w.width),
     y: clamp((mother.y + father.y) / 2 + Math.sin(angle) * 3, 0, w.height),
     vx: 0,

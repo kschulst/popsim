@@ -1,5 +1,5 @@
 import { clamp, gaussian, rand } from './random';
-import { GENE_KEYS, type GeneKey, type Genome } from './types';
+import { GENE_KEYS, type Dominance, type GeneKey, type Genome } from './types';
 
 export const GENE_RANGES: Record<GeneKey, [number, number]> = {
   size: [0.5, 3],
@@ -32,13 +32,6 @@ export const randomGenome = (): Genome => {
   return g;
 };
 
-/** Uniform crossover: each gene is taken from a randomly chosen parent. */
-export const crossover = (a: Genome, b: Genome): Genome => {
-  const g = {} as Genome;
-  for (const k of GENE_KEYS) g[k] = Math.random() < 0.5 ? a[k] : b[k];
-  return g;
-};
-
 /** Gaussian mutation; sd = mutationRate × gene range × scale. mutationRate mutates itself first. */
 export const mutate = (g: Genome, scale: number): Genome => {
   const out = { ...g };
@@ -49,6 +42,50 @@ export const mutate = (g: Genome, scale: number): Genome => {
   step('mutationRate', g.mutationRate);
   for (const k of GENE_KEYS) if (k !== 'mutationRate') step(k, out.mutationRate);
   return out;
+};
+
+export const DOMINANCE_RANGE: [number, number] = [0.05, 1];
+
+const clampDominance = (v: number) => clamp(v, DOMINANCE_RANGE[0], DOMINANCE_RANGE[1]);
+
+/**
+ * Inheritance strength for a new seed. Each seed gets its own base level, so lineages differ in how
+ * persistently their traits are passed on; genes vary a little around that level.
+ */
+export const randomDominance = (): Dominance => {
+  const base = rand(0.15, 0.85);
+  const d = {} as Dominance;
+  for (const k of GENE_KEYS) d[k] = clampDominance(base + gaussian() * 0.1);
+  return d;
+};
+
+export interface Heritable {
+  genome: Genome;
+  dominance: Dominance;
+}
+
+/**
+ * Child genome as a weighted blend of the parents. For each gene the mother's weight is her share
+ * of the parents' combined inheritance strength, plus Gaussian noise (sd = `noise`), clamped to
+ * 0–1. The child's inheritance strength for each gene is taken from one parent at random (blending
+ * it would bias it upward over generations). Both are then mutated.
+ */
+export const inherit = (mother: Heritable, father: Heritable, noise: number, mutationScale: number): Heritable => {
+  const blended = {} as Genome;
+  const dominance = {} as Dominance;
+  for (const k of GENE_KEYS) {
+    const dm = mother.dominance[k];
+    const df = father.dominance[k];
+    const w = clamp(dm / (dm + df) + gaussian() * noise, 0, 1);
+    blended[k] = w * mother.genome[k] + (1 - w) * father.genome[k];
+    dominance[k] = Math.random() < 0.5 ? dm : df;
+  }
+  const genome = mutate(blended, mutationScale);
+  const [min, max] = DOMINANCE_RANGE;
+  for (const k of GENE_KEYS) {
+    dominance[k] = clampDominance(dominance[k] + gaussian() * genome.mutationRate * (max - min) * mutationScale);
+  }
+  return { genome, dominance };
 };
 
 /** 1 for identical genomes, 0 for maximally different (normalised Euclidean distance). */

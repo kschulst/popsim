@@ -65,7 +65,11 @@ export class History {
     for (const a of draft.actors) {
       const existing = registry.get(a.id);
       if (!existing) registry.add(recordOf(a));
-      else if (existing.sex !== a.sex || JSON.stringify(existing.genome) !== JSON.stringify(a.genome)) {
+      else if (
+        existing.sex !== a.sex ||
+        JSON.stringify(existing.genome) !== JSON.stringify(a.genome) ||
+        JSON.stringify(existing.dominance) !== JSON.stringify(a.dominance)
+      ) {
         registry.override({ ...recordOf(a), born: existing.born });
       }
     }

@@ -90,7 +90,9 @@ aside {
 table.genes { width: 100%; border-collapse: collapse; margin: 8px 0; }
 table.genes td { padding: 2px 6px 2px 0; }
 table.genes td:first-child { width: 110px; }
-table.genes td:last-child { width: 45%; }
+table.genes td:nth-child(3) { width: 40%; }
+table.genes tr.head td { color: var(--muted); font-size: 11px; }
+table.genes td.dom { color: #c9b4ff; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; width: 52px; }
 .bar { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
 .bar span { display: block; height: 100%; background: var(--accent); }

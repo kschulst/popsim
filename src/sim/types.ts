@@ -3,6 +3,8 @@ export type Sex = 'F' | 'M';
 export const GENE_KEYS = ['size', 'maxSpeed', 'vision', 'reproThreshold', 'mutationRate'] as const;
 export type GeneKey = (typeof GENE_KEYS)[number];
 export type Genome = Record<GeneKey, number>;
+/** Per-gene inheritance strength (0.05–1): how strongly the gene value is passed on to children. */
+export type Dominance = Record<GeneKey, number>;
 
 export type SurnameRule = 'random' | 'mother' | 'father' | 'stronger';
 
@@ -34,6 +36,7 @@ export interface Rules {
   parentalCostSplit: number;
   mateCooldown: number;
   mutationScale: number;
+  inheritanceNoise: number;
   incestDepth: number;
   surnameRule: SurnameRule;
   kinWeights: KinWeights;
@@ -47,6 +50,7 @@ export interface Actor {
   generation: number;
   parents: [number, number] | null;
   genome: Genome;
+  dominance: Dominance;
   x: number;
   y: number;
   vx: number;
@@ -66,6 +70,7 @@ export interface TickStats {
   males: number;
   geneMean: Genome;
   geneSd: Genome;
+  dominanceMean: Dominance;
   generationMean: number;
   generationMax: number;
   births: number;

@@ -51,6 +51,15 @@ const DEFS: ChartDef[] = [
     title: 'Ruter med mat',
     series: [{ label: 'mat', color: '#5fb36d', value: (s) => s.food }],
   },
+  {
+    title: 'Arvestyrke (snitt per egenskap)',
+    domain: [0, 1],
+    series: GENE_KEYS.map((k, i) => ({
+      label: GENE_LABELS[k].toLowerCase().slice(0, 8),
+      color: ['#8fd3e0', '#f2c94c', '#7ed69b', '#e8799b', '#c9b4ff'][i],
+      value: (s: TickStats) => s.dominanceMean[k],
+    })),
+  },
   ...GENE_KEYS.map(
     (k): ChartDef => ({
       title: `${GENE_LABELS[k]} (snitt ± sd)`,
@@ -133,7 +142,7 @@ export class Charts {
         .selectAll('text')
         .data(def.series.length > 1 ? def.series : [])
         .join('text')
-        .attr('x', (_, i) => M.left + i * 56)
+        .attr('x', (_, i) => M.left + i * 48)
         .attr('y', 25)
         .attr('fill', (s) => s.color)
         .text((s) => s.label);
