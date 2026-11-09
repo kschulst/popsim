@@ -37,7 +37,8 @@ h3 { font-size: 12px; margin: 12px 0 6px; color: var(--muted); font-weight: 600;
 .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .status { color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 8px; }
 .speed { display: flex; align-items: center; gap: 6px; color: var(--muted); }
-.speed input { width: 90px; }
+.speed input { width: 110px; }
+#speed-label { min-width: 72px; font-variant-numeric: tabular-nums; }
 
 button, select, input[type='number'], input[type='text'] {
   font: inherit;
@@ -165,6 +166,9 @@ svg.chart .band { fill: rgba(143, 211, 224, 0.15); }
 svg.chart .cursor { stroke: var(--gold); stroke-width: 1; }
 svg .domain, svg .tick line { stroke: var(--line); }
 svg .tick text { fill: var(--muted); }
+
+footer { padding: 8px 16px 20px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); }
+footer a { color: var(--muted); }
 
 dialog {
   background: var(--panel);

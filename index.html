@@ -15,7 +15,7 @@
         <button id="btn-play" class="primary" title="Spill / pause (mellomrom)">▶</button>
         <button id="btn-fwd" title="Ett steg frem (→)">▶|</button>
         <button id="btn-end" title="Til enden av grenen">⏭</button>
-        <label class="speed" title="Ticks per bilde">Fart <input id="speed" type="range" min="1" max="30" value="2" /></label>
+        <label class="speed" title="Ticks per sekund">Fart <input id="speed" type="range" min="0" max="100" value="30" /> <span id="speed-label"></span></label>
         <span id="status" class="status"></span>
       </div>
       <div class="controls">
@@ -48,6 +48,7 @@
       <div id="timeline"></div>
     </section>
     <section id="charts" class="charts"></section>
+    <footer id="footer"></footer>
     <dialog id="new-dialog">
       <form method="dialog">
         <h3>Ny kjøring</h3>

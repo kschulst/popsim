@@ -63,11 +63,12 @@ export interface NewActor {
 
 export const spawnSeed = (world: World, opts: NewActor): Actor => {
   const genome = opts.genome ?? randomGenome();
+  const sex = opts.sex ?? (Math.random() < 0.5 ? 'F' : 'M');
   const a: Actor = {
     id: world.nextId++,
-    given: opts.given ?? givenName(),
+    given: opts.given ?? givenName(sex),
     surname: opts.surname,
-    sex: opts.sex ?? (Math.random() < 0.5 ? 'F' : 'M'),
+    sex,
     generation: 0,
     parents: null,
     genome,

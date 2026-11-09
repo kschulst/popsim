@@ -111,11 +111,12 @@ const breed = (a: Actor, b: Actor, w: World): Actor | null => {
   }
 
   const angle = rand(0, Math.PI * 2);
+  const sex = Math.random() < 0.5 ? 'F' : 'M';
   return {
     id: w.nextId++,
-    given: givenName(),
+    given: givenName(sex),
     surname,
-    sex: Math.random() < 0.5 ? 'F' : 'M',
+    sex,
     generation: Math.max(mother.generation, father.generation) + 1,
     parents: [mother.id, father.id],
     genome,

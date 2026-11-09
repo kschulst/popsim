@@ -64,7 +64,7 @@ Slektsvekter er naturlover (regler) og endres bare ved forgreining. `w_likhet` o
 
 ## Navn og stamtre
 
-- Navn: `Fornavn Etternavn #id`. Fornavn genereres fra stavelser. `#id` er unik per kjøring.
+- Navn: `Fornavn Etternavn #id`. Fornavn og etternavn trekkes fra SSBs navnestatistikk (tabell 10501 og 12891), vektet etter hyppighet. Fornavn velges etter kjønn. 15 % får to fornavn (to navn av samme kjønn), i tillegg til bindestreksnavn som finnes i SSB-dataene. `#id` er unik per kjøring.
 - Hver seed har eget etternavn. Barnet arver etternavn etter `surnameRule`: `random`, `mother`, `father` eller `stronger`.
 - Stamtreregisteret tar vare på alle aktører som har levd. Det er knyttet til grenen og arver foreldregrenens register frem til forgreiningspunktet.
 - Slektskap regnes fra stamtreet ned til dybde 3 via nærmeste felles stamfar.

@@ -22,6 +22,10 @@ npm run build    # typesjekk + produksjonsbygg i dist/
 - Klikk i tidslinjen eller i en graf for å hoppe i tid.
 - Eksporter lagrer hele historikken som `.json.gz`. Importer laster den inn igjen.
 
+## Navn
+
+Aktørene får norske fornavn (etter kjønn) og etternavn fra SSBs navnestatistikk, vektet etter hvor mange som har navnet: [tabell 10501](https://www.ssb.no/statbank/table/10501) (fornavn) og [tabell 12891](https://www.ssb.no/statbank/table/12891) (etternavn brukt av 200 eller flere). Dataene ligger i `src/sim/data/ssb-names.json` og oppdateres med `node scripts/fetch-names.mjs`. Lisens: CC BY 4.0.
+
 ## Versjoner
 
 Hver versjon er en git-tag `vN` og står i `versions.json`. `node scripts/build-site.mjs` bygger alle tagger til `site/vN/`, main til `site/dev/` og en indeksside. GitHub Actions (`.github/workflows/pages.yml`) kjører skriptet og publiserer til GitHub Pages ved push til main og ved nye tagger.

@@ -3,6 +3,7 @@ import { DEFAULT_HISTORY_CONFIG, History } from '../history/history';
 import { exportGzip, fromExport, importGzip } from '../history/serialize';
 import type { Rules, World } from '../sim/types';
 import { cloneWorld, createWorld, DEFAULT_CONFIG, radiusOf } from '../sim/world';
+import { NAME_SOURCE } from '../sim/names';
 import { APP_NAME, VERSION } from '../version';
 import { Charts } from './charts';
 import { COLOR_MODE_LABELS, type ColorMode } from './colors';
@@ -20,7 +21,12 @@ let history = new History(DEFAULT_HISTORY_CONFIG);
 let branchId = history.createRoot(createWorld()).id;
 let tick = 0;
 let playing = false;
-let speed = 2;
+/** Slider 0–100 maps logarithmically to 1–2000 ticks per second. */
+const MAX_TPS = 2000;
+const sliderToTps = (v: number) => Math.round(10 ** ((v / 100) * Math.log10(MAX_TPS)));
+let ticksPerSecond = sliderToTps(30);
+let tickBudget = 0;
+let lastFrame = 0;
 let colorMode: ColorMode = 'lineage';
 let selectedId: number | null = null;
 let showFertility = false;
@@ -176,6 +182,9 @@ document.querySelector('.tabs')!.addEventListener('click', (e) => {
 });
 
 $('version').textContent = `v${VERSION}`;
+$('footer').innerHTML =
+  `Navn fra <a href="${NAME_SOURCE.firstNames.url}">${NAME_SOURCE.publisher}, tabell ${NAME_SOURCE.firstNames.table}</a> ` +
+  `og <a href="${NAME_SOURCE.surnames.url}">${NAME_SOURCE.surnames.table}</a> (${NAME_SOURCE.firstNames.year}), ${NAME_SOURCE.license}.`;
 $('btn-play').onclick = () => {
   if (editor.active) return;
   playing = !playing;
@@ -190,7 +199,13 @@ $('btn-fwd').onclick = () => {
 $('btn-start').onclick = () => seek(branchId, history.get(branchId).startTick);
 $('btn-end').onclick = () => seek(branchId, history.get(branchId).headTick);
 $('btn-branch').onclick = () => !editor.active && startEditing();
-$<HTMLInputElement>('speed').oninput = (e) => (speed = Number((e.target as HTMLInputElement).value));
+const speedInput = $<HTMLInputElement>('speed');
+const updateSpeed = () => {
+  ticksPerSecond = sliderToTps(Number(speedInput.value));
+  $('speed-label').textContent = `${ticksPerSecond} ticks/s`;
+};
+speedInput.oninput = updateSpeed;
+updateSpeed();
 $<HTMLInputElement>('show-fertility').onchange = (e) => {
   showFertility = (e.target as HTMLInputElement).checked;
 };
@@ -278,8 +293,13 @@ let kinKey = '';
 let kin = new Map<number, number>();
 
 const frame = (now: number) => {
+  const dt = Math.min(100, now - (lastFrame || now));
+  lastFrame = now;
   if (playing && !editor.active) {
-    for (let i = 0; i < speed; i++) stepForward();
+    tickBudget += (ticksPerSecond * dt) / 1000;
+    const n = Math.min(200, Math.floor(tickBudget));
+    tickBudget -= n;
+    for (let i = 0; i < n; i++) stepForward();
     const b = history.get(branchId);
     if (b.head.actors.length === 0 && tick === b.headTick) playing = false;
   }
