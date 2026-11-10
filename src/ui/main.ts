@@ -1,10 +1,11 @@
 import './style.css';
 import { DEFAULT_HISTORY_CONFIG, History } from '../history/history';
 import { exportGzip, fromExport, importGzip } from '../history/serialize';
-import type { Rules, World } from '../sim/types';
+import type { Rules, TickStats, World } from '../sim/types';
 import { cloneWorld, createWorld, DEFAULT_CONFIG, radiusOf } from '../sim/world';
 import { NAME_SOURCE } from '../sim/names';
 import { APP_NAME, VERSION } from '../version';
+import { mortality, type Mortality } from '../sim/mortality';
 import { Charts } from './charts';
 import { COLOR_MODE_LABELS, type ColorMode } from './colors';
 import { BranchEditor, RulesPanel } from './editor';
@@ -37,6 +38,23 @@ let revision = 0;
 
 const renderer = new Renderer($<HTMLCanvasElement>('world'));
 const charts = new Charts($('charts'));
+
+/** Window for the "recent" mortality figures, in ticks. */
+const RECENT_TICKS = 500;
+
+const pct = (v: number) => (Number.isFinite(v) ? `${Math.round(v * 100)} %` : '–');
+const ticks = (v: number) => (Number.isFinite(v) ? `${Math.round(v)} ticks` : '–');
+const mortalityText = (m: Mortality) =>
+  `<b>${m.deaths}</b> døde · alderdom <b>${pct(m.ageShare)}</b> · snitt dødsalder <b>${ticks(m.meanAge)}</b>`;
+
+/** Mortality figures up to the displayed tick: whole lineage and the last RECENT_TICKS ticks. */
+const renderVitals = (rows: TickStats[], at: number) => {
+  const all = mortality(rows, -1, at);
+  const recent = mortality(rows, at - RECENT_TICKS, at);
+  $('vitals').innerHTML =
+    `<span title="Fra tick 0 til tick som vises, langs denne grenens historikk. Fjerning i grenredigering telles ikke.">Hittil: ${mortalityText(all)}</span>` +
+    `<span title="De siste ${RECENT_TICKS} ticks før tick som vises.">Siste ${RECENT_TICKS} ticks: ${mortalityText(recent)}</span>`;
+};
 const timeline = new Timeline($('timeline'));
 const inspector = new Inspector($('inspector'), (id) => select(id));
 const editor = new BranchEditor($('editor'), {
@@ -334,7 +352,9 @@ const frame = (now: number) => {
       playing = false;
       seek(bid, t);
     });
-    charts.render(history.statsPath(branchId), w.tick, (t) => {
+    const statsRows = history.statsPath(branchId);
+    renderVitals(statsRows, w.tick);
+    charts.render(statsRows, w.tick, (t) => {
       // Seek within the lineage: pick the branch on the path that covers t.
       playing = false;
       const path = history.lineage(branchId);

@@ -156,6 +156,16 @@ ul.changes { margin: 0; padding-left: 18px; }
 #timeline .link.on { stroke: #4f7f88; }
 #timeline .marker path { fill: var(--gold); }
 
+.vitals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  padding: 8px 16px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.vitals b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
 .charts {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -187,5 +197,5 @@ dialog label { display: flex; justify-content: space-between; align-items: cente
   main { grid-template-columns: 1fr; height: auto; }
   .world { height: 60vh; }
   aside { border-left: 0; border-top: 1px solid var(--line); max-height: 70vh; }
-  .timeline-wrap, .charts { padding-left: 12px; padding-right: 12px; }
+  .timeline-wrap, .charts, .vitals { padding-left: 12px; padding-right: 12px; }
 }

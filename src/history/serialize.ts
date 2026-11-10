@@ -118,7 +118,8 @@ export const fromExport = (file: ExportFile): { history: History; activeBranchId
       snapshots: new Map(bj.snapshots.map((s) => [s.tick, decodeWorld(s, fertility)])),
       ring: [{ ...structuredClone({ ...head, fertility: undefined }), fertility }],
       registry,
-      stats: bj.stats,
+      // Files from before age at death was recorded lack deathAgeSum.
+      stats: bj.stats.map((st) => ({ ...st, deathAgeSum: st.deathAgeSum ?? NaN })),
     };
     history.restore(branch);
   }

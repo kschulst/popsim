@@ -6,6 +6,9 @@ interface Series {
   label: string;
   color: string;
   value: (s: TickStats) => number;
+  /** With `rolling`: plot rolling sum of `value` / rolling sum of `den` × `scale` (gaps where den is 0). */
+  den?: (s: TickStats) => number;
+  scale?: number;
 }
 
 interface ChartDef {
@@ -41,6 +44,32 @@ const DEFS: ChartDef[] = [
       { label: 'fødsler', color: '#7ed69b', value: (s) => s.births },
       { label: 'sult', color: '#e0a35a', value: (s) => s.deathsStarvation },
       { label: 'alder', color: '#9aa0a8', value: (s) => s.deathsAge },
+    ],
+  },
+  {
+    title: 'Snitt dødsalder (siste 100 ticks)',
+    rolling: 100,
+    series: [
+      {
+        label: 'dødsalder',
+        color: '#9aa0a8',
+        value: (s) => s.deathAgeSum,
+        den: (s) => s.deathsStarvation + s.deathsAge,
+      },
+    ],
+  },
+  {
+    title: 'Andel døde av alderdom, % (siste 100 ticks)',
+    rolling: 100,
+    domain: [0, 100],
+    series: [
+      {
+        label: 'alderdom',
+        color: '#c8ccd2',
+        value: (s) => s.deathsAge,
+        den: (s) => s.deathsStarvation + s.deathsAge,
+        scale: 100,
+      },
     ],
   },
   {
@@ -125,13 +154,29 @@ export class Charts {
 
     charts.each(function (def) {
       const svg = d3.select(this);
-      const values = def.series.map((s) => (def.rolling ? rollingSum(rows, s.value, def.rolling) : null));
+      const values = def.series.map((s) => {
+        if (!def.rolling) return null;
+        const num = rollingSum(rows, s.value, def.rolling);
+        if (!s.den) return num;
+        const den = rollingSum(rows, s.den, def.rolling);
+        const out = new Map<TickStats, number>();
+        for (const r of rows) {
+          const d = den.get(r)!;
+          out.set(r, d ? (num.get(r)! / d) * (s.scale ?? 1) : NaN);
+        }
+        return out;
+      });
       const pts = downsample(rows);
       const val = (si: number, r: TickStats) => values[si]?.get(r) ?? def.series[si].value(r);
       let domain = def.domain;
       if (!domain) {
         let max = 1;
-        for (const r of pts) for (let si = 0; si < def.series.length; si++) max = Math.max(max, val(si, r));
+        for (const r of pts) {
+          for (let si = 0; si < def.series.length; si++) {
+            const v = val(si, r);
+            if (Number.isFinite(v)) max = Math.max(max, v);
+          }
+        }
         domain = [0, max * 1.05];
       }
       const y = d3.scaleLinear(domain, [H - M.bottom, M.top]);
@@ -173,6 +218,7 @@ export class Charts {
         .attr('d', (_, si) =>
           d3
             .line<TickStats>()
+            .defined((r) => Number.isFinite(val(si, r)))
             .x((r) => x(r.tick))
             .y((r) => y(val(si, r)))(pts),
         );

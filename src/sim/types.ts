@@ -76,6 +76,8 @@ export interface TickStats {
   births: number;
   deathsStarvation: number;
   deathsAge: number;
+  /** Sum of ages (ticks) of actors who died of starvation or age this tick. */
+  deathAgeSum: number;
   surnames: number;
   food: number;
 }
@@ -100,5 +102,5 @@ export interface World {
 /** Events produced by one tick, consumed by the genealogy registry and stats. */
 export interface TickEvents {
   births: Actor[];
-  deaths: { id: number; cause: DeathCause }[];
+  deaths: { id: number; cause: DeathCause; age: number }[];
 }

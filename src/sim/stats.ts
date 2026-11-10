@@ -41,6 +41,7 @@ export const computeStats = (w: World, ev: TickEvents): TickStats => {
     births: ev.births.length,
     deathsStarvation: ev.deaths.filter((d) => d.cause === 'starvation').length,
     deathsAge: ev.deaths.filter((d) => d.cause === 'age').length,
+    deathAgeSum: ev.deaths.reduce((sum, d) => (d.cause === 'removed' ? sum : sum + d.age), 0),
     surnames: surnames.size,
     food,
   };

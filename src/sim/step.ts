@@ -143,7 +143,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
   for (const a of w.actors) hash.insert(a);
 
   const births: Actor[] = [];
-  const deaths: { id: number; cause: DeathCause }[] = [];
+  const deaths: { id: number; cause: DeathCause; age: number }[] = [];
   const dead = new Set<number>();
 
   for (const a of shuffle([...w.actors])) {
@@ -222,10 +222,10 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     // 6. Death.
     if (a.energy <= 0) {
       dead.add(a.id);
-      deaths.push({ id: a.id, cause: 'starvation' });
+      deaths.push({ id: a.id, cause: 'starvation', age: a.age });
     } else if (a.age >= rules.maxAge) {
       dead.add(a.id);
-      deaths.push({ id: a.id, cause: 'age' });
+      deaths.push({ id: a.id, cause: 'age', age: a.age });
     }
   }
 
