@@ -29,7 +29,7 @@ interface BranchJson {
 }
 
 export interface ExportFile {
-  format: typeof APP_NAME;
+  format: string;
   version: number;
   exportedAt: string;
   config: HistoryConfig;
@@ -90,8 +90,11 @@ export const toExport = (h: History, activeBranchId: number): ExportFile => ({
   })),
 });
 
+/** Accepted `format` values; 'sim-sala-bim' is the app's former name. */
+const EXPORT_FORMATS = [APP_NAME, 'sim-sala-bim'];
+
 export const fromExport = (file: ExportFile): { history: History; activeBranchId: number } => {
-  if (file.format !== APP_NAME) throw new Error('Filen er ikke en eksport fra sim-sala-bim.');
+  if (!EXPORT_FORMATS.includes(file.format)) throw new Error(`Filen er ikke en eksport fra ${APP_NAME}.`);
   const history = new History(file.config);
   // Parents must be restored before children so registries can link up.
   const sorted = [...file.branches].sort((a, b) => a.id - b.id);

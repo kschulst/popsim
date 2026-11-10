@@ -46,7 +46,7 @@ writeFileSync(
   join(site, 'index.html'),
   `<!doctype html>
 <html lang="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>sim-sala-bim</title>
+<title>popsim</title>
 <style>
 body { margin: 0; background: #0e1014; color: #d8dde4; font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; }
 main { max-width: 720px; margin: 0 auto; padding: 32px 16px; }
@@ -58,7 +58,7 @@ a { color: #8fd3e0; text-decoration: none; }
 li p { margin: 4px 0 0; color: #8a93a0; }
 </style></head>
 <body><main>
-<h1>sim-sala-bim</h1>
+<h1>popsim</h1>
 <p class="muted">Agentbasert simulering av en bestand i et 2D-økosystem. Hver versjon er frosset og kan fortsatt kjøres.</p>
 <ul>
 ${items}

@@ -1,4 +1,4 @@
-# sim-sala-bim
+# popsim (Population Sim)
 
 Agentbasert simulering av en bestand i et 2D-økosystem. Aktørene lever, spiser, parer seg og dør etter enkle regler med mye tilfeldighet. Du kan spole i historikken, forgreine fra et tidligere tidspunkt med endrede regler, aktører eller miljø, og sammenligne hvordan grenene utvikler seg.
 

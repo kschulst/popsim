@@ -1,4 +1,4 @@
-# sim-sala-bim: design
+# popsim (Population Sim): design
 
 Interaktiv, agentbasert simulering av en bestand i et 2D-økosystem. Kjører som statisk app i nettleseren. Beslutningene under er tatt i designøkten 2026-11-08.
 
