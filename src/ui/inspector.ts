@@ -11,6 +11,7 @@ import {
 import { GENE_LABELS, normGene } from '../sim/genome';
 import { fullName } from '../sim/names';
 import { GENE_KEYS, type Actor, type DeathCause, type World } from '../sim/types';
+import { attractiveness } from '../sim/attractiveness';
 import { vigorOf } from '../sim/step';
 import { purity } from '../sim/tribes';
 import { capacityOf, maxHpOf } from '../sim/world';
@@ -141,6 +142,8 @@ export const describeActor = (w: World, reg: Registry, a: Actor): string[] => {
   if (hpShare < 0.5) lines.push(`Skadet (${Math.round(hpShare * 100)} % helse)`);
   const vig = vigorOf(a, w.rules);
   if (vig < 0.9) lines.push(`Svekket ${Math.round((1 - vig) * 100)} %`);
+  const attr = attractiveness(a, w, parentsOf);
+  if (Number.isFinite(attr)) lines.push(`Attraktivitet ${Math.round(attr * 100)} %${a.courtships ? ` (fikk ja ${a.acceptedBy ?? 0} av ${a.courtships})` : ''}`);
   return lines;
 };
 
@@ -269,6 +272,9 @@ export class Inspector {
       const suitors = w.actors.filter((x) => x.mateTarget === live.id).map((x) => x.id);
       if (suitors.length) courtText += `${courtText ? ' · ' : ''}kurtiseres av ${suitors.map(plink).join(', ')}`;
       if (courtText) conflict += `<dt>Partner</dt><dd>${courtText}</dd>`;
+      const attr = attractiveness(live, w, parentsOf);
+      const met = live.courtships ?? 0;
+      conflict += `<dt title="Beregnet: andel mulige partnere i bestanden som ville sagt ja (uten avstand). Faktisk: hvor ofte aktøren har fått ja.">Attraktivitet</dt><dd>${Number.isFinite(attr) ? `<b>${Math.round(attr * 100)} %</b>` : '–'}${met ? ` · fikk ja ${live.acceptedBy ?? 0} av ${met} ganger` : ''}</dd>`;
       if (live.pregnancy) {
         const p = live.pregnancy;
         const n = p.embryos.length;

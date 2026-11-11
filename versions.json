@@ -95,7 +95,8 @@
     "title": "Under utvikling",
     "summary": "Bygget fra main. Kan endre seg uten varsel.",
     "changes": [
-      "Åtsel: den som dør, etterlater kjøtt (mørkerødt kryss) som andre kan spise til det råtner bort. Regler for mengde, forråtnelse og hvor mye som spises per tick."
+      "Åtsel: den som dør, etterlater kjøtt (mørkerødt kryss) som andre kan spise til det råtner bort. Regler for mengde, forråtnelse og hvor mye som spises per tick.",
+      "Attraktivitet: inspektøren og tooltipen viser hvor stor andel av mulige partnere som ville sagt ja, og hvor ofte aktøren faktisk har fått ja. Nye topplister: «Mest attraktive» og «Oftest fått ja»."
     ]
   }
 }

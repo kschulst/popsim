@@ -1,5 +1,6 @@
 import { kinship, type Death, type LifeRecord, type Registry } from '../sim/genealogy';
 import { fullName } from '../sim/names';
+import { attractiveness } from '../sim/attractiveness';
 import { ELE_DEFS } from '../sim/ele';
 import { mainTribe, purity } from '../sim/tribes';
 import type { Actor, DeathCause, GeneKey, Tally, World } from '../sim/types';
@@ -170,6 +171,21 @@ const BOARDS: Board[] = [
         .map((id) => ({ id, value: tallyOf(c, id)?.hitsTaken ?? 0 }))
         .filter((r) => r.value > 0),
   },
+  {
+    key: 'yesRate',
+    group: 'Individer',
+    title: 'Oftest fått ja',
+    description: 'Andel møter der den andre sa ja, blant dem med minst 3 møter.',
+    livingFilter: true,
+    rows: (c) =>
+      c.ids.flatMap((id) => {
+        const t = tallyOf(c, id);
+        const n = t?.courtships ?? 0;
+        if (n < 3) return [];
+        const v = (t?.acceptedBy ?? 0) / n;
+        return [{ id, value: v, text: `${Math.round(v * 100)} % (${t?.acceptedBy ?? 0} av ${n})` }];
+      }),
+  },
   tallyBoard('foodEaten', 'Mest mat spist', 'Antall matruter spist.'),
   tallyBoard('distance', 'Lengst tilbakelagt', 'Distanse i verdensenheter.'),
   {
@@ -241,6 +257,16 @@ const BOARDS: Board[] = [
   geneBoard('aggression', 'Mest aggressiv'),
   geneBoard('aggression', 'Minst aggressiv', true),
   geneBoard('longevity', 'Høyest levealder (gen)'),
+  {
+    key: 'attractive',
+    group: 'Egenskaper (levende)',
+    title: 'Mest attraktive',
+    description: 'Andel mulige partnere i bestanden som ville sagt ja (avstamning, renhet, stammebonus, slektskap og kresenhet; uten avstand).',
+    rows: (c) => [...c.live.values()].map((a) => {
+      const v = attractiveness(a, c.w, c.parentsOf);
+      return { id: a.id, value: Number.isFinite(v) ? v : 0, text: Number.isFinite(v) ? `${Math.round(v * 100)} %` : '–' };
+    }),
+  },
   {
     key: 'heritability',
     group: 'Egenskaper (levende)',

@@ -220,6 +220,8 @@ class TickContext {
         hitsTaken: a.hitsTaken,
         foodEaten: a.foodEaten,
         distance: a.distance,
+        courtships: a.courtships ?? 0,
+        acceptedBy: a.acceptedBy ?? 0,
       },
     });
   }
@@ -238,7 +240,7 @@ const mateScore = (ctx: TickContext, a: Actor, b: Actor, dist: number): number =
 };
 
 /** Probability that an actor accepts a partner it scores `score` (see the Kresenhet rule). */
-const acceptance = (score: number, r: World['rules']): number => {
+export const acceptance = (score: number, r: World['rules']): number => {
   if (score < r.minMateScore) return 0;
   if (r.choosiness <= 0) return 1;
   return 1 - Math.exp(-(score - r.minMateScore) / r.choosiness);
@@ -265,6 +267,10 @@ const courtship = (ctx: TickContext, a: Actor, b: Actor): boolean => {
     a.cooldown = Math.max(a.cooldown, r.rejectionCooldown);
   }
   if (!aAccepts || !bAccepts) a.mateTarget = b.mateTarget = null;
+  a.courtships = (a.courtships ?? 0) + 1;
+  b.courtships = (b.courtships ?? 0) + 1;
+  if (bAccepts) a.acceptedBy = (a.acceptedBy ?? 0) + 1;
+  if (aAccepts) b.acceptedBy = (b.acceptedBy ?? 0) + 1;
   a.court = { with: b.id, selfAccepted: aAccepts, otherAccepted: bAccepts, ttl: COURT_TICKS };
   return aAccepts && bAccepts;
 };
@@ -622,6 +628,8 @@ const deliver = (ctx: TickContext, mother: Actor): Actor[] => {
       hitsTaken: 0,
       foodEaten: 0,
       distance: 0,
+      courtships: 0,
+      acceptedBy: 0,
     };
     child.hp = maxHpOf(child, r);
     return child;

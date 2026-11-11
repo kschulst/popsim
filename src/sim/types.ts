@@ -197,6 +197,9 @@ export interface Actor {
   foodEaten: number;
   /** Distance moved (world units). */
   distance: number;
+  /** Courtship meetings, and how many times the other said yes. */
+  courtships: number;
+  acceptedBy: number;
 }
 
 /** Lifetime counters kept in the death record. */
@@ -207,6 +210,8 @@ export interface Tally {
   hitsTaken: number;
   foodEaten: number;
   distance: number;
+  courtships?: number;
+  acceptedBy?: number;
 }
 
 /** A child conceived but not yet born; its genes are fixed at conception. */
