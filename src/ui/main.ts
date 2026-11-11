@@ -11,7 +11,7 @@ import { mortality, type Mortality } from '../sim/mortality';
 import { Charts } from './charts';
 import { COLOR_MODE_LABELS, type ColorMode } from './colors';
 import { BranchEditor, RulesPanel } from './editor';
-import { ancestryBreakdown, describeActor, Inspector, kinMap, lifeSpanText } from './inspector';
+import { ancestryBreakdown, CAUSE_LABELS, describeActor, Inspector, kinMap, lifeSpanText } from './inspector';
 import { surnameColor } from './colors';
 import { fullName } from '../sim/names';
 import { Leaderboards } from './leaderboards';
@@ -306,6 +306,48 @@ const announceEvents = (w: World) => {
     showBanner(`${ELE_DEFS[e.key].icon} ${e.name} ved tick ${e.tick}${e.manual ? '' : ' (tilfeldig)'}`);
   }
   announced = Math.max(announced, ...evs.filter((e) => e.applied).map((e) => e.id), -1);
+};
+
+/** Tick the population died out on the current lineage, or null. */
+const extinctionTick = (): number | null => {
+  const rows = history.statsPath(branchId);
+  const r = rows.find((x) => x.females + x.males === 0);
+  return r ? r.tick : null;
+};
+
+/** Ticks to go back from the extinction when pressing "Spol tilbake". */
+const EXTINCT_REWIND = 200;
+let extinctShownFor = -1;
+
+/**
+ * Message over the map while the shown tick has no living actors. Playback stops the first time
+ * it appears for an extinction.
+ */
+const updateExtinct = (w: World) => {
+  const el = $('extinct');
+  if (editor.active || w.actors.length > 0 || w.tick === 0) {
+    el.hidden = true;
+    return;
+  }
+  const t = extinctionTick() ?? w.tick;
+  if (extinctShownFor !== t) {
+    extinctShownFor = t;
+    playing = false;
+    const reg = history.get(branchId).registry;
+    let last: { id: number; tick: number; cause: string } | null = null;
+    for (const id of reg.allIds(t)) {
+      const d = reg.death(id, t);
+      if (d && (!last || d.tick > last.tick)) last = { id, tick: d.tick, cause: d.cause };
+    }
+    const lastRec = last ? reg.get(last.id) : undefined;
+    $('extinct-text').innerHTML =
+      `Den siste døde ved tick ${t}.` +
+      (lastRec && last
+        ? ` Sist ute var ${fullName(lastRec)} (${CAUSE_LABELS[last.cause as keyof typeof CAUSE_LABELS] ?? last.cause}).`
+        : '') +
+      ` Spol tilbake for å se hva som skjedde, eller forgrein fra før med andre regler.`;
+  }
+  el.hidden = false;
 };
 
 const newRun = (tribes: Tribe[]) => {
@@ -639,6 +681,16 @@ $('map-legend').innerHTML =
   '<strong>Ringer</strong><br>' +
   '<span class="g" style="color:#ffd25a">◯</span>slektning av valgt aktør (sterkere = nærmere slekt)<br>' +
   '<span class="g" style="color:#ffdc78">○</span>tynn gul kant: flykter';
+$('extinct-back').onclick = () => {
+  playing = false;
+  seekLineage(Math.max(0, (extinctionTick() ?? tick) - EXTINCT_REWIND));
+};
+$('extinct-branch').onclick = () => {
+  playing = false;
+  seekLineage(Math.max(0, (extinctionTick() ?? tick) - EXTINCT_REWIND));
+  startEditing();
+};
+$('extinct-new').onclick = () => $('btn-new').click();
 $('legend-toggle').onclick = () => {
   $('map-legend').hidden = !$('map-legend').hidden;
 };
@@ -679,6 +731,7 @@ const frame = (now: number) => {
   }
   if (!editor.active) announceEvents(w);
   updateTip(now);
+  updateExtinct(w);
   updateScrub();
   const zl = `${renderer.zoom < 10 ? renderer.zoom.toFixed(1).replace('.0', '') : Math.round(renderer.zoom)}×`;
   if ($('zoom-level').textContent !== zl) $('zoom-level').textContent = zl;

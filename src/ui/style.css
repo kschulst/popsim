@@ -274,3 +274,8 @@ details.timeline-wrap > summary { cursor: pointer; color: var(--muted); font-siz
 .hover-tip { position: absolute; z-index: 6; pointer-events: none; background: rgba(14, 16, 20, 0.94); border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; font-size: 12px; line-height: 1.5; max-width: 320px; box-shadow: 0 4px 14px #0008; }
 .hover-tip strong { color: var(--c, var(--text)); }
 .hover-tip .life { margin-left: 4px; }
+
+.extinct { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 7; background: rgba(20, 10, 10, 0.94); border: 1px solid #ff6a4f; border-radius: 8px; padding: 16px 20px; max-width: min(420px, calc(100% - 32px)); text-align: center; box-shadow: 0 8px 30px #000a; }
+.extinct h2 { color: #ffb4a0; font-size: 18px; margin: 0 0 8px; }
+.extinct p { margin: 0 0 12px; color: var(--text); }
+.extinct .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
