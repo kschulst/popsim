@@ -268,3 +268,5 @@ canvas#world.aiming { cursor: crosshair; }
 #scrub { flex: 1; min-width: 120px; accent-color: var(--gold); }
 #scrub-label { min-width: 110px; margin-left: 0; text-align: right; }
 details.timeline-wrap > summary { cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 0; }
+
+.kin-warn { color: #ff9b5a; font-weight: 600; white-space: nowrap; }

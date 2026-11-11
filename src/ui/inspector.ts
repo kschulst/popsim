@@ -196,16 +196,25 @@ export class Inspector {
       else if (live.fleeing > 0) parts.unshift(`<strong>flykter</strong>${live.fleeFrom !== null ? ` fra ${link(live.fleeFrom)}` : ''}`);
       conflict = `<dt>Kamp</dt><dd>${parts.join(' · ')}</dd>`;
       const court = live.court;
+      // Partner links carry the relation when the two are kin (within three generations);
+      // close kin (cousins or closer) are flagged in a warning colour.
+      const CLOSE = new Set(['parent', 'child', 'fullSibling', 'halfSibling', 'grandparent', 'grandchild', 'auntUncle', 'nephewNiece', 'cousin']);
+      const plink = (x: number) => {
+        const k = kinship(id, x, parentsOf, 3);
+        if (!k || k.relation === 'self') return link(x);
+        const close = CLOSE.has(k.relation);
+        return `${link(x)} <span class="${close ? 'kin-warn' : 'muted'}" title="${close ? 'Nær slekt' : 'Fjern slekt'}">${close ? '⚠ ' : ''}${RELATION_LABELS[k.relation]}</span>`;
+      };
       let courtText = '';
-      if (court && court.selfAccepted && court.otherAccepted) courtText = `paret seg med ${link(court.with)}`;
+      if (court && court.selfAccepted && court.otherAccepted) courtText = `paret seg med ${plink(court.with)}`;
       else if (court) {
         const parts: string[] = [];
-        if (!court.selfAccepted) parts.push(`avviste ${link(court.with)}`);
-        if (!court.otherAccepted) parts.push(`ble avvist av ${link(court.with)}`);
+        if (!court.selfAccepted) parts.push(`avviste ${plink(court.with)}`);
+        if (!court.otherAccepted) parts.push(`ble avvist av ${plink(court.with)}`);
         courtText = parts.join(' og ');
-      } else if (live.mateTarget !== null) courtText = `kurtiserer ${link(live.mateTarget)}`;
+      } else if (live.mateTarget !== null) courtText = `kurtiserer ${plink(live.mateTarget)}`;
       const suitors = w.actors.filter((x) => x.mateTarget === live.id).map((x) => x.id);
-      if (suitors.length) courtText += `${courtText ? ' · ' : ''}kurtiseres av ${suitors.map(link).join(', ')}`;
+      if (suitors.length) courtText += `${courtText ? ' · ' : ''}kurtiseres av ${suitors.map(plink).join(', ')}`;
       if (courtText) conflict += `<dt>Partner</dt><dd>${courtText}</dd>`;
       if (live.pregnancy) {
         const p = live.pregnancy;
