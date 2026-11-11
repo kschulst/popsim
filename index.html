@@ -11,12 +11,18 @@
       <h1>popsim <span class="version" id="version"></span></h1>
       <div class="controls">
         <button id="btn-start" title="Til starten av grenen">⏮</button>
-        <button id="btn-back" title="Ett steg tilbake (←)">◀</button>
+        <button id="btn-back10" title="10 steg tilbake (Shift + ←)">◀◀ 10</button>
+        <button id="btn-back" title="Ett steg tilbake (←)">|◀</button>
         <button id="btn-play" class="primary" title="Spill / pause (mellomrom)">▶</button>
         <button id="btn-fwd" title="Ett steg frem (→)">▶|</button>
+        <button id="btn-fwd10" title="10 steg frem (Shift + →)">10 ▶▶</button>
         <button id="btn-end" title="Til enden av grenen">⏭</button>
         <label class="speed" title="Ticks per sekund">Fart <input id="speed" type="range" min="0" max="100" value="30" /> <span id="speed-label"></span></label>
         <span id="status" class="status"></span>
+      </div>
+      <div class="controls scrub-row">
+        <input id="scrub" type="range" min="0" max="0" value="0" step="1" title="Dra for å gå til et tidspunkt langs denne grenens historikk" />
+        <span id="scrub-label" class="status"></span>
       </div>
       <div class="controls">
         <button id="btn-branch" title="Lag en ny gren fra tidspunktet som vises">Forgrein herfra</button>

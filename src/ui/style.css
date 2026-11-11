@@ -261,3 +261,7 @@ canvas#world.aiming { cursor: crosshair; }
 .map-legend .ln.dash { border-top-style: dashed; }
 .map-legend .ln.dot { border-top-style: dotted; }
 .map-legend .g { display: inline-block; width: 22px; text-align: center; margin-right: 6px; font-weight: 700; }
+
+.scrub-row { flex: 1 1 100%; order: 3; }
+#scrub { flex: 1; min-width: 200px; accent-color: var(--gold); }
+#scrub-label { min-width: 110px; margin-left: 0; }

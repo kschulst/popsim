@@ -360,6 +360,47 @@ $('btn-play').onclick = () => {
   touch();
 };
 $('btn-back').onclick = stepBack;
+/** Ten ticks back along the lineage (into the parent branch if needed). */
+const stepBack10 = () => {
+  if (editor.active) return;
+  playing = false;
+  seekLineage(Math.max(0, tick - 10));
+};
+/** Ten ticks forward: jump within stored history, simulate whatever lies past the head. */
+const stepForward10 = () => {
+  if (editor.active) return;
+  playing = false;
+  const target = tick + 10;
+  const head = history.get(branchId).headTick;
+  if (target <= head) {
+    seekLineage(target);
+    return;
+  }
+  seek(branchId, head);
+  for (let i = head; i < target; i++) stepForward();
+};
+$('btn-back10').onclick = stepBack10;
+$('btn-fwd10').onclick = stepForward10;
+
+// Time scrubber: 0 to the head of the current branch, along its lineage.
+const scrub = $<HTMLInputElement>('scrub');
+let scrubbing = false;
+scrub.addEventListener('pointerdown', () => {
+  scrubbing = true;
+  playing = false;
+});
+scrub.addEventListener('pointerup', () => (scrubbing = false));
+scrub.addEventListener('input', () => {
+  if (editor.active) return;
+  playing = false;
+  seekLineage(Number(scrub.value));
+});
+const updateScrub = () => {
+  const head = history.get(branchId).headTick;
+  if (scrub.max !== String(head)) scrub.max = String(head);
+  if (!scrubbing && scrub.value !== String(tick)) scrub.value = String(tick);
+  $('scrub-label').textContent = `tick ${tick} av ${head}`;
+};
 $('btn-fwd').onclick = () => {
   if (editor.active) return;
   playing = false;
@@ -423,8 +464,13 @@ document.addEventListener('keydown', (e) => {
   } else if (e.key === ' ') {
     e.preventDefault();
     $('btn-play').click();
-  } else if (e.key === 'ArrowLeft') stepBack();
-  else if (e.key === 'ArrowRight') $('btn-fwd').click();
+  } else if (e.key === 'ArrowLeft') {
+    if (e.shiftKey) stepBack10();
+    else stepBack();
+  } else if (e.key === 'ArrowRight') {
+    if (e.shiftKey) stepForward10();
+    else $('btn-fwd').click();
+  }
 });
 
 // Canvas: click selects an actor, drag pans, wheel zooms, double-click resets the view.
@@ -564,6 +610,7 @@ const frame = (now: number) => {
     kin = selectedId === null ? new Map() : kinMap(w, reg, selectedId);
   }
   if (!editor.active) announceEvents(w);
+  updateScrub();
   const zl = `${renderer.zoom < 10 ? renderer.zoom.toFixed(1).replace('.0', '') : Math.round(renderer.zoom)}×`;
   if ($('zoom-level').textContent !== zl) $('zoom-level').textContent = zl;
   renderer.render(w, {

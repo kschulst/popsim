@@ -53,7 +53,7 @@ npm run build    # typesjekk + produksjonsbygg i dist/
 
 ## Bruk
 
-- Mellomrom: spill/pause. Piltaster: ett steg frem/tilbake.
+- Mellomrom: spill/pause. Piltaster: ett steg frem/tilbake, med Shift: 10 steg. Glidebryteren under knappene viser hvor i tiden du er og kan dras.
 - Klikk på en aktør for å se avstamning, genom, helse, kamp, foreldre, søsken, barn og stamtre. Levende slektninger får en gul ring.
 - Rull for å zoome, dra for å flytte, dobbeltklikk for å se hele verdenen.
 - Klikk på et navn i inspektøren eller i Topplister for å gå til aktøren. «Spol til levetiden» spoler til et tidspunkt der den lever, og «← Tilbake» går til forrige aktør.
