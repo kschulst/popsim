@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
+    "site": "node scripts/build-site.mjs && vite preview --outDir site --port 5180",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

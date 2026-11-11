@@ -1,8 +1,30 @@
-[
-  {
-    "version": 1,
-    "tag": "v1",
-    "title": "Livssyklus, to kjønn og grener",
-    "summary": "Aktører med energi, alder og genom (størrelse, fart, syn, paringsterskel, mutasjonsrate) med arvestyrke per egenskap. Binær mat som sprer seg fra naboruter. Kjønnet formering med vektet blanding av foreldrene, norske navn fra SSB og stamtre. Historikk med snapshots, forgreining med endringer, eksport og import."
+{
+  "versions": [
+    {
+      "version": 1,
+      "tag": "v1",
+      "title": "Livssyklus, to kjønn og grener",
+      "summary": "Aktører med energi, alder og genom (størrelse, fart, syn, paringsterskel, mutasjonsrate) med arvestyrke per egenskap. Binær mat som sprer seg fra naboruter. Kjønnet formering med vektet blanding av foreldrene, norske navn fra SSB og stamtre. Historikk med snapshots, forgreining med endringer, eksport og import.",
+      "changes": [
+        "Aktører med energi, alder, kjønn og genom: størrelse, maks fart, syn, paringsterskel og mutasjonsrate.",
+        "Binær mat per rute som gror spontant og sprer seg fra naboruter, styrt av et fruktbarhetskart.",
+        "Kjønnet formering: barnet får en vektet blanding av foreldrenes egenskaper etter arvestyrke per egenskap, pluss mutasjon.",
+        "Norske for- og etternavn fra SSB; barn får farens etternavn.",
+        "Stamtre, slektskap og innavlsgrense ved paring.",
+        "Historikk med spoling, forgreining med endrede regler, aktører eller miljø, og tidslinje over grener.",
+        "Grafer for populasjon, generasjon, fødsler og dødsfall, klaner, mat, arvestyrke og egenskaper.",
+        "Eksport og import av hele historikken."
+      ]
+    }
+  ],
+  "dev": {
+    "title": "Under utvikling",
+    "summary": "Bygget fra main. Kan endre seg uten varsel.",
+    "changes": [
+      "Appen heter popsim (Population Sim). Eksportfiler fra sim-sala-bim kan fortsatt importeres.",
+      "Tall over grafene: antall døde, andel døde av alderdom og snitt dødsalder, både hittil og for de siste 500 ticks.",
+      "Nye grafer: snitt dødsalder og andel døde av alderdom (siste 100 ticks).",
+      "Versjonsvelger med oppsummering av forskjeller mellom versjoner."
+    ]
   }
-]
+}

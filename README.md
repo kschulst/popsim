@@ -30,4 +30,8 @@ Aktørene får norske fornavn (etter kjønn) og etternavn fra SSBs navnestatisti
 
 Hver versjon er en git-tag `vN` og står i `versions.json`. `node scripts/build-site.mjs` bygger alle tagger til `site/vN/`, main til `site/dev/` og en indeksside. GitHub Actions (`.github/workflows/pages.yml`) kjører skriptet og publiserer til GitHub Pages ved push til main og ved nye tagger.
 
-For å fryse en ny versjon: øk `VERSION` i `src/version.ts`, legg til en oppføring i `versions.json`, commit og tag `vN`.
+Hver bygde versjon får en versjonsvelger nederst til venstre (`scripts/site/switcher.js`, lagt inn av byggeskriptet). Den lenker til de andre versjonene og viser endringene mellom to valgte versjoner, hentet fra `changes` i `versions.json`. `npm run site` bygger alt og starter en lokal forhåndsvisning på http://localhost:5180/.
+
+`versions.json` har `versions` (frosne versjoner, hver med `changes` mot forrige versjon) og `dev` (endringer på main siden siste versjon). Før du legger til noe på main, før det opp i `dev.changes`.
+
+For å fryse en ny versjon: øk `VERSION` i `src/version.ts`, flytt `dev.changes` inn i en ny oppføring i `versions` og tøm `dev.changes`, commit og tag `vN`.
