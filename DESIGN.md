@@ -59,6 +59,8 @@ Hver versjon er en git-tag (`v1`, `v2` …) og publiseres frosset under `/vN/` p
 
 `partnerpoeng = 1 + tribePreference × felles avstamning × (renhet_a × renhet_b)^purityWeight − slektsstraff − mateDistanceWeight × avstand / snitt syn`
 
+**Kresenhet**: ved kontakt godtar hver part den andre med sannsynlighet `1 − e^(−(poeng − minMateScore) / choosiness)` (standard `choosiness` 1). Den avviste må vente `rejectionCooldown` ticks, og den som avviste, ser bort fra kandidaten neste gang. Uten kresenhet får alle som er klare, en partner, så attraktivitet ville bare påvirke hvem som parer seg med hvem, ikke hvor mange barn hver får. Hanner har egen nedkjøling (`maleMateCooldown`). Kortere nedkjøling for hanner og høy `parentalCostSplit` gjør hunnene til den knappe ressursen.
+
 I tillegg får kandidaten en bonus for avstamningen sin: `Σ tribeBonus[i] × kandidatens andel fra stamme i` (regel per stamme, standard 0, justerbar under kjøring). a sin vurdering av b legger til b sin bonus, og omvendt. Paring krever at begge vurderingene er minst `minMateScore` (begge må godta). Aktøren går mot kandidaten med høyest poeng. Slektsstraff (erstatter `incestDepth` fra v1):
 
 | Relasjon | Straff |

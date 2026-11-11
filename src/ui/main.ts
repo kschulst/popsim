@@ -36,6 +36,7 @@ let lastFrame = 0;
 let colorMode: ColorMode = 'tribe';
 let selectedId: number | null = null;
 let showFertility = false;
+let showCourtship = true;
 let brushPos: { x: number; y: number } | null = null;
 let painting = false;
 /** Bumped whenever something outside the per-frame loop changes; panels re-render on change. */
@@ -241,6 +242,9 @@ const updateSpeed = () => {
 };
 speedInput.oninput = updateSpeed;
 updateSpeed();
+$<HTMLInputElement>('show-courtship').onchange = (e) => {
+  showCourtship = (e.target as HTMLInputElement).checked;
+};
 $<HTMLInputElement>('show-fertility').onchange = (e) => {
   showFertility = (e.target as HTMLInputElement).checked;
 };
@@ -394,6 +398,7 @@ const frame = (now: number) => {
     selectedId,
     kin,
     showFertility: showFertility || (editor.active && editor.brushOn && editor.brushMode.endsWith('Fertile')),
+    showCourtship,
     brush: brushPos ? { ...brushPos, r: editor.brushRadius } : null,
   });
 

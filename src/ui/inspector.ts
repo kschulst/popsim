@@ -67,7 +67,7 @@ export class Inspector {
   render(w: World, reg: Registry, id: number | null): void {
     if (id === null) {
       this.root.innerHTML = `<p class="muted">Klikk på en aktør i verdenen for å se detaljer og slektskap.</p>
-        <p class="muted">● hunn &nbsp; ◆ hann. Gjennomsiktighet viser energinivå. Rød strek: angriper → mål. Gul kant: flykter. Hvitt blink: treff.</p>
+        <p class="muted">● hunn &nbsp; ◆ hann. Gjennomsiktighet viser energinivå. Rød strek: angriper → mål. Gul kant: flykter. Hvitt blink: treff. Stiplet rosa strek: søker partner. Grønn: paret seg. Grå med kryss: avvist, krysset står ved den som sa nei.</p>
         <p class="muted">Rull for å zoome, dra for å flytte, dobbeltklikk for å vise hele verdenen. Fra ${DETAIL_ZOOM}× zoom vises avstamning som kakediagram og helse som en bar.</p>`;
       return;
     }
@@ -139,6 +139,16 @@ export class Inspector {
       if (live.target !== null) parts.unshift(`<strong>slåss med</strong> ${link(live.target)}`);
       else if (live.fleeing > 0) parts.unshift(`<strong>flykter</strong>${live.fleeFrom !== null ? ` fra ${link(live.fleeFrom)}` : ''}`);
       conflict = `<dt>Kamp</dt><dd>${parts.join(' · ')}</dd>`;
+      const court = live.court;
+      let courtText = '';
+      if (court && court.selfAccepted && court.otherAccepted) courtText = `paret seg med ${link(court.with)}`;
+      else if (court) {
+        const parts: string[] = [];
+        if (!court.selfAccepted) parts.push(`avviste ${link(court.with)}`);
+        if (!court.otherAccepted) parts.push(`ble avvist av ${link(court.with)}`);
+        courtText = parts.join(' og ');
+      } else if (live.mateTarget !== null) courtText = `søker ${link(live.mateTarget)}`;
+      if (courtText) conflict += `<dt>Partner</dt><dd>${courtText}</dd>`;
     }
 
     this.root.innerHTML = `

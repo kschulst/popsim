@@ -49,7 +49,10 @@
       "Attraktivitet per avstamning: egen bonus per stamme i partnervalget, justerbar under kjøring i Regler-fanen.",
       "Versjonsvelgeren og indekssiden lister dev først, deretter nyeste versjon. Dev-bygget viser «dev» som versjon i headeren.",
       "Avstamning arves i tilfeldige segmenter (regel «Avstamningssegmenter», standard 16), så søsken blir ulike og blandede bestander beholder variasjon som partnervalg og stammebonus kan virke på.",
-      "Regelendringer ved enden av en gren endrer grenen direkte i stedet for å lage en ny gren, og merkes på tidslinjen. Valget «Lag alltid ny gren ved regelendring» gir den gamle oppførselen."
+      "Regelendringer ved enden av en gren endrer grenen direkte i stedet for å lage en ny gren, og merkes på tidslinjen. Valget «Lag alltid ny gren ved regelendring» gir den gamle oppførselen.",
+      "Kresenhet: partnere godtar hverandre med en sannsynlighet som øker med partnerpoenget. Avviste må vente, og lite attraktive aktører får færre barn. Stammebonusen gir dermed en tydelig seleksjon.",
+      "Egen nedkjøling etter paring for hanner. Sammen med «Andel betalt av hunn» kan hunnene bli den knappe ressursen, slik at attraktive hanner får mange paringer.",
+      "Partnerstreker: stiplet rosa for partnersøk, grønn for paring og grå med kryss for avvisning. Kan slås av i headeren."
     ]
   }
 }

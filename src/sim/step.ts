@@ -16,6 +16,8 @@ const ATTACK_CANDIDATES = 4;
 /** Fights an onlooker considers joining per tick. */
 const JOIN_CANDIDATES = 3;
 const FLASH_TICKS = 6;
+/** Ticks a courtship outcome stays visible. */
+const COURT_TICKS = 25;
 
 /**
  * Empty cells get food with probability fertility × (spontaneous + spread × food neighbours).
@@ -150,6 +152,36 @@ const mateScore = (ctx: TickContext, a: Actor, b: Actor, dist: number): number =
   return 1 + tribe - kinPenalty(ctx.kin(a, b), r) - (r.mateDistanceWeight * dist) / meanVision;
 };
 
+/** Probability that an actor accepts a partner it scores `score` (see the Kresenhet rule). */
+const acceptance = (score: number, r: World['rules']): number => {
+  if (score < r.minMateScore) return 0;
+  if (r.choosiness <= 0) return 1;
+  return 1 - Math.exp(-(score - r.minMateScore) / r.choosiness);
+};
+
+/**
+ * Both sides decide on contact. A rejected actor waits `rejectionCooldown` ticks; the one who
+ * rejected skips that candidate next time. Returns true if both accept.
+ */
+const courtship = (ctx: TickContext, a: Actor, b: Actor): boolean => {
+  const r = ctx.w.rules;
+  const bonus = r.tribeBonus ?? [];
+  const base = mateScore(ctx, a, b, Math.hypot(b.x - a.x, b.y - a.y));
+  const aAccepts = Math.random() < acceptance(base + tribeBonusOf(b, bonus), r);
+  const bAccepts = Math.random() < acceptance(base + tribeBonusOf(a, bonus), r);
+  if (!aAccepts) {
+    a.snub = b.id;
+    b.cooldown = Math.max(b.cooldown, r.rejectionCooldown);
+  }
+  if (!bAccepts) {
+    b.snub = a.id;
+    a.cooldown = Math.max(a.cooldown, r.rejectionCooldown);
+  }
+  if (!aAccepts || !bAccepts) a.mateTarget = b.mateTarget = null;
+  a.court = { with: b.id, selfAccepted: aAccepts, otherAccepted: bAccepts, ttl: COURT_TICKS };
+  return aAccepts && bAccepts;
+};
+
 /** Attractiveness bonus of an actor: Σ tribeBonus[i] × ancestry share from tribe i. */
 export const tribeBonusOf = (a: Actor, bonus: number[]): number => {
   let s = 0;
@@ -169,7 +201,7 @@ const findMate = (ctx: TickContext, a: Actor, vision: number): Actor | null => {
   let best: Actor | null = null;
   let bestScore = -Infinity;
   for (const b of ctx.hash.near(a.x, a.y, vision)) {
-    if (b.sex === a.sex || ctx.dead.has(b.id) || !readyToMate(b, w)) continue;
+    if (b.sex === a.sex || b.id === a.snub || ctx.dead.has(b.id) || !readyToMate(b, w)) continue;
     const d = Math.hypot(b.x - a.x, b.y - a.y);
     if (d > vision) continue;
     const base = mateScore(ctx, a, b, d);
@@ -321,7 +353,8 @@ const breed = (a: Actor, b: Actor, w: World): Actor | null => {
   if (mother.energy <= motherShare || father.energy <= fatherShare) return null;
   mother.energy -= motherShare;
   father.energy -= fatherShare;
-  mother.cooldown = father.cooldown = w.rules.mateCooldown;
+  mother.cooldown = w.rules.mateCooldown;
+  father.cooldown = w.rules.maleMateCooldown ?? w.rules.mateCooldown;
   mother.mateTarget = father.mateTarget = null;
 
   let surname: string;
@@ -351,7 +384,7 @@ const breed = (a: Actor, b: Actor, w: World): Actor | null => {
     wander: angle,
     energy: cost,
     age: 0,
-    cooldown: w.rules.mateCooldown,
+    cooldown: sex === 'F' ? w.rules.mateCooldown : (w.rules.maleMateCooldown ?? w.rules.mateCooldown),
     born: w.tick,
     hp: 0,
     target: null,
@@ -359,6 +392,8 @@ const breed = (a: Actor, b: Actor, w: World): Actor | null => {
     fleeFrom: null,
     attackCd: 0,
     mateTarget: null,
+    snub: null,
+    court: null,
     lastHitBy: null,
     flash: 0,
     damageDealt: 0,
@@ -412,6 +447,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     a.cooldown--;
     a.attackCd--;
     if (a.flash > 0) a.flash--;
+    if (a.court && --a.court.ttl <= 0) a.court = null;
     const cap = capacityOf(a, rules);
     const radius = radiusOf(a);
     const vision = visionOf(a, w);
@@ -534,8 +570,10 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     if (target && !ctx.dead.has(target.id) && a.attackCd <= 0 && Math.hypot(target.x - a.x, target.y - a.y) <= radius + radiusOf(target) + rules.attackReach) {
       strike(ctx, a, target);
     } else if (mate && Math.hypot(mate.x - a.x, mate.y - a.y) <= radius + radiusOf(mate) + 1 && readyToMate(a, w) && readyToMate(mate, w)) {
-      const child = breed(a, mate, w);
-      if (child) births.push(child);
+      if (courtship(ctx, a, mate)) {
+        const child = breed(a, mate, w);
+        if (child) births.push(child);
+      }
     }
 
     // 7. Death from starvation or age.

@@ -34,7 +34,14 @@ export interface Rules {
   directionNoise: number;
   offspringEnergy: number;
   parentalCostSplit: number;
+  /** Cooldown after mating for females (and the minimum mating age of newborn females). */
   mateCooldown: number;
+  /** Cooldown after mating for males (and the minimum mating age of newborn males). */
+  maleMateCooldown: number;
+  /** How hard partners are to please: acceptance = 1 − exp(−(score − min) / choosiness). 0 accepts every score ≥ min. */
+  choosiness: number;
+  /** Ticks a rejected actor must wait before it can try to mate again. */
+  rejectionCooldown: number;
   mutationScale: number;
   inheritanceNoise: number;
   /** Ancestry is inherited in this many random segments (0 = exact mean of the parents). */
@@ -109,12 +116,24 @@ export interface Actor {
   attackCd: number;
   /** Partner this actor is currently heading for (used to detect rivals). */
   mateTarget: number | null;
+  /** Last candidate this actor rejected; skipped when choosing the next partner. */
+  snub: number | null;
+  /** Latest courtship this actor started, shown in the renderer for `ttl` ticks. */
+  court: Courtship | null;
   lastHitBy: number | null;
   /** Ticks left of the hit flash in the renderer. */
   flash: number;
   damageDealt: number;
   damageTaken: number;
   kills: number;
+}
+
+export interface Courtship {
+  with: number;
+  /** Whether each side accepted. Both true means they mated. */
+  selfAccepted: boolean;
+  otherAccepted: boolean;
+  ttl: number;
 }
 
 export interface Tribe {

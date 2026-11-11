@@ -8,6 +8,8 @@ export interface RenderOptions {
   /** Actor id → kin weight relative to the selected actor (excluding self). */
   kin: Map<number, number>;
   showFertility: boolean;
+  /** Draw partner search and courtship lines. */
+  showCourtship: boolean;
   brush: { x: number; y: number; r: number } | null;
 }
 
@@ -166,6 +168,63 @@ export class Renderer {
     ctx.fillRect(x - bw / 2, by, bw * share, bh);
   }
 
+  /**
+   * Partner search: dashed pink line to the partner an actor is heading for. Courtship outcome,
+   * fading over its ttl: green when both accepted (mated), grey with a cross at the end of the
+   * side that said no.
+   */
+  private drawCourtship(
+    w: World,
+    byId: Map<number, Actor>,
+    sx: (a: { x: number }) => number,
+    sy: (a: { y: number }) => number,
+    dpr: number,
+  ): void {
+    const { ctx } = this;
+    ctx.lineWidth = dpr;
+    ctx.setLineDash([3 * dpr, 3 * dpr]);
+    ctx.strokeStyle = 'rgba(240, 130, 170, 0.55)';
+    ctx.beginPath();
+    for (const a of w.actors) {
+      const m = a.mateTarget === null ? undefined : byId.get(a.mateTarget);
+      if (!m || a.court) continue;
+      ctx.moveTo(sx(a), sy(a));
+      ctx.lineTo(sx(m), sy(m));
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (const a of w.actors) {
+      const c = a.court;
+      const b = c ? byId.get(c.with) : undefined;
+      if (!c || !b) continue;
+      const alpha = Math.min(1, c.ttl / 12);
+      const ok = c.selfAccepted && c.otherAccepted;
+      ctx.strokeStyle = ok ? `rgba(110, 230, 140, ${alpha})` : `rgba(170, 170, 180, ${alpha * 0.8})`;
+      ctx.lineWidth = (ok ? 2.5 : 1.5) * dpr;
+      ctx.beginPath();
+      ctx.moveTo(sx(a), sy(a));
+      ctx.lineTo(sx(b), sy(b));
+      ctx.stroke();
+      // Cross near whoever rejected: at a's end if a said no, at b's end if b said no.
+      const cross = (from: Actor, to: Actor) => {
+        const t = 0.25;
+        const x = sx(from) + (sx(to) - sx(from)) * t;
+        const y = sy(from) + (sy(to) - sy(from)) * t;
+        const r = 3.5 * dpr;
+        ctx.strokeStyle = `rgba(255, 110, 90, ${alpha})`;
+        ctx.lineWidth = 1.5 * dpr;
+        ctx.beginPath();
+        ctx.moveTo(x - r, y - r);
+        ctx.lineTo(x + r, y + r);
+        ctx.moveTo(x + r, y - r);
+        ctx.lineTo(x - r, y + r);
+        ctx.stroke();
+      };
+      if (!c.selfAccepted) cross(a, b);
+      if (!c.otherAccepted) cross(b, a);
+    }
+  }
+
   render(w: World, opt: RenderOptions): void {
     const { ctx, canvas } = this;
     this.worldW = w.width;
@@ -195,6 +254,8 @@ export class Renderer {
         ctx.stroke();
       }
     }
+
+    if (opt.showCourtship) this.drawCourtship(w, byId, sx, sy, dpr);
 
     // Fight lines from attacker to target.
     ctx.lineWidth = 1.5 * dpr;

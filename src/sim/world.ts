@@ -99,6 +99,8 @@ export const spawnSeed = (world: World, opts: NewActor): Actor => {
     fleeFrom: null,
     attackCd: 0,
     mateTarget: null,
+    snub: null,
+    court: null,
     lastHitBy: null,
     flash: 0,
     damageDealt: 0,
