@@ -51,8 +51,21 @@ export const hexHue = (hex: string): number => {
 export const pureAncestry = (index: number, tribes: number): number[] =>
   Array.from({ length: tribes }, (_, i) => (i === index ? 1 : 0));
 
-/** Child's ancestry: mean of the parents'. */
-export const mixAncestry = (a: number[], b: number[]): number[] => a.map((v, i) => (v + (b[i] ?? 0)) / 2);
+/**
+ * Child's ancestry. The genome is treated as `segments` equal pieces, each inherited from the
+ * mother or the father at random, so the mother's share is Binomial(segments, ½) / segments.
+ * Siblings therefore differ, and admixed populations keep variation for selection to act on.
+ * `segments` ≤ 0 gives the exact mean of the parents.
+ */
+export const mixAncestry = (a: number[], b: number[], segments = 0): number[] => {
+  let w = 0.5;
+  if (segments > 0) {
+    let k = 0;
+    for (let i = 0; i < segments; i++) if (Math.random() < 0.5) k++;
+    w = k / segments;
+  }
+  return a.map((v, i) => w * v + (1 - w) * (b[i] ?? 0));
+};
 
 /** Largest single-tribe share, 0–1. */
 export const purity = (anc: number[]): number => Math.max(0, ...anc);

@@ -5,12 +5,22 @@ import { DEFAULT_CONFIG, createWorld, maxHpOf } from '../src/sim/world';
 
 describe('ancestry', () => {
   it('mixes as the mean of the parents and measures overlap and purity', () => {
-    const child = mixAncestry([1, 0, 0], [0, 0.5, 0.5]);
+    const child = mixAncestry([1, 0, 0], [0, 0.5, 0.5], 0);
     expect(child).toEqual([0.5, 0.25, 0.25]);
     expect(purity(child)).toBe(0.5);
     expect(overlap([1, 0, 0], [1, 0, 0])).toBe(1);
     expect(overlap([1, 0, 0], [0, 1, 0])).toBe(0);
     expect(overlap(child, [1, 0, 0])).toBe(0.5);
+  });
+
+  it('varies between siblings when inherited in segments, around the parental mean', () => {
+    const kids = Array.from({ length: 4000 }, () => mixAncestry([1, 0], [0, 1], 16)[0]);
+    const mean = kids.reduce((s, v) => s + v, 0) / kids.length;
+    const sd = Math.sqrt(kids.reduce((s, v) => s + (v - mean) ** 2, 0) / kids.length);
+    expect(mean).toBeCloseTo(0.5, 1);
+    expect(sd).toBeGreaterThan(0.1); // Binomial(16, ½)/16 has sd 0.125
+    expect(sd).toBeLessThan(0.15);
+    for (const k of kids) expect(k).toBeGreaterThanOrEqual(0);
   });
 });
 

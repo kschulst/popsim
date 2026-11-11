@@ -37,6 +37,8 @@ export interface Rules {
   mateCooldown: number;
   mutationScale: number;
   inheritanceNoise: number;
+  /** Ancestry is inherited in this many random segments (0 = exact mean of the parents). */
+  ancestrySegments: number;
   /** Partner choice: weight of shared tribe ancestry in the mate score. */
   tribePreference: number;
   /** Exponent on (purity a × purity b) in the tribe term. 0 ignores purity. */

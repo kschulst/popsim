@@ -343,7 +343,7 @@ const breed = (a: Actor, b: Actor, w: World): Actor | null => {
     parents: [mother.id, father.id],
     genome,
     dominance,
-    ancestry: mixAncestry(mother.ancestry, father.ancestry),
+    ancestry: mixAncestry(mother.ancestry, father.ancestry, w.rules.ancestrySegments ?? 0),
     x: clamp((mother.x + father.x) / 2 + Math.cos(angle) * 3, 0, w.width),
     y: clamp((mother.y + father.y) / 2 + Math.sin(angle) * 3, 0, w.height),
     vx: 0,

@@ -47,7 +47,8 @@
     "summary": "Bygget fra main. Kan endre seg uten varsel.",
     "changes": [
       "Attraktivitet per avstamning: egen bonus per stamme i partnervalget, justerbar under kjøring i Regler-fanen.",
-      "Versjonsvelgeren og indekssiden lister dev først, deretter nyeste versjon. Dev-bygget viser «dev» som versjon i headeren."
+      "Versjonsvelgeren og indekssiden lister dev først, deretter nyeste versjon. Dev-bygget viser «dev» som versjon i headeren.",
+      "Avstamning arves i tilfeldige segmenter (regel «Avstamningssegmenter», standard 16), så søsken blir ulike og blandede bestander beholder variasjon som partnervalg og stammebonus kan virke på."
     ]
   }
 }

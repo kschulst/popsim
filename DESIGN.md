@@ -51,7 +51,7 @@ Hver versjon er en git-tag (`v1`, `v2` …) og publiseres frosset under `/vN/` p
 
 - Seeds får verdier ±10 % rundt stammens verdier og arvestyrke ±0,1 rundt arveligheten. Hver seed har eget etternavn. Klanfargene ligger innenfor ±30° av stammens fargetone.
 - Hver stamme starter samlet i et hjemområde (seeds normalfordelt med standardavvik 40 rundt et punkt på en ellipse rundt sentrum). Uten hjemområder møtte seeds hverandre for sjelden, og 2 av 8 testkjøringer stagnerte.
-- **Avstamning**: andel fra hver stamme, summerer til 1. Barnet får gjennomsnittet av foreldrenes.
+- **Avstamning**: andel fra hver stamme, summerer til 1. Barnet arver avstamningen i `ancestrySegments` (standard 16) like store segmenter, hvert fra mor eller far tilfeldig, så mors andel er Binomial(16, ½)/16 (50 ± 12 %). I v2 var barnets avstamning nøyaktig gjennomsnittet av foreldrenes. Da ble blandede bestander like etter noen generasjoner, og en stammebonus hadde ingenting å selektere på.
 - **Renhet**: største andel fra én stamme.
 - **Felles avstamning** mellom to aktører: `Σ min(aᵢ, bᵢ)`, 1 for samme rene stamme, 0 for helt ulike.
 

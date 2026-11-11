@@ -29,6 +29,7 @@ export const DEFAULT_RULES: Rules = {
   mateCooldown: 40,
   mutationScale: 1,
   inheritanceNoise: 0.15,
+  ancestrySegments: 16,
   tribePreference: 1.5,
   purityWeight: 1,
   mateDistanceWeight: 0.5,
@@ -106,6 +107,7 @@ export const RULE_FIELDS: { group: string; fields: RuleField[] }[] = [
       { key: 'mateCooldown', label: 'Nedkjøling etter paring', min: 0, max: 500, step: 5, description: 'Antall ticks en aktør må vente etter paring før den kan pare seg igjen. Gjelder også nyfødte, som en minstealder for paring.' },
       { key: 'mutationScale', label: 'Mutasjonsskala', min: 0, max: 5, step: 0.1, description: 'Global multiplikator på mutasjonsstyrken. Hver aktørs egen mutasjonsrate ganges med denne. 0 slår av mutasjon.' },
       { key: 'inheritanceNoise', label: 'Tilfeldighet i arv', min: 0, max: 1, step: 0.01, description: 'Hvor mye barnets blanding av foreldrene varierer. Uten støy får barnet en blanding vektet etter foreldrenes arvestyrke for hver egenskap. Med støy kan barnet noen ganger ligne mest på én av foreldrene. 0,15 betyr at vekten typisk avviker med ±0,15.' },
+      { key: 'ancestrySegments', label: 'Avstamningssegmenter', min: 0, max: 256, step: 1, description: 'Avstamningen arves i så mange like store segmenter, hvert fra mor eller far tilfeldig. Barnets andel fra mor blir da tilfeldig rundt 50 %: med 16 segmenter typisk 50 ± 12 %. Søsken blir ulike, og blandede bestander beholder variasjon som partnervalg og bonus kan virke på. Færre segmenter gir større variasjon. 0 gir nøyaktig gjennomsnitt av foreldrene (som i v2), og da jevnes forskjellene ut for hver generasjon.' },
     ],
   },
   {
