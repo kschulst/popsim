@@ -70,29 +70,30 @@
         "Eksportfiler fra v2 kan ikke importeres i dev; de åpnes i v2.",
         "Katastrofer (ELE): meteornedslag, supervulkan, den store pesten, istid, gresshoppesverm, megatørke, ufruktbarhetsplage, strålingsstorm og raseri. De skjer svært sjelden av seg selv (regler for rate, alvorlighet og vekt per katastrofe) og kan slippes løs i Regler-fanen; meteoren treffer der du klikker. Banner, effekter på kartet, røde markeringer på tidslinjen, dødsårsak «katastrofe» og egen toppliste."
       ]
+    },
+    {
+      "version": 4,
+      "tag": "v4",
+      "title": "Kontroll og oversikt",
+      "summary": "Amming, bedre partnersøk og maskinoppvåkning. Aktører og katastrofer kan legges til underveis, og stammer kan plasseres på kartet. Tidslinje med glidebryter, nøkkeltall i toppmenyen, fargede angrepsstreker, symboler, tooltip og forklaring på kartet.",
+      "changes": [
+        "Amming: barnet ammes i 30 ticks etter fødselen, holder seg nær moren og trekker energi fra henne. Moren kan ikke bli gravid igjen i perioden.",
+        "Partnersøk: ser en aktør ingen klar partner, går den mot nærmeste aktuelle partner som ikke er nær slekt. Det hindrer at formeringen stopper i små stammer.",
+        "Maskinoppvåkning: ny katastrofe der maskiner høster mat, bygger flere maskiner og angriper aktører.",
+        "«＋ Aktører» legger til aktører fra en stamme der du klikker på kartet, og «＋ Katastrofe» slipper løs en katastrofe. Begge virker når som helst i kjøringen.",
+        "«Ny kjøring» kan plassere stammene der du klikker på kartet. Ny kjøring, Eksporter og Importer ligger i menyen «Fil ▾».",
+        "Tidslinje under kartet som kan dras, og knapper for 1 og 10 steg frem og tilbake (|◀◀ |◀ ▶| ▶▶|, også piltaster og Shift + piltaster).",
+        "Nøkkeltall øverst til høyre: levende, avstamning, fødte og døde, andel døde av alderdom og drept, og dødsalder.",
+        "Angrepsstreker har pil og farge etter årsak. Symboler over aktørene viser angrep, flukt, kurtisering og graviditet, og knappen «Forklaring» forklarer alle streker og symboler.",
+        "Hold musepekeren over en aktør for å se hva den gjør. Inspektøren viser hvem som angriper og kurtiserer, og slektskap ved partnere.",
+        "Melding når bestanden dør ut, med knapper for å spole tilbake, forgreine eller starte på nytt.",
+        "Toppmenyen står fast, kartet har zoomknapper, grenhistorikken er foldet sammen, og hjelpetekstene er kortere."
+      ]
     }
   ],
   "dev": {
     "title": "Under utvikling",
     "summary": "Bygget fra main. Kan endre seg uten varsel.",
-    "changes": [
-      "Tydeligere hendelser: pil på angrepsstreken mot den som angripes, og symboler over aktørene (⚔ angriper, ! angripes, ↯ flykter, ♥ kurtiserer eller kurtiseres, ✿ gravid) fra 2× zoom og alltid for valgt aktør. Inspektøren viser hvem som angriper og kurtiserer aktøren.",
-      "Toppmenyen står fast øverst når du scroller. Kartet har knapper for zoom inn, zoom ut og «Hele verden», og viser zoomnivået. Når hele verden vises, scroller musehjulet siden i stedet for å zoome ut.",
-      "Amming: etter fødselen ammes barnet i 30 ticks. Barnet holder seg nær moren og trekker energi fra henne, og moren kan ikke bli gravid igjen før perioden er over. Svangerskapet er kortet ned til 30 ticks.",
-      "Partnersøk: en aktør som er klar, men ikke ser noen klar partner, går mot nærmeste aktør av motsatt kjønn som ikke er nær slekt. Uten dette stoppet formeringen i små stammer der nesten alle er i slekt.",
-      "Angrepsstreker i farge etter årsak: mat, rival om partner, forsvar av gravid eller partner, blander seg inn, slår tilbake. Større ♥ for paring og ✕ for avvisning. Knappen «Forklaring» på kartet viser hva streker og symboler betyr.",
-      "Tidslinje under kartet: glidebryter som viser hvor i tiden du er og kan dras, knapper for 10 steg frem og tilbake (også Shift + piltaster), og speilvendte knapper: |◀ ▶| for ett steg og |◀◀ ▶▶| for 10.",
-      "Rettet etter kodegjennomgang: partnersøket stopper ved kandidaten i stedet for å pendle, hopper over ammende, gravide, voktende og de som nettopp avviste, og vises som partnerstrek; angrepsfargen følger den reelle årsaken; ammende barn holder seg ved moren; regler som mangler i eldre filer får standardverdier ved import; forklaringen bruker samme farger som kartet.",
-      "Grenhistorikken (tidslinjen med grener) er foldet sammen under kartet og viser antall grener; klikk for å åpne. Valget huskes i nettleseren.",
-      "Inspektøren viser slektskap ved partnernavn (kurtiserer, kurtiseres av, paret seg med, avviste); nær slekt markeres med ⚠ i varselfarge. Forklaringen på kartet viser også slektsringer og flukt-kant.",
-      "Hold musepekeren over en aktør i ett sekund for å se hva den gjør og hva den utsettes for: flykter, angriper (og hvorfor), blir angrepet, passer på, gravid, ammer eller ammes, kurtiserer eller kurtiseres (med slektskap), syk, sulten, skadet, svekket, eller leter etter mat.",
-      "Kortere hjelpetekster: regelbeskrivelser, regelpanelet, inspektøren og dialogen «Ny kjøring». Formlene står i DESIGN.md.",
-      "Når bestanden dør ut, stopper avspillingen og en melding over kartet sier når og hvem som døde sist, med knapper for å spole 200 ticks tilbake, forgreine derfra eller starte en ny kjøring.",
-      "«Ny kjøring» har valget «Velg på kartet»: klikk der hver stamme skal starte. Fruktbarhetskartet vises mens du plasserer.",
-      "Knappen «＋ Aktører» legger til nye aktører fra en valgt stamme der du klikker på kartet, når som helst i kjøringen. Ved enden av grenen skjer det i grenen (merket på tidslinjen), på et tidligere tidspunkt lages en ny gren.",
-      "Nøkkeltallene (gjennomsnittlig avstamning, fødte, døde, andel alderdom og drept, dødsalder, hittil og siste 500 ticks) står øverst til høyre i toppmenyen og er alltid synlige.",
-      "Ny katastrofe: Maskinoppvåkning. Grå maskiner høster mat, bygger flere maskiner og angriper aktører i veien; aktørene slår tilbake. Over når alle maskinene er ødelagt eller tiden løper ut.",
-      "Knappen «＋ Katastrofe» i toppmenyen slipper løs en valgt katastrofe. Ny kjøring, Eksporter og Importer ligger i menyen «Fil ▾». Statuslinjen viser ikke lenger antall aktører (det står i nøkkeltallene)."
-    ]
+    "changes": []
   }
 }

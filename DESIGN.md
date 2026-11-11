@@ -11,9 +11,10 @@ Hver versjon er en git-tag (`v1`, `v2` …) og publiseres frosset under `/vN/` p
 | v1 | Livssyklus med to kjønn, matfelt, harde kanter, fast atferd, snapshots og grener, endringer ved forgreining, eksport/import, navn og stamtre, statistikk |
 | v2 | Stammer med navn, farge og egne verdier, avstamning og renhet, partnervalg med stammepreferanse og slektsstraff, fysisk plass, kamp med helse, flukt og allianser, zoom og kakediagram |
 | v3 | Svangerskap, flerlinger og omsorg, kresenhet og stammebonus, segmentarv av avstamning, gradvis aldring og nye dødsårsaker, sykdom, katastrofer (ELE), topplister og navigasjon |
-| v4 | Verden, kulturer og samarbeid: terreng med vann, åtsel, to mattyper, ly, årstider, kartlag, enkel grafikkpakke, maskinoppvåkning (ELE), kulturer som oppstår av nærhet og likhet, samarbeid og konflikt mellom kulturer |
-| v5 | Hukommelse om andre aktører, valgfri arv av hukommelse |
-| v6 | Evolverbar atferd: vekter for drivkrefter i genomet |
+| v4 | Amming, partnersøk, maskinoppvåkning, legge til aktører og katastrofer underveis, plassering av stammer, tidslinje, nøkkeltall, fargede angrepsstreker, symboler, tooltip og forklaring |
+| v5 | Verden, kulturer og samarbeid: terreng med vann, åtsel, to mattyper, ly, årstider, kartlag, enkel grafikkpakke, grafer i faner, ekteskap, kulturer som oppstår av nærhet og likhet, samarbeid og konflikt mellom kulturer |
+| v6 | Hukommelse om andre aktører, valgfri arv av hukommelse |
+| v7 | Evolverbar atferd: vekter for drivkrefter i genomet |
 
 ## Simuleringsmodell
 

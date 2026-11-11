@@ -10,6 +10,14 @@ Designbeslutninger og versjonsplan: [DESIGN.md](DESIGN.md).
 
 Hver versjon er frosset og kan fortsatt kjøres. Fullstendige endringslister står i [versions.json](versions.json).
 
+### [v4: Kontroll og oversikt](https://kschulst.github.io/popsim/v4/)
+
+- Amming etter fødselen, og partnersøk som hindrer at formeringen stopper i små stammer.
+- Ny katastrofe: maskinoppvåkning.
+- Legg til aktører og slipp løs katastrofer når som helst ved å klikke på kartet, og plasser stammene selv ved ny kjøring.
+- Tidslinje under kartet som kan dras, knapper for 1 og 10 steg, og nøkkeltall øverst til høyre.
+- Angrepsstreker med pil og farge etter årsak, symboler over aktørene, tooltip når du holder over en aktør, og knappen «Forklaring».
+
 ### [v3: Liv, død og katastrofer](https://kschulst.github.io/popsim/v3/)
 
 - Svangerskap med sjeldne tvillinger og trillinger. Moren trenger mer mat, og partneren og slekten (mindre jo fjernere slektskap) passer på henne, deler mat og forsvarer henne.
