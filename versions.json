@@ -52,7 +52,11 @@
       "Regelendringer ved enden av en gren endrer grenen direkte i stedet for å lage en ny gren, og merkes på tidslinjen. Valget «Lag alltid ny gren ved regelendring» gir den gamle oppførselen.",
       "Kresenhet: partnere godtar hverandre med en sannsynlighet som øker med partnerpoenget. Avviste må vente, og lite attraktive aktører får færre barn. Stammebonusen gir dermed en tydelig seleksjon.",
       "Egen nedkjøling etter paring for hanner. Sammen med «Andel betalt av hunn» kan hunnene bli den knappe ressursen, slik at attraktive hanner får mange paringer.",
-      "Partnerstreker: stiplet rosa for partnersøk, grønn for paring og grå med kryss for avvisning. Kan slås av i headeren."
+      "Partnerstreker: stiplet rosa for partnersøk, grønn for paring og grå med kryss for avvisning. Kan slås av i headeren.",
+      "Svangerskap: barnet fødes etter «Svangerskap (ticks)». Faren betaler sin del ved paringen, moren betaler sin del gjennom svangerskapet og trenger mer mat. Dør hun, går fostrene tapt (egen graf).",
+      "Flerlinger: tvillinger i omtrent 3 % av svangerskapene, trillinger mye sjeldnere (regel «Flerlingrate»).",
+      "Farsomsorg: faren blir ofte hos den gravide, gir henne energi og forsvarer henne. Slekten hjelper også, mindre jo fjernere slektskapet er: deler mat, forsvarer henne og angriper konkurrenter nær henne når hun er sulten.",
+      "Avvisninger i partnervalget utløper etter en tid, så små stammer ikke låser seg."
     ]
   }
 }

@@ -42,6 +42,18 @@ export interface Rules {
   choosiness: number;
   /** Ticks a rejected actor must wait before it can try to mate again. */
   rejectionCooldown: number;
+  /** Ticks from conception to birth. */
+  gestationTicks: number;
+  /** Probability of each additional child: twins p, triplets p², … (at most 4). */
+  multipleBirthRate: number;
+  /** Probability that the father stays to guard and feed the pregnant mother. */
+  paternalCare: number;
+  /** Energy per tick a caring father can give the mother (10 % is lost in the transfer). */
+  provisionRate: number;
+  /** A caring father keeps within this distance of the mother. */
+  guardDistance: number;
+  /** Multiplier on kin weight for relatives helping a pregnant female (the caring father has weight 1). */
+  kinCare: number;
   mutationScale: number;
   inheritanceNoise: number;
   /** Ancestry is inherited in this many random segments (0 = exact mean of the parents). */
@@ -116,16 +128,44 @@ export interface Actor {
   attackCd: number;
   /** Partner this actor is currently heading for (used to detect rivals). */
   mateTarget: number | null;
-  /** Last candidate this actor rejected; skipped when choosing the next partner. */
+  /** Last candidate this actor rejected; skipped when choosing a partner for `snubTtl` ticks. */
   snub: number | null;
+  snubTtl: number;
   /** Latest courtship this actor started, shown in the renderer for `ttl` ticks. */
   court: Courtship | null;
+  /** Set on a pregnant female. */
+  pregnancy: Pregnancy | null;
+  /** Pregnant mother this male guards and feeds, or null. */
+  caresFor: number | null;
   lastHitBy: number | null;
   /** Ticks left of the hit flash in the renderer. */
   flash: number;
   damageDealt: number;
   damageTaken: number;
   kills: number;
+}
+
+/** A child conceived but not yet born; its genes are fixed at conception. */
+export interface Embryo {
+  genome: Genome;
+  dominance: Dominance;
+  ancestry: number[];
+  sex: Sex;
+  surname: string;
+  /** Energy the child should be born with (offspringEnergy × capacity). */
+  energy: number;
+}
+
+export interface Pregnancy {
+  father: number;
+  due: number;
+  generation: number;
+  embryos: Embryo[];
+  /** Energy paid by the father at conception. */
+  fatherPaid: number;
+  /** Energy the mother pays over the pregnancy, and how much she has paid so far. */
+  motherNeed: number;
+  motherPaid: number;
 }
 
 export interface Courtship {
@@ -162,6 +202,10 @@ export interface TickStats {
   deathsStarvation: number;
   deathsAge: number;
   deathsKilled: number;
+  /** Embryos lost because the mother died while pregnant. */
+  pregnancyLosses: number;
+  /** Females currently pregnant. */
+  pregnant: number;
   /** Successful attacks this tick. */
   hits: number;
   /** Mean ancestry share per tribe among the living. */
@@ -197,6 +241,7 @@ export interface TickEvents {
   births: Actor[];
   deaths: TickDeath[];
   hits: number;
+  pregnancyLosses: number;
 }
 
 export interface TickDeath {

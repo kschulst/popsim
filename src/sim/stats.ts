@@ -53,6 +53,8 @@ export const computeStats = (w: World, ev: TickEvents): TickStats => {
     deathsAge: ev.deaths.filter((d) => d.cause === 'age').length,
     deathsKilled: ev.deaths.filter((d) => d.cause === 'killed').length,
     hits: ev.hits,
+    pregnancyLosses: ev.pregnancyLosses,
+    pregnant: w.actors.filter((a) => a.pregnancy).length,
     tribeShare: tribeShare.map((s) => (n ? s / n : 0)),
     purityMean: n ? puritySum / n : 0,
     deathAgeSum: ev.deaths.reduce((sum, d) => (d.cause === 'removed' ? sum : sum + d.age), 0),

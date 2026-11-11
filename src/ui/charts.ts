@@ -28,6 +28,7 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
       { label: 'totalt', color: '#d8dde4', value: (s) => s.females + s.males },
       { label: 'hunner', color: '#e8799b', value: (s) => s.females },
       { label: 'hanner', color: '#6fa8e8', value: (s) => s.males },
+      { label: 'gravide', color: '#f2c94c', value: (s) => s.pregnant ?? 0 },
     ],
   },
   {
@@ -38,13 +39,14 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
     ],
   },
   {
-    title: 'Fødsler og dødsfall per 50 ticks',
+    title: 'Fødsler, dødsfall og tapte fostre per 50 ticks',
     rolling: 50,
     series: [
       { label: 'fødsler', color: '#7ed69b', value: (s) => s.births },
       { label: 'sult', color: '#e0a35a', value: (s) => s.deathsStarvation },
       { label: 'alder', color: '#9aa0a8', value: (s) => s.deathsAge },
       { label: 'drept', color: '#ff5a4f', value: (s) => s.deathsKilled ?? 0 },
+      { label: 'fostre tapt', color: '#c9b4ff', value: (s) => s.pregnancyLosses ?? 0 },
     ],
   },
   {

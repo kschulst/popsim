@@ -4,7 +4,7 @@ import { givenName } from './names';
 import { clamp, gaussian, rand, shuffle } from './random';
 import { SpatialHash } from './spatial';
 import { mixAncestry, overlap, purity } from './tribes';
-import type { Actor, TickDeath, TickEvents, World } from './types';
+import type { Actor, Embryo, TickDeath, TickEvents, World } from './types';
 import { capacityOf, hpFactor, maxHpOf, radiusOf } from './world';
 
 export type ParentsOf = (id: number) => [number, number] | null | undefined;
@@ -52,7 +52,12 @@ const cellIndex = (w: World, x: number, y: number): number => {
 };
 
 const readyToMate = (a: Actor, w: World): boolean =>
-  a.cooldown <= 0 && a.fleeing <= 0 && a.target === null && a.energy >= a.genome.reproThreshold * capacityOf(a, w.rules);
+  a.cooldown <= 0 &&
+  a.fleeing <= 0 &&
+  a.target === null &&
+  a.pregnancy === null &&
+  a.caresFor === null &&
+  a.energy >= a.genome.reproThreshold * capacityOf(a, w.rules);
 
 /** Effective vision and top speed after injury. */
 const visionOf = (a: Actor, w: World) => a.genome.vision * hpFactor(a, w.rules);
@@ -136,6 +141,31 @@ class TickContext {
     return r.tribeLoyalty * overlap(a.ancestry, b.ancestry) + (k ? r.kinLoyalty * kinWeight(k.relation, r.kinWeights) : 0);
   }
 
+  private protecteeCache = new Map<number, { p: Actor; weight: number } | null>();
+
+  /**
+   * The pregnant female `a` helps most, and how much (0–1+): the mother a caring father guards
+   * has weight 1; a pregnant relative in sight has kinCare × kin weight. Cached per tick.
+   */
+  protectee(a: Actor, vision: number): { p: Actor; weight: number } | null {
+    if (this.protecteeCache.has(a.id)) return this.protecteeCache.get(a.id)!;
+    const r = this.w.rules;
+    let best: { p: Actor; weight: number } | null = null;
+    const partner = this.alive(a.caresFor);
+    if (partner?.pregnancy) best = { p: partner, weight: 1 };
+    if (r.kinCare > 0) {
+      for (const p of this.hash.near(a.x, a.y, vision)) {
+        if (p === a || !p.pregnancy || this.dead.has(p.id)) continue;
+        const k = this.kin(a, p);
+        if (!k) continue;
+        const weight = r.kinCare * kinWeight(k.relation, r.kinWeights);
+        if (weight > 0.01 && (!best || weight > best.weight)) best = { p, weight };
+      }
+    }
+    this.protecteeCache.set(a.id, best);
+    return best;
+  }
+
   kill(victim: Actor, killer: Actor): void {
     if (this.dead.has(victim.id)) return;
     this.dead.add(victim.id);
@@ -171,10 +201,12 @@ const courtship = (ctx: TickContext, a: Actor, b: Actor): boolean => {
   const bAccepts = Math.random() < acceptance(base + tribeBonusOf(a, bonus), r);
   if (!aAccepts) {
     a.snub = b.id;
+    a.snubTtl = 4 * r.rejectionCooldown;
     b.cooldown = Math.max(b.cooldown, r.rejectionCooldown);
   }
   if (!bAccepts) {
     b.snub = a.id;
+    b.snubTtl = 4 * r.rejectionCooldown;
     a.cooldown = Math.max(a.cooldown, r.rejectionCooldown);
   }
   if (!aAccepts || !bAccepts) a.mateTarget = b.mateTarget = null;
@@ -257,13 +289,25 @@ const startFleeing = (a: Actor, from: Actor | null, w: World): void => {
 /** Onlooker picks a side in a visible fight if its loyalty difference × aggression is large enough. */
 const considerJoining = (ctx: TickContext, a: Actor, vision: number): boolean => {
   const r = ctx.w.rules;
+  // A caring father attacks anyone attacking the mother he guards.
+  if (a.caresFor !== null) {
+    for (const x of ctx.hash.near(a.x, a.y, vision)) {
+      if (x.target === a.caresFor && x !== a && !ctx.dead.has(x.id)) {
+        a.target = x.id;
+        return true;
+      }
+    }
+  }
   let seen = 0;
   for (const x of ctx.hash.near(a.x, a.y, vision)) {
     if (x === a || x.target === null || x.target === a.id || ctx.dead.has(x.id)) continue;
     const y = ctx.alive(x.target);
     if (!y || y === a) continue;
     if (Math.hypot(x.x - a.x, x.y - a.y) > vision) continue;
-    const diff = ctx.loyalty(a, x) - ctx.loyalty(a, y);
+    // Defending a pregnant female one helps counts on top of ordinary loyalty.
+    const prot = ctx.protectee(a, vision);
+    const extra = (p: Actor) => (prot && prot.p === p ? 2 * prot.weight : 0);
+    const diff = ctx.loyalty(a, x) + extra(x) - ctx.loyalty(a, y) - extra(y);
     if (a.genome.aggression * diff > r.joinThreshold) {
       a.target = y.id;
       return true;
@@ -292,12 +336,21 @@ const considerAttack = (ctx: TickContext, a: Actor, vision: number, food: { x: n
   }
   near.sort((p, q) => p[1] - q[1]);
   const foodD2 = food ? (food.x - a.x) ** 2 + (food.y - a.y) ** 2 : Infinity;
+  // Helping a hungry pregnant female: competitors close to her are a reason to attack.
+  const prot = ctx.protectee(a, vision);
+  const protHunger = prot ? 1 - Math.min(1, prot.p.energy / capacityOf(prot.p, r)) : 0;
   let best: Actor | null = null;
   let bestDesire = r.attackThreshold;
   for (const [b] of near.slice(0, ATTACK_CANDIDATES)) {
     const rival = a.mateTarget !== null && b.sex === a.sex && b.mateTarget === a.mateTarget ? 1 : 0;
     const foodComp = food && (food.x - b.x) ** 2 + (food.y - b.y) ** 2 < foodD2 ? 1 : 0;
-    const motive = r.hungerWeight * hunger + r.foodCompetitionWeight * foodComp + r.rivalryWeight * rival;
+    const nearProtectee =
+      prot && b !== prot.p && Math.hypot(b.x - prot.p.x, b.y - prot.p.y) <= r.guardDistance ? 1 : 0;
+    const motive =
+      r.hungerWeight * hunger +
+      r.foodCompetitionWeight * foodComp +
+      r.rivalryWeight * rival +
+      nearProtectee * r.hungerWeight * protHunger * (prot?.weight ?? 0);
     // Upper bound with odds = 1, before loyalty: skip the costly part when it cannot pass.
     if (aggr * motive * 2 <= bestDesire) continue;
     const k = ctx.kin(a, b);
@@ -343,65 +396,109 @@ const strike = (ctx: TickContext, a: Actor, t: Actor): void => {
   }
 };
 
-const breed = (a: Actor, b: Actor, w: World): Actor | null => {
+/**
+ * Conception. Genes are fixed now; each embryo inherits separately. The father pays his share of
+ * the children's starting energy now (fewer embryos if he cannot afford them all); the mother pays
+ * hers over the pregnancy. Returns false if not even one embryo is affordable.
+ */
+const conceive = (a: Actor, b: Actor, w: World): boolean => {
+  const r = w.rules;
   const mother = a.sex === 'F' ? a : b;
   const father = a.sex === 'F' ? b : a;
-  const { genome, dominance } = inherit(mother, father, w.rules.inheritanceNoise, w.rules.mutationScale);
-  const cost = w.rules.offspringEnergy * w.rules.energyPerSize * genome.size;
-  const motherShare = cost * w.rules.parentalCostSplit;
-  const fatherShare = cost - motherShare;
-  if (mother.energy <= motherShare || father.energy <= fatherShare) return null;
-  mother.energy -= motherShare;
-  father.energy -= fatherShare;
-  mother.cooldown = w.rules.mateCooldown;
-  father.cooldown = w.rules.maleMateCooldown ?? w.rules.mateCooldown;
-  mother.mateTarget = father.mateTarget = null;
+  let n = 1;
+  while (n < 4 && Math.random() < r.multipleBirthRate) n++;
 
   let surname: string;
-  switch (w.rules.surnameRule) {
+  switch (r.surnameRule) {
     case 'mother': surname = mother.surname; break;
     case 'father': surname = father.surname; break;
     case 'stronger': surname = mother.energy >= father.energy ? mother.surname : father.surname; break;
     default: surname = Math.random() < 0.5 ? mother.surname : father.surname;
   }
 
-  const angle = rand(0, Math.PI * 2);
-  const sex = Math.random() < 0.5 ? 'F' : 'M';
-  const child: Actor = {
-    id: w.nextId++,
-    given: givenName(sex),
-    surname,
-    sex,
+  const embryos: Embryo[] = [];
+  for (let i = 0; i < n; i++) {
+    const { genome, dominance } = inherit(mother, father, r.inheritanceNoise, r.mutationScale);
+    embryos.push({
+      genome,
+      dominance,
+      ancestry: mixAncestry(mother.ancestry, father.ancestry, r.ancestrySegments ?? 0),
+      sex: Math.random() < 0.5 ? 'F' : 'M',
+      surname,
+      energy: r.offspringEnergy * r.energyPerSize * genome.size,
+    });
+  }
+  const fatherShare = (list: Embryo[]) => list.reduce((s, e) => s + e.energy, 0) * (1 - r.parentalCostSplit);
+  while (embryos.length && father.energy <= fatherShare(embryos)) embryos.pop();
+  if (!embryos.length) return false;
+
+  const total = embryos.reduce((s, e) => s + e.energy, 0);
+  father.energy -= fatherShare(embryos);
+  mother.pregnancy = {
+    father: father.id,
+    due: w.tick + r.gestationTicks,
     generation: Math.max(mother.generation, father.generation) + 1,
-    parents: [mother.id, father.id],
-    genome,
-    dominance,
-    ancestry: mixAncestry(mother.ancestry, father.ancestry, w.rules.ancestrySegments ?? 0),
-    x: clamp((mother.x + father.x) / 2 + Math.cos(angle) * 3, 0, w.width),
-    y: clamp((mother.y + father.y) / 2 + Math.sin(angle) * 3, 0, w.height),
-    vx: 0,
-    vy: 0,
-    wander: angle,
-    energy: cost,
-    age: 0,
-    cooldown: sex === 'F' ? w.rules.mateCooldown : (w.rules.maleMateCooldown ?? w.rules.mateCooldown),
-    born: w.tick,
-    hp: 0,
-    target: null,
-    fleeing: 0,
-    fleeFrom: null,
-    attackCd: 0,
-    mateTarget: null,
-    snub: null,
-    court: null,
-    lastHitBy: null,
-    flash: 0,
-    damageDealt: 0,
-    damageTaken: 0,
-    kills: 0,
+    embryos,
+    fatherPaid: fatherShare(embryos),
+    motherNeed: total * r.parentalCostSplit,
+    motherPaid: 0,
   };
-  child.hp = maxHpOf(child, w.rules);
-  return child;
+  // The female cooldown counts from mating and includes the pregnancy.
+  mother.cooldown = Math.max(r.gestationTicks, r.mateCooldown);
+  father.cooldown = r.maleMateCooldown ?? r.mateCooldown;
+  mother.mateTarget = father.mateTarget = null;
+  if (Math.random() < r.paternalCare) father.caresFor = mother.id;
+  return true;
+};
+
+/** Births at the end of a pregnancy. The energy paid by both parents is split by each child's need. */
+const deliver = (mother: Actor, w: World): Actor[] => {
+  const p = mother.pregnancy!;
+  mother.pregnancy = null;
+  const r = w.rules;
+  const need = p.embryos.reduce((s, e) => s + e.energy, 0);
+  const paid = p.fatherPaid + p.motherPaid;
+  return p.embryos.map((e) => {
+    const angle = rand(0, Math.PI * 2);
+    const child: Actor = {
+      id: w.nextId++,
+      given: givenName(e.sex),
+      surname: e.surname,
+      sex: e.sex,
+      generation: p.generation,
+      parents: [mother.id, p.father],
+      genome: e.genome,
+      dominance: e.dominance,
+      ancestry: e.ancestry,
+      x: clamp(mother.x + Math.cos(angle) * 4, 0, w.width),
+      y: clamp(mother.y + Math.sin(angle) * 4, 0, w.height),
+      vx: 0,
+      vy: 0,
+      wander: angle,
+      energy: need > 0 ? (paid * e.energy) / need : 0,
+      age: 0,
+      cooldown: e.sex === 'F' ? r.mateCooldown : (r.maleMateCooldown ?? r.mateCooldown),
+      born: w.tick,
+      hp: 0,
+      target: null,
+      fleeing: 0,
+      fleeFrom: null,
+      attackCd: 0,
+      mateTarget: null,
+      snub: null,
+      snubTtl: 0,
+      court: null,
+      pregnancy: null,
+      caresFor: null,
+      lastHitBy: null,
+      flash: 0,
+      damageDealt: 0,
+      damageTaken: 0,
+      kills: 0,
+    };
+    child.hp = maxHpOf(child, r);
+    return child;
+  });
 };
 
 /** Pushes overlapping actors apart so bodies do not share space. */
@@ -448,6 +545,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     a.attackCd--;
     if (a.flash > 0) a.flash--;
     if (a.court && --a.court.ttl <= 0) a.court = null;
+    if (a.snub !== null && --a.snubTtl <= 0) a.snub = null;
     const cap = capacityOf(a, rules);
     const radius = radiusOf(a);
     const vision = visionOf(a, w);
@@ -471,7 +569,14 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       }
     }
 
-    // 2. Choose what to do: flee > fight > join a fight > attack > mate > eat > wander.
+    // A caring father stops caring when the mother is gone or no longer carries his children.
+    let care = ctx.alive(a.caresFor);
+    if (a.caresFor !== null && (!care || care.pregnancy?.father !== a.id)) {
+      a.caresFor = null;
+      care = undefined;
+    }
+
+    // 2. Choose what to do: flee > fight > join a fight > attack > guard > mate > eat > wander.
     const food = a.fleeing > 0 ? null : seekFood(a, w, vision);
     if (!target && a.fleeing <= 0) {
       if (considerJoining(ctx, a, vision) || (considerAttack(ctx, a, vision, food), a.target !== null)) {
@@ -500,6 +605,9 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     } else if (target) {
       goal = target;
       speed = maxSpeed;
+    } else if (care && Math.hypot(care.x - a.x, care.y - a.y) > rules.guardDistance) {
+      goal = care;
+      speed = maxSpeed;
     } else {
       const ready = readyToMate(a, w);
       if (ready) mate = findMate(ctx, a, vision);
@@ -517,7 +625,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       dx = goal.x - a.x;
       dy = goal.y - a.y;
       const dist = Math.hypot(dx, dy);
-      if (!target) speed = maxSpeed * Math.min(1, dist / w.cellSize);
+      if (!target && goal !== care) speed = maxSpeed * Math.min(1, dist / w.cellSize);
       const angle = Math.atan2(dy, dx) + gaussian() * rules.directionNoise;
       dx = Math.cos(angle);
       dy = Math.sin(angle);
@@ -566,14 +674,33 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       a.energy = Math.min(cap, a.energy + rules.foodEnergy);
     }
 
+    // Pregnancy: the mother pays her share evenly over the remaining ticks, then gives birth.
+    const preg = a.pregnancy;
+    if (preg) {
+      const remaining = preg.motherNeed - preg.motherPaid;
+      const pay = remaining / Math.max(1, preg.due - w.tick + 1);
+      a.energy -= pay;
+      preg.motherPaid += pay;
+      if (w.tick >= preg.due && a.energy > 0) births.push(...deliver(a, w));
+    }
+
+    // The caring father, and relatives in proportion to kin weight, share energy with a pregnant
+    // female within guard distance when she needs it and they can spare it.
+    const helped = ctx.protectee(a, vision);
+    if (helped && Math.hypot(helped.p.x - a.x, helped.p.y - a.y) <= rules.guardDistance) {
+      const hp = helped.p;
+      const give = Math.min(rules.provisionRate * helped.weight, a.energy - cap / 2, capacityOf(hp, rules) * 0.8 - hp.energy);
+      if (give > 0) {
+        a.energy -= give;
+        hp.energy += give * 0.9;
+      }
+    }
+
     // 6. Strike the target, or mate on contact.
     if (target && !ctx.dead.has(target.id) && a.attackCd <= 0 && Math.hypot(target.x - a.x, target.y - a.y) <= radius + radiusOf(target) + rules.attackReach) {
       strike(ctx, a, target);
     } else if (mate && Math.hypot(mate.x - a.x, mate.y - a.y) <= radius + radiusOf(mate) + 1 && readyToMate(a, w) && readyToMate(mate, w)) {
-      if (courtship(ctx, a, mate)) {
-        const child = breed(a, mate, w);
-        if (child) births.push(child);
-      }
+      if (courtship(ctx, a, mate)) conceive(a, mate, w);
     }
 
     // 7. Death from starvation or age.
@@ -586,7 +713,11 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     }
   }
 
-  if (ctx.dead.size) w.actors = w.actors.filter((a) => !ctx.dead.has(a.id));
+  let pregnancyLosses = 0;
+  if (ctx.dead.size) {
+    for (const a of w.actors) if (ctx.dead.has(a.id) && a.pregnancy) pregnancyLosses += a.pregnancy.embryos.length;
+    w.actors = w.actors.filter((a) => !ctx.dead.has(a.id));
+  }
   if (births.length) w.actors.push(...births);
-  return { births, deaths: ctx.deaths, hits: ctx.hits };
+  return { births, deaths: ctx.deaths, hits: ctx.hits, pregnancyLosses };
 };

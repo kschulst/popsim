@@ -67,7 +67,7 @@ export class Inspector {
   render(w: World, reg: Registry, id: number | null): void {
     if (id === null) {
       this.root.innerHTML = `<p class="muted">Klikk på en aktør i verdenen for å se detaljer og slektskap.</p>
-        <p class="muted">● hunn &nbsp; ◆ hann. Gjennomsiktighet viser energinivå. Rød strek: angriper → mål. Gul kant: flykter. Hvitt blink: treff. Stiplet rosa strek: søker partner. Grønn: paret seg. Grå med kryss: avvist, krysset står ved den som sa nei.</p>
+        <p class="muted">● hunn &nbsp; ◆ hann. Gjennomsiktighet viser energinivå. Rød strek: angriper → mål. Gul kant: flykter. Hvitt blink: treff. Stiplet rosa strek: søker partner. Grønn: paret seg. Grå med kryss: avvist, krysset står ved den som sa nei. Hvit prikk: gravid. Blå prikket strek: far som passer på den gravide.</p>
         <p class="muted">Rull for å zoome, dra for å flytte, dobbeltklikk for å vise hele verdenen. Fra ${DETAIL_ZOOM}× zoom vises avstamning som kakediagram og helse som en bar.</p>`;
       return;
     }
@@ -149,6 +149,12 @@ export class Inspector {
         courtText = parts.join(' og ');
       } else if (live.mateTarget !== null) courtText = `søker ${link(live.mateTarget)}`;
       if (courtText) conflict += `<dt>Partner</dt><dd>${courtText}</dd>`;
+      if (live.pregnancy) {
+        const p = live.pregnancy;
+        const n = p.embryos.length;
+        conflict += `<dt>Gravid</dt><dd>${n === 1 ? 'ett barn' : n === 2 ? 'tvillinger' : n === 3 ? 'trillinger' : `${n} barn`} med ${link(p.father)} · termin tick ${p.due} · betalt ${p.motherPaid.toFixed(0)}/${p.motherNeed.toFixed(0)} energi</dd>`;
+      }
+      if (live.caresFor !== null) conflict += `<dt>Omsorg</dt><dd>passer på ${link(live.caresFor)} til fødselen</dd>`;
     }
 
     this.root.innerHTML = `

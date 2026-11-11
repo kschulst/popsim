@@ -70,6 +70,14 @@ I tillegg får kandidaten en bonus for avstamningen sin: `Σ tribeBonus[i] × ka
 | Besteforelder, barnebarn, tante/onkel, nevø/niese | 3 |
 | Fetter/kusine | 1 |
 
+### Svangerskap og omsorg
+
+- Ved paring dannes 1 barn, eller flere med sannsynlighet `multipleBirthRate` per ekstra barn (p, p², maks 4). Hvert foster arver for seg. Gener og avstamning bestemmes ved unnfangelsen.
+- Faren betaler sin del (`1 − parentalCostSplit`) av startenergien straks; har han ikke nok, blir det færre fostre. Moren betaler sin del jevnt over `gestationTicks`. Ved termin fødes barna ved siden av moren med den innbetalte energien. Dør moren, går fostrene tapt.
+- Hunnens nedkjøling regnes fra paringen og omfatter svangerskapet (`max(gestationTicks, mateCooldown)`).
+- Med sannsynlighet `paternalCare` passer faren på moren til fødselen: han holder seg innen `guardDistance`, parer seg ikke med andre og angriper den som angriper henne.
+- Hjelpevekt: faren som passer på har vekt 1, slektninger `kinCare × slektsvekt`. Hver aktør hjelper den gravide med størst vekt innen synsvidde. Hjelpere innen `guardDistance` gir henne `provisionRate × vekt` energi per tick (10 % tap) når de har over halve kapasiteten og hun under 80 %. I kamper der hun er part, øker lojaliteten til henne med `2 × vekt`. Andre innen `guardDistance` av henne gir et tillegg `hungerWeight × hennes sult × vekt` i angrepsviljen.
+
 ### Konflikt (v2)
 
 - **Helse**: maks helse = `hpPerSize × size`. Lav helse senker fart, syn og slagstyrke med faktoren `√(helse/maks)`. Helse leges med `healRate × maks` per tick når energien er over halve kapasiteten, og hvert helsepoeng koster `healCost` energi. Død ved helse ≤ 0 (årsak «drept», drapsmannen lagres).

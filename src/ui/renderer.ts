@@ -192,6 +192,17 @@ export class Renderer {
       ctx.lineTo(sx(m), sy(m));
     }
     ctx.stroke();
+    // Caring fathers: dotted blue line to the pregnant mother.
+    ctx.setLineDash([1.5 * dpr, 3 * dpr]);
+    ctx.strokeStyle = 'rgba(120, 180, 255, 0.7)';
+    ctx.beginPath();
+    for (const a of w.actors) {
+      const m = a.caresFor === null ? undefined : byId.get(a.caresFor);
+      if (!m) continue;
+      ctx.moveTo(sx(a), sy(a));
+      ctx.lineTo(sx(m), sy(m));
+    }
+    ctx.stroke();
     ctx.setLineDash([]);
     for (const a of w.actors) {
       const c = a.court;
@@ -295,6 +306,12 @@ export class Renderer {
         ctx.lineWidth = dpr;
       }
       ctx.stroke();
+      if (a.pregnancy) {
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(1.5 * dpr, r * 0.35), 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fill();
+      }
       if (detail) this.hpBar(a, w, x, y, r);
     }
 
