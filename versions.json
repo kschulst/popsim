@@ -89,7 +89,8 @@
       "Kortere hjelpetekster: regelbeskrivelser, regelpanelet, inspektøren og dialogen «Ny kjøring». Formlene står i DESIGN.md.",
       "Når bestanden dør ut, stopper avspillingen og en melding over kartet sier når og hvem som døde sist, med knapper for å spole 200 ticks tilbake, forgreine derfra eller starte en ny kjøring.",
       "«Ny kjøring» har valget «Velg på kartet»: klikk der hver stamme skal starte. Fruktbarhetskartet vises mens du plasserer.",
-      "Knappen «＋ Aktører» legger til nye aktører fra en valgt stamme der du klikker på kartet, når som helst i kjøringen. Ved enden av grenen skjer det i grenen (merket på tidslinjen), på et tidligere tidspunkt lages en ny gren."
+      "Knappen «＋ Aktører» legger til nye aktører fra en valgt stamme der du klikker på kartet, når som helst i kjøringen. Ved enden av grenen skjer det i grenen (merket på tidslinjen), på et tidligere tidspunkt lages en ny gren.",
+      "Nøkkeltallene (gjennomsnittlig avstamning og dødstall) står rett under tidslinjen ved kartet, så de alltid er synlige. Kartet fyller plassen over uten å skyve dem ned."
     ]
   }
 }

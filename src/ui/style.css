@@ -262,8 +262,9 @@ canvas#world.aiming { cursor: crosshair; }
 .map-legend .ln.dot { border-top-style: dotted; }
 .map-legend .g { display: inline-block; width: 22px; text-align: center; margin-right: 6px; font-weight: 700; }
 
-.world { display: flex; flex-direction: column; }
-.canvas-wrap { position: relative; flex: 1; min-height: 0; }
+.world { display: flex; flex-direction: column; min-height: 0; }
+.canvas-wrap { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.canvas-wrap > canvas#world { position: absolute; inset: 0; }
 .scrub-row { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-top: 1px solid var(--line); background: var(--panel); }
 #scrub { flex: 1; min-width: 120px; accent-color: var(--gold); }
 #scrub-label { min-width: 110px; margin-left: 0; text-align: right; }
@@ -279,3 +280,5 @@ details.timeline-wrap > summary { cursor: pointer; color: var(--muted); font-siz
 .extinct h2 { color: #ffb4a0; font-size: 18px; margin: 0 0 8px; }
 .extinct p { margin: 0 0 12px; color: var(--text); }
 .extinct .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+.world > .vitals { padding: 4px 12px 6px; border-top: 1px solid var(--line); background: var(--panel); gap: 2px 18px; font-size: 12px; }
