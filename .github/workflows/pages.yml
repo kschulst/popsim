@@ -1,9 +1,10 @@
 name: Pages
 
+# Every build from main builds all tags listed in versions.json. Tag pushes are not triggers:
+# the github-pages environment only allows deployments from main.
 on:
   push:
     branches: [main]
-    tags: ['v*']
   workflow_dispatch:
 
 permissions:
