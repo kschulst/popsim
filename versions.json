@@ -15,29 +15,36 @@
         "Grafer for populasjon, generasjon, fødsler og dødsfall, klaner, mat, arvestyrke og egenskaper.",
         "Eksport og import av hele historikken."
       ]
+    },
+    {
+      "version": 2,
+      "tag": "v2",
+      "title": "Stammer, partnervalg og kamp",
+      "summary": "Fire stammer med egne verdier og hjemområder. Avstamning og renhet per aktør, vist som kakediagram. Partnervalg med stammepreferanse og slektsstraff. Fysisk plass, kamp om mat og partnere med helse, flukt og allianser. Zoom, versjonsvelger og dødsstatistikk.",
+      "changes": [
+        "Appen heter popsim (Population Sim). Eksportfiler fra sim-sala-bim kan fortsatt importeres.",
+        "Tall over grafene: antall døde, andel døde av alderdom og snitt dødsalder, både hittil og for de siste 500 ticks.",
+        "Nye grafer: snitt dødsalder og andel døde av alderdom (siste 100 ticks).",
+        "Stammer med navn, farge, antall seeds og egne verdier for størrelse, fart, syn, aggresjon og arvelighet. Fire standardstammer: Røde, Blå, Gule, Grønne. Kan endres i «Ny kjøring».",
+        "Stammene starter samlet i hvert sitt hjemområde.",
+        "Avstamning per aktør (andel fra hver stamme) og renhet. Kakediagram i inspektøren, ved valgt aktør og for alle aktører ved zoom.",
+        "Partnervalg: aktørene foretrekker egen stamme, sterkere jo renere begge er, og nær slekt gir stor straff (erstatter incestgrensen).",
+        "Nytt gen: aggresjon.",
+        "Fysisk plass: aktørene overlapper ikke.",
+        "Kamp om mat og partnere: helse, tilfeldig skade per slag, flukt, forfølgelse, og tilskuere som velger side. Høyere terskel for å angripe egen stamme og slekt.",
+        "Dødsårsak «drept» med drapsmann i stamtreet. Andel drept i tallene over grafene.",
+        "Zoom med musehjulet og panorering ved å dra.",
+        "Nye fargemoduser: stamme og aggresjon.",
+        "Nye grafer: stammeandel, renhet og kamp (treff og drap).",
+        "Grenredigering: legg til seeds fra en valgt stamme, og endre egenskaper for en hel stamme.",
+        "Eksportfiler fra v1 kan ikke importeres; de åpnes i v1.",
+        "Versjonsvelger nederst til venstre med oppsummering av forskjeller mellom versjoner."
+      ]
     }
   ],
   "dev": {
     "title": "Under utvikling",
     "summary": "Bygget fra main. Kan endre seg uten varsel.",
-    "changes": [
-      "Appen heter popsim (Population Sim). Eksportfiler fra sim-sala-bim kan fortsatt importeres.",
-      "Tall over grafene: antall døde, andel døde av alderdom og snitt dødsalder, både hittil og for de siste 500 ticks.",
-      "Nye grafer: snitt dødsalder og andel døde av alderdom (siste 100 ticks).",
-      "Versjonsvelger med oppsummering av forskjeller mellom versjoner.",
-      "Stammer med navn, farge, antall seeds og egne verdier for størrelse, fart, syn, aggresjon og arvelighet. Fire standardstammer: Røde, Blå, Gule, Grønne. Kan endres i «Ny kjøring».",
-      "Stammene starter samlet i hvert sitt hjemområde.",
-      "Avstamning per aktør (andel fra hver stamme) og renhet. Kakediagram i inspektøren, ved valgt aktør og for alle aktører ved zoom.",
-      "Partnervalg: aktørene foretrekker egen stamme, sterkere jo renere begge er, og nær slekt gir stor straff (erstatter incestgrensen).",
-      "Nytt gen: aggresjon.",
-      "Fysisk plass: aktørene overlapper ikke.",
-      "Kamp om mat og partnere: helse, tilfeldig skade per slag, flukt, forfølgelse, og tilskuere som velger side. Høyere terskel for å angripe egen stamme og slekt.",
-      "Dødsårsak «drept» med drapsmann i stamtreet. Andel drept i tallene over grafene.",
-      "Zoom med musehjulet og panorering ved å dra.",
-      "Nye fargemoduser: stamme og aggresjon.",
-      "Nye grafer: stammeandel, renhet og kamp (treff og drap).",
-      "Grenredigering: legg til seeds fra en valgt stamme, og endre egenskaper for en hel stamme.",
-      "Eksportfiler fra v1 kan ikke importeres; de åpnes i v1."
-    ]
+    "changes": []
   }
 }

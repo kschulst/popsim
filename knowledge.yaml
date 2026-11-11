@@ -1,0 +1,62 @@
+kcp_version: "0.32"
+project: "popsim"
+version: "2.0.0"
+updated: "2026-11-11"
+language: no
+
+units:
+  - id: readme
+    path: README.md
+    intent: "What is popsim, how is it run locally, and how are versions frozen and published?"
+    scope: global
+    audience: [human, agent]
+    triggers: [popsim, run, build, versions, github pages, release, tag]
+
+  - id: design
+    path: DESIGN.md
+    intent: "What are the simulation model, rules, tribes, mate choice, conflict, history/branching and the version plan?"
+    scope: global
+    audience: [human, agent]
+    triggers: [design, model, rules, tribes, ancestry, purity, mate choice, conflict, combat, health, version plan, glossary]
+
+  - id: versions
+    path: versions.json
+    intent: "Which versions are frozen, and what changed in each version and on main since the last one?"
+    scope: global
+    audience: [human, agent]
+    triggers: [changelog, changes, versions, release notes, dev]
+
+  - id: sim-types
+    path: src/sim/types.ts
+    intent: "What are the data types for actors, tribes, rules, world state and per-tick stats?"
+    scope: module
+    audience: [agent]
+    triggers: [Actor, World, Rules, Tribe, TickStats, types]
+
+  - id: sim-step
+    path: src/sim/step.ts
+    intent: "How does one simulation tick work: movement, eating, mate choice, attacks, fleeing, healing and death?"
+    scope: module
+    audience: [agent]
+    triggers: [step, tick, behaviour, attack, flee, mate, separation]
+
+  - id: sim-rules
+    path: src/sim/rules.ts
+    intent: "What are the default rule values and the Norwegian descriptions shown in the UI?"
+    scope: module
+    audience: [agent]
+    triggers: [rules, defaults, parameters, RULE_FIELDS]
+
+  - id: history
+    path: src/history/history.ts
+    intent: "How are branches, snapshots, ring buffers and forks stored and replayed?"
+    scope: module
+    audience: [agent]
+    triggers: [history, branch, fork, snapshot, timeline]
+
+  - id: site-build
+    path: scripts/build-site.mjs
+    intent: "How is the multi-version GitHub Pages site built, including the version switcher?"
+    scope: module
+    audience: [agent]
+    triggers: [site, pages, deploy, switcher, build-site]

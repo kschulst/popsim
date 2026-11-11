@@ -50,7 +50,10 @@ copyFileSync(join(root, 'scripts', 'site', 'switcher.js'), join(site, 'switcher.
 writeFileSync(join(site, 'versions.json'), JSON.stringify({ ...data, versions: built }, null, 2));
 
 const esc = (s) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-const changeList = (v) => `<ul class="changes">${(v.changes ?? []).map((c) => `<li>${esc(c)}</li>`).join('')}</ul>`;
+const changeList = (v) => {
+  const items = v.changes?.length ? v.changes : ['Ingen endringer siden siste versjon.'];
+  return `<ul class="changes">${items.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>`;
+};
 const items = built
   .slice()
   .reverse()
