@@ -1,4 +1,4 @@
 node_modules
-dist
-site
-.site-work
+/dist
+/site
+/.site-work
