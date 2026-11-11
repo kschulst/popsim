@@ -147,7 +147,11 @@ export class Renderer {
     for (let i = 0; i < w.food.length; i++) {
       const fert = w.fertility[i];
       const o = i * 4;
-      if (showFertility) {
+      if (fert < 0) {
+        img.data[o] = 30;
+        img.data[o + 1] = 70;
+        img.data[o + 2] = 120;
+      } else if (showFertility) {
         // Fertility overlay: dark purple (barren) to blue (fertile); food cells stay marked.
         img.data[o] = w.food[i] ? 70 : 40 + 60 * (1 - fert);
         img.data[o + 1] = w.food[i] ? 150 : 30 + 40 * fert;

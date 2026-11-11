@@ -47,6 +47,64 @@ const fertilityMap = (cols: number, rows: number): Float32Array => {
   return out;
 };
 
+/** True if the cell at (x, y) is water. */
+export const isWater = (w: { fertility: Float32Array; cols: number; rows: number; cellSize: number }, x: number, y: number): boolean => {
+  const c = Math.min(w.cols - 1, Math.max(0, Math.floor(x / w.cellSize)));
+  const r = Math.min(w.rows - 1, Math.max(0, Math.floor(y / w.cellSize)));
+  return w.fertility[r * w.cols + c] < 0;
+};
+
+/**
+ * Carves lakes (noisy discs) and rivers (wandering lines from one edge until they leave the map
+ * or reach water) into the fertility map as negative values, then makes the banks more fertile.
+ */
+const carveWater = (fert: Float32Array, cols: number, rows: number, lakes: number, rivers: number, bonus: number): void => {
+  const set = (c: number, r: number) => {
+    if (c >= 0 && c < cols && r >= 0 && r < rows) fert[r * cols + c] = -1;
+  };
+  for (let i = 0; i < lakes; i++) {
+    const cx = rand(0.15, 0.85) * cols;
+    const cy = rand(0.15, 0.85) * rows;
+    const rad = rand(2, 4.5);
+    for (let r = Math.floor(cy - rad - 2); r <= cy + rad + 2; r++) {
+      for (let c = Math.floor(cx - rad - 2); c <= cx + rad + 2; c++) {
+        const a = Math.atan2(r - cy, c - cx);
+        const edge = rad * (1 + 0.25 * Math.sin(3 * a + i) + 0.15 * Math.cos(5 * a));
+        if (Math.hypot(c - cx, r - cy) <= edge) set(c, r);
+      }
+    }
+  }
+  for (let i = 0; i < rivers; i++) {
+    const side = Math.floor(rand(0, 4));
+    let x = side === 0 ? 0 : side === 1 ? cols - 1 : rand(0.1, 0.9) * cols;
+    let y = side === 2 ? 0 : side === 3 ? rows - 1 : rand(0.1, 0.9) * rows;
+    let dir = side === 0 ? 0 : side === 1 ? Math.PI : side === 2 ? Math.PI / 2 : -Math.PI / 2;
+    for (let step = 0; step < (cols + rows) * 2; step++) {
+      set(Math.floor(x), Math.floor(y));
+      if (step % 3 === 0) set(Math.floor(x + 1), Math.floor(y));
+      dir += gaussian() * 0.25;
+      x += Math.cos(dir) * 0.7;
+      y += Math.sin(dir) * 0.7;
+      if (x < 0 || x >= cols || y < 0 || y >= rows) break;
+    }
+  }
+  // Banks: land next to water grows more.
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const i = r * cols + c;
+      if (fert[i] < 0) continue;
+      let wet = false;
+      for (let dr = -1; dr <= 1 && !wet; dr++)
+        for (let dc = -1; dc <= 1 && !wet; dc++) {
+          const rr = r + dr;
+          const cc = c + dc;
+          if (rr >= 0 && rr < rows && cc >= 0 && cc < cols && fert[rr * cols + cc] < 0) wet = true;
+        }
+      if (wet) fert[i] = Math.min(1.5, fert[i] + bonus);
+    }
+  }
+};
+
 export const capacityOf = (a: { genome: Genome }, rules: Rules): number =>
   rules.energyPerSize * a.genome.size;
 
@@ -115,6 +173,7 @@ export const spawnSeed = (world: World, opts: NewActor): Actor => {
     hitsTaken: 0,
     foodEaten: 0,
     distance: 0,
+    hydration: 1,
     courtships: 0,
     acceptedBy: 0,
   };
@@ -159,8 +218,9 @@ const tribeHome = (() => {
 export const createEmptyWorld = (config: WorldConfig = DEFAULT_CONFIG): World => {
   const { width, height, cols, rows, rules, tribes } = config;
   const fertility = fertilityMap(cols, rows);
+  carveWater(fertility, cols, rows, rules.waterLakes ?? 0, rules.waterRivers ?? 0, rules.riverbankBonus ?? 0);
   const food = new Uint8Array(cols * rows);
-  for (let i = 0; i < food.length; i++) food[i] = Math.random() < fertility[i] * 0.6 ? 1 : 0;
+  for (let i = 0; i < food.length; i++) food[i] = fertility[i] > 0 && Math.random() < fertility[i] * 0.6 ? 1 : 0;
   return {
     tick: 0,
     width,
@@ -187,8 +247,41 @@ export const createEmptyWorld = (config: WorldConfig = DEFAULT_CONFIG): World =>
  * automatic home on an ellipse around the centre.
  */
 export const populateWorld = (world: World, homes: ({ x: number; y: number } | undefined)[] = []): World => {
-  world.tribes.forEach((t, ti) => seedTribe(world, ti, t.seeds, homes[ti] ?? tribeHome(ti, world.tribes.length, world.width, world.height)));
+  world.tribes.forEach((t, ti) =>
+    seedTribe(world, ti, t.seeds, homes[ti] ?? nearBank(world, tribeHome(ti, world.tribes.length, world.width, world.height))),
+  );
   return world;
+};
+
+/**
+ * Moves an automatic home to the nearest land cell next to water within 200 units, so tribes start
+ * where they can drink. Unchanged when the map has no water nearby.
+ */
+const nearBank = (w: World, p: { x: number; y: number }): { x: number; y: number } => {
+  const { cols, rows, cellSize, fertility } = w;
+  let best: { x: number; y: number } | null = null;
+  let bestD = 200 * 200;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (fertility[r * cols + c] < 0) continue;
+      let wet = false;
+      for (let dr = -1; dr <= 1 && !wet; dr++)
+        for (let dc = -1; dc <= 1 && !wet; dc++) {
+          const rr = r + dr;
+          const cc = c + dc;
+          if (rr >= 0 && rr < rows && cc >= 0 && cc < cols && fertility[rr * cols + cc] < 0) wet = true;
+        }
+      if (!wet) continue;
+      const x = (c + 0.5) * cellSize;
+      const y = (r + 0.5) * cellSize;
+      const d = (x - p.x) ** 2 + (y - p.y) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = { x, y };
+      }
+    }
+  }
+  return best ?? p;
 };
 
 /**
@@ -198,14 +291,16 @@ export const populateWorld = (world: World, homes: ({ x: number; y: number } | u
 export const seedTribe = (world: World, tribe: number, count: number, home?: { x: number; y: number }): Actor[] => {
   const surnames = uniqueSurnames(count, Object.keys(world.surnameHues));
   assignHues(world, surnames, tribe);
-  return surnames.map((surname) =>
-    spawnSeed(world, {
-      surname,
-      tribe,
-      x: home ? clamp(home.x + gaussian() * HOME_SPREAD, 5, world.width - 5) : undefined,
-      y: home ? clamp(home.y + gaussian() * HOME_SPREAD, 5, world.height - 5) : undefined,
-    }),
-  );
+  // A position on land: scattered around home (or anywhere), retrying if it lands in water.
+  const landPoint = () => {
+    for (let tries = 0; tries < 50; tries++) {
+      const x = home ? clamp(home.x + gaussian() * HOME_SPREAD * (1 + tries / 10), 5, world.width - 5) : rand(5, world.width - 5);
+      const y = home ? clamp(home.y + gaussian() * HOME_SPREAD * (1 + tries / 10), 5, world.height - 5) : rand(5, world.height - 5);
+      if (!isWater(world, x, y)) return { x, y };
+    }
+    return { x: rand(5, world.width - 5), y: rand(5, world.height - 5) };
+  };
+  return surnames.map((surname) => spawnSeed(world, { surname, tribe, ...landPoint() }));
 };
 
 export const createWorld = (config: WorldConfig = DEFAULT_CONFIG): World => populateWorld(createEmptyWorld(config));

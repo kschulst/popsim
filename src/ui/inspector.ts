@@ -19,6 +19,7 @@ import { surnameColor } from './colors';
 
 export const CAUSE_LABELS: Record<DeathCause, string> = {
   starvation: 'sult',
+  thirst: 'tørst',
   age: 'alderdom',
   killed: 'drept',
   childbirth: 'døde i fødsel',
@@ -139,6 +140,7 @@ export const describeActor = (w: World, reg: Registry, a: Actor): string[] => {
   const hpShare = Math.max(0, a.hp) / maxHpOf(a, w.rules);
   if (!lines.length) lines.push(a.energy < cap * 0.95 ? 'Leter etter mat' : 'Vandrer');
   if (a.energy < cap * 0.25) lines.push('Sulten');
+  if ((a.hydration ?? 1) < 0.35) lines.push(`Tørst (${Math.round((a.hydration ?? 1) * 100)} % vann)`);
   if (hpShare < 0.5) lines.push(`Skadet (${Math.round(hpShare * 100)} % helse)`);
   const vig = vigorOf(a, w.rules);
   if (vig < 0.9) lines.push(`Svekket ${Math.round((1 - vig) * 100)} %`);
@@ -226,7 +228,7 @@ export class Inspector {
     const kinSummary = [...counts.entries()].map(([r, n]) => `${n} ${RELATION_LABELS[r]}`).join(', ');
 
     const status = live
-      ? `lever · alder ${live.age}${vigorOf(live, w.rules) < 0.995 ? ` (svekket ${Math.round((1 - vigorOf(live, w.rules)) * 100)} %)` : ''} · energi ${live.energy.toFixed(0)}/${capacityOf(live, w.rules).toFixed(0)} · helse ${Math.max(0, live.hp).toFixed(0)}/${maxHpOf(live, w.rules).toFixed(0)}`
+      ? `lever · alder ${live.age}${vigorOf(live, w.rules) < 0.995 ? ` (svekket ${Math.round((1 - vigorOf(live, w.rules)) * 100)} %)` : ''} · energi ${live.energy.toFixed(0)}/${capacityOf(live, w.rules).toFixed(0)} · helse ${Math.max(0, live.hp).toFixed(0)}/${maxHpOf(live, w.rules).toFixed(0)} · vann ${Math.round((live.hydration ?? 1) * 100)} %`
       : death
         ? `død tick ${death.tick} (${CAUSE_LABELS[death.cause]}${death.killer !== undefined ? ` av ${link(death.killer)}` : ''}${death.disease !== undefined && w.diseases?.[death.disease] ? `: ${esc(w.diseases[death.disease].name)}` : ''})`
         : 'ikke i live';

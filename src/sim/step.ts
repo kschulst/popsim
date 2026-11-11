@@ -8,7 +8,7 @@ import { activeEles, applyEles, createEle, eleEffects, pickEle, type EleEffects 
 import { MACHINE_SIZE, stepMachines, strikeMachine } from './machines';
 import { mixAncestry, overlap, purity } from './tribes';
 import type { Actor, AttackReason, Embryo, TickDeath, TickEvents, World } from './types';
-import { capacityOf, hpFactor, maxHpOf, radiusOf } from './world';
+import { capacityOf, hpFactor, isWater, maxHpOf, radiusOf } from './world';
 
 export type ParentsOf = (id: number) => [number, number] | null | undefined;
 
@@ -78,6 +78,54 @@ export const ageVigorOf = (a: Actor, r: World['rules']): number =>
 export const vigorOf = (a: Actor, r: World['rules']): number =>
   ageVigorOf(a, r) * (a.infection ? 1 - r.sicknessWeakness : 1);
 
+/** True if any cell within `reach` of (x, y) is water. */
+const nearWater = (w: World, x: number, y: number, reach: number): boolean => {
+  const { cellSize, cols, rows, fertility } = w;
+  const r = Math.ceil(reach / cellSize);
+  const cx = Math.floor(x / cellSize);
+  const cy = Math.floor(y / cellSize);
+  for (let rr = Math.max(0, cy - r); rr <= Math.min(rows - 1, cy + r); rr++)
+    for (let cc = Math.max(0, cx - r); cc <= Math.min(cols - 1, cx + r); cc++) if (fertility[rr * cols + cc] < 0) return true;
+  return false;
+};
+
+/** Nearest water cell centre within `vision`, or null. */
+const seekWater = (a: Actor, w: World, vision: number): { x: number; y: number } | null => {
+  const { cellSize, cols, rows, fertility } = w;
+  const r = Math.ceil(vision / cellSize);
+  const acx = Math.floor(a.x / cellSize);
+  const acy = Math.floor(a.y / cellSize);
+  let best = vision * vision;
+  let out: { x: number; y: number } | null = null;
+  for (let cy = Math.max(0, acy - r); cy <= Math.min(rows - 1, acy + r); cy++) {
+    for (let cx = Math.max(0, acx - r); cx <= Math.min(cols - 1, acx + r); cx++) {
+      if (fertility[cy * cols + cx] >= 0) continue;
+      const x = (cx + 0.5) * cellSize;
+      const y = (cy + 0.5) * cellSize;
+      const d = (x - a.x) ** 2 + (y - a.y) ** 2;
+      if (d < best) {
+        best = d;
+        out = { x, y };
+      }
+    }
+  }
+  return out;
+};
+
+/** True if the straight line from a to b crosses water (sampled every half cell). */
+const waterBetween = (w: World, a: { x: number; y: number }, b: { x: number; y: number }): boolean => {
+  const d = Math.hypot(b.x - a.x, b.y - a.y);
+  const n = Math.ceil(d / (w.cellSize / 2));
+  for (let i = 1; i < n; i++) {
+    const t = i / n;
+    if (isWater(w, a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)) return true;
+  }
+  return false;
+};
+
+/** Hydration below which an actor goes looking for water before anything but fighting. */
+const THIRSTY = 0.35;
+
 /** Effective vision and top speed after injury and ageing. */
 const visionOf = (a: Actor, w: World) => a.genome.vision * hpFactor(a, w.rules) * vigorOf(a, w.rules);
 const speedOf = (a: Actor, w: World) => a.genome.maxSpeed * hpFactor(a, w.rules) * vigorOf(a, w.rules);
@@ -138,6 +186,8 @@ class TickContext {
   hits = 0;
   /** Effects of active extinction level events this tick. */
   fx: EleEffects;
+  /** Whether the map has any water (thirst only applies if it does). */
+  hasWater: boolean;
   private readonly ancestorCache = new Map<number, Map<number, number>>();
 
   constructor(
@@ -145,6 +195,7 @@ class TickContext {
     readonly parentsOf: ParentsOf,
   ) {
     this.fx = eleEffects(w);
+    this.hasWater = w.fertility.some((f) => f < 0);
     this.hash = new SpatialHash(40, w.width);
     for (const a of w.actors) {
       this.hash.insert(a);
@@ -316,6 +367,8 @@ const findPartner = (ctx: TickContext, a: Actor, vision: number): { mate: Actor 
       b.age >= r.mateCooldown &&
       b.cooldown <= PROSPECT_WAIT;
     if (!ready && !soon) continue;
+    // Partners across water cannot be reached directly.
+    if (ctx.hasWater && waterBetween(w, a, b)) continue;
     const base = mateScore(ctx, a, b, d);
     if (ready) {
       const score = base + tribeBonusOf(b, bonus);
@@ -628,6 +681,7 @@ const deliver = (ctx: TickContext, mother: Actor): Actor[] => {
       hitsTaken: 0,
       foodEaten: 0,
       distance: 0,
+      hydration: 1,
       courtships: 0,
       acceptedBy: 0,
     };
@@ -755,6 +809,9 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
 
     // 2. Choose what to do: flee > fight > join a fight > attack > guard > nurse > mate > eat > wander.
     const food = a.fleeing > 0 ? null : seekFood(a, w, vision);
+    // Thirst: drink when next to water; go looking for water when running low.
+    if (a.hydration === undefined) a.hydration = 1;
+    const thirstGoal = ctx.hasWater && a.hydration < THIRSTY && !nursingMother ? seekWater(a, w, vision) : null;
     if (!target && a.fleeing <= 0) {
       if (considerJoining(ctx, a, vision) || (considerAttack(ctx, a, vision, food), a.target !== null)) {
         target = ctx.alive(a.target);
@@ -781,6 +838,9 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       speed = maxSpeed;
     } else if (target) {
       goal = target;
+      speed = maxSpeed;
+    } else if (thirstGoal) {
+      goal = thirstGoal;
       speed = maxSpeed;
     } else if (care && Math.hypot(care.x - a.x, care.y - a.y) > rules.guardDistance) {
       goal = care;
@@ -825,9 +885,26 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       a.vx *= maxSpeed / v;
       a.vy *= maxSpeed / v;
     }
+    const px = a.x;
+    const py = a.y;
     a.x += a.vx;
     a.y += a.vy;
-    a.distance += Math.hypot(a.vx, a.vy);
+    // Water cannot be walked on: slide along the shore (keep the dry axis), else stop and turn.
+    if (ctx.hasWater && isWater(w, a.x, a.y)) {
+      if (!isWater(w, px + a.vx, py)) {
+        a.y = py;
+        a.vy = 0;
+      } else if (!isWater(w, px, py + a.vy)) {
+        a.x = px;
+        a.vx = 0;
+      } else {
+        a.x = px;
+        a.y = py;
+        a.vx = a.vy = 0;
+        a.wander += Math.PI / 2 + gaussian() * 0.5;
+      }
+    }
+    a.distance += Math.hypot(a.x - px, a.y - py);
     if (a.x < radius || a.x > w.width - radius) {
       a.x = clamp(a.x, radius, w.width - radius);
       a.vx = 0;
@@ -839,6 +916,15 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       a.wander = -a.wander;
     }
     separate(ctx, a, radius);
+    if (ctx.hasWater && isWater(w, a.x, a.y)) {
+      a.x = px;
+      a.y = py;
+    }
+    if (ctx.hasWater) {
+      if (nursingMother) a.hydration = 1;
+      else if (nearWater(w, a.x, a.y, radius + w.cellSize * 0.75)) a.hydration = Math.min(1, a.hydration + 0.1);
+      else a.hydration -= rules.thirstRate ?? 0;
+    }
 
     // 4. Energy cost and healing.
     const sp2 = a.vx * a.vx + a.vy * a.vy;
@@ -933,6 +1019,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
           (1 + 2 * (1 - ageVigorOf(a, rules)) + (1 - Math.max(0, a.hp) / maxHpOf(a, rules)) + (1 - Math.min(1, Math.max(0, share))))
         : 0;
       if (a.energy <= 0) ctx.die(a, 'starvation');
+      else if (ctx.hasWater && a.hydration <= 0) ctx.die(a, 'thirst');
       else if (illness && Math.random() < diseaseRisk) {
         illness.deaths++;
         ctx.die(a, 'disease', undefined, illness.id);

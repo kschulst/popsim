@@ -301,9 +301,9 @@ export class BranchEditor {
         const i = row * w.cols + col;
         switch (this.brushMode) {
           case 'clearFood': w.food[i] = 0; break;
-          case 'fillFood': w.food[i] = 1; break;
-          case 'lessFertile': w.fertility[i] = Math.max(0, w.fertility[i] - 0.1); break;
-          case 'moreFertile': w.fertility[i] = Math.min(1.5, w.fertility[i] + 0.1); break;
+          case 'fillFood': if (w.fertility[i] >= 0) w.food[i] = 1; break;
+          case 'lessFertile': if (w.fertility[i] >= 0) w.fertility[i] = Math.max(0, w.fertility[i] - 0.1); break;
+          case 'moreFertile': if (w.fertility[i] >= 0) w.fertility[i] = Math.min(1.5, w.fertility[i] + 0.1); break;
         }
       }
     }

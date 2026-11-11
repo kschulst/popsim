@@ -56,6 +56,7 @@ export const computeStats = (w: World, ev: TickEvents): TickStats => {
     deathsInfant: ev.deaths.filter((d) => d.cause === 'infant').length,
     deathsDisease: ev.deaths.filter((d) => d.cause === 'disease').length,
     deathsCatastrophe: ev.deaths.filter((d) => d.cause === 'catastrophe').length,
+    deathsThirst: ev.deaths.filter((d) => d.cause === 'thirst').length,
     infected: w.actors.filter((a) => a.infection).length,
     hits: ev.hits,
     pregnancyLosses: ev.pregnancyLosses,

@@ -55,7 +55,7 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
         label: 'døde',
         color: '#d8dde4',
         value: (s) =>
-          s.deathsStarvation + s.deathsAge + (s.deathsKilled ?? 0) + (s.deathsChildbirth ?? 0) + (s.deathsInfant ?? 0) + (s.deathsDisease ?? 0) + (s.deathsCatastrophe ?? 0),
+          s.deathsStarvation + (s.deathsThirst ?? 0) + s.deathsAge + (s.deathsKilled ?? 0) + (s.deathsChildbirth ?? 0) + (s.deathsInfant ?? 0) + (s.deathsDisease ?? 0) + (s.deathsCatastrophe ?? 0),
       },
     ],
   },
@@ -65,6 +65,7 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
     rolling: 50,
     series: [
       { label: 'sult', color: '#e0a35a', value: (s) => s.deathsStarvation },
+      { label: 'tørst', color: '#5fb0e8', value: (s) => s.deathsThirst ?? 0 },
       { label: 'alder', color: '#9aa0a8', value: (s) => s.deathsAge },
       { label: 'drept', color: '#ff5a4f', value: (s) => s.deathsKilled ?? 0 },
       { label: 'sykdom', color: '#c6e85a', value: (s) => s.deathsDisease ?? 0 },

@@ -100,6 +100,13 @@ export interface Rules {
   purityWeight: number;
   /** Score lost per vision length of distance to the candidate. */
   mateDistanceWeight: number;
+  /** Lakes and rivers on new maps (applies to new runs). */
+  waterLakes: number;
+  waterRivers: number;
+  /** Extra fertility for land next to water (applies to new runs). */
+  riverbankBonus: number;
+  /** Hydration lost per tick; refilled by standing next to water. */
+  thirstRate: number;
   /** Energy in a carcass per unit of the dead actor's size (0 = no carcasses). */
   carrionPerSize: number;
   /** Energy a carcass loses per tick as it rots. */
@@ -197,6 +204,8 @@ export interface Actor {
   foodEaten: number;
   /** Distance moved (world units). */
   distance: number;
+  /** Water in the body, 0–1; 0 means death by thirst. */
+  hydration: number;
   /** Courtship meetings, and how many times the other said yes. */
   courtships: number;
   acceptedBy: number;
@@ -334,7 +343,7 @@ export interface Tribe {
   seeds: number;
 }
 
-export type DeathCause = 'starvation' | 'age' | 'killed' | 'childbirth' | 'infant' | 'disease' | 'catastrophe' | 'removed';
+export type DeathCause = 'starvation' | 'thirst' | 'age' | 'killed' | 'childbirth' | 'infant' | 'disease' | 'catastrophe' | 'removed';
 
 export interface TickStats {
   tick: number;
@@ -353,6 +362,7 @@ export interface TickStats {
   deathsInfant: number;
   deathsDisease: number;
   deathsCatastrophe: number;
+  deathsThirst: number;
   /** Actors ill at the end of the tick. */
   infected: number;
   /** Embryos lost because the mother died while pregnant. */
@@ -380,6 +390,7 @@ export interface World {
   cellSize: number;
   /** 1 if the cell has food, 0 if empty. */
   food: Uint8Array;
+  /** Growth rate per cell (0–1.5). Negative means water: no food, no walking, drinkable. */
   fertility: Float32Array;
   actors: Actor[];
   nextId: number;

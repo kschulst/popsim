@@ -390,7 +390,7 @@ const BOARDS: Board[] = [
     title: 'Dødsårsaker per stamme',
     description: 'Antall døde per største stamme og dødsårsak. Fjernede aktører er ikke med.',
     html: (c) => {
-      const causes: DeathCause[] = ['starvation', 'age', 'killed', 'disease', 'catastrophe', 'childbirth', 'infant'];
+      const causes: DeathCause[] = ['starvation', 'thirst', 'age', 'killed', 'disease', 'catastrophe', 'childbirth', 'infant'];
       const T = c.w.tribes;
       const m = T.map(() => causes.map(() => 0));
       for (const [id, d] of c.death) {

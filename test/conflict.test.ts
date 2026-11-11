@@ -30,6 +30,7 @@ describe('conflict', () => {
     let damaged = 0;
     for (let trial = 0; trial < 20; trial++) {
       const w = createWorld({ ...DEFAULT_CONFIG, tribes });
+      w.fertility.fill(0.5); // no water in these tests
       w.food.fill(0);
       w.rules.foodSpontaneous = 0;
       w.rules.foodSpreadRate = 0;
@@ -55,6 +56,7 @@ describe('tribe attractiveness bonus', () => {
     let picked = 0;
     for (let trial = 0; trial < 20; trial++) {
       const w = createWorld({ ...DEFAULT_CONFIG, tribes });
+      w.fertility.fill(0.5); // no water in these tests
       w.food.fill(0);
       w.rules.directionNoise = 0;
       const favour = trial % 2; // alternate which male's tribe gets the bonus

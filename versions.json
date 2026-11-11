@@ -97,7 +97,10 @@
     "changes": [
       "Åtsel: den som dør, etterlater kjøtt (mørkerødt kryss) som andre kan spise til det råtner bort. Regler for mengde, forråtnelse og hvor mye som spises per tick.",
       "Attraktivitet: inspektøren og tooltipen viser hvor stor andel av mulige partnere som ville sagt ja, og hvor ofte aktøren faktisk har fått ja. Nye topplister: «Mest attraktive» og «Oftest fått ja».",
-      "Grafer i faner (Befolkning, Død, Stammer, Kamp og sykdom, Gener, Arv) med én rad grafer, og kartet tilpasser seg skjermhøyden, så siden ikke må scrolles. Dødsårsakene er delt i to grafer. Kortere navn i fargevalget."
+      "Grafer i faner (Befolkning, Død, Stammer, Kamp og sykdom, Gener, Arv) med én rad grafer, og kartet tilpasser seg skjermhøyden, så siden ikke må scrolles. Dødsårsakene er delt i to grafer. Kortere navn i fargevalget.",
+      "Vann: kartet får innsjøer og elver (regler for antall). Vann kan ikke krysses, aktørene glir langs kanten, og land ved vann er mer fruktbart. Stammene starter nær vann.",
+      "Tørst: aktørene drikker ved vann og leter etter vann når de er tørste. Barn som ammes, får væske fra moren. Tørst er egen dødsårsak.",
+      "Simuleringen fortsetter etter at du har sluppet løs en katastrofe eller lagt til aktører."
     ]
   }
 }

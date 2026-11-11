@@ -284,10 +284,33 @@ const cancelAim = () => {
   onCancel?.();
 };
 
-/** Releases a catastrophe: a meteor first asks for an impact point. */
-const requestEle = (key: EleKey) => {
-  if (key === 'meteor') aim('☄ Klikk i verden for å velge nedslagssted', (p) => triggerEle('meteor', p));
-  else triggerEle(key);
+/** Releases a catastrophe: a meteor first asks for an impact point. `done` runs afterwards (or on cancel). */
+const requestEle = (key: EleKey, done: () => void = () => {}) => {
+  if (key === 'meteor')
+    aim(
+      '☄ Klikk i verden for å velge nedslagssted',
+      (p) => {
+        triggerEle('meteor', p);
+        done();
+      },
+      { onCancel: done },
+    );
+  else {
+    triggerEle(key);
+    done();
+  }
+};
+
+/** Playback state to restore after a dialog (and its map click) is finished. */
+let resumeAfterDialog = false;
+const pauseForDialog = () => {
+  resumeAfterDialog = playing;
+  playing = false;
+};
+const resumeAfter = () => {
+  playing = resumeAfterDialog;
+  resumeAfterDialog = false;
+  touch();
 };
 
 let bannerTimer = 0;
@@ -538,24 +561,32 @@ const showElePickDesc = () => ($('ele-pick-desc').textContent = ELE_DEFS[elePick
 elePick.onchange = showElePickDesc;
 showElePickDesc();
 $('btn-ele').onclick = () => {
-  playing = false;
+  pauseForDialog();
   eleDialog.showModal();
 };
 eleDialog.addEventListener('close', () => {
-  if (eleDialog.returnValue === 'ok') requestEle(elePick.value as EleKey);
+  if (eleDialog.returnValue === 'ok') requestEle(elePick.value as EleKey, resumeAfter);
+  else resumeAfter();
 });
 
 const addDialog = $<HTMLDialogElement>('add-dialog');
 $('btn-add').onclick = () => {
-  playing = false;
+  pauseForDialog();
   $('add-tribe').innerHTML = shownWorld().tribes.map((t, i) => `<option value="${i}">${t.name}</option>`).join('');
   addDialog.showModal();
 };
 addDialog.addEventListener('close', () => {
-  if (addDialog.returnValue !== 'ok') return;
+  if (addDialog.returnValue !== 'ok') return resumeAfter();
   const tribe = Number($<HTMLSelectElement>('add-tribe').value);
   const count = Math.max(1, Math.min(100, Math.round(Number($<HTMLInputElement>('add-count').value) || 1)));
-  aim(`Klikk der ${count} ${shownWorld().tribes[tribe]?.name ?? ''} skal komme`, (p) => addActors(tribe, count, p));
+  aim(
+    `Klikk der ${count} ${shownWorld().tribes[tribe]?.name ?? ''} skal komme`,
+    (p) => {
+      addActors(tribe, count, p);
+      resumeAfter();
+    },
+    { onCancel: resumeAfter },
+  );
 });
 $('btn-new').onclick = () => {
   playing = false;
