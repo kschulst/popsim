@@ -38,7 +38,11 @@ export const computeStats = (w: World, ev: TickEvents): TickStats => {
     puritySum += max;
   }
   let food = 0;
-  for (let i = 0; i < w.food.length; i++) food += w.food[i];
+  let berries = 0;
+  for (let i = 0; i < w.food.length; i++) {
+    if (w.food[i]) food++;
+    if (w.food[i] === 2) berries++;
+  }
   return {
     tick: w.tick,
     females,
@@ -66,5 +70,6 @@ export const computeStats = (w: World, ev: TickEvents): TickStats => {
     deathAgeSum: ev.deaths.reduce((sum, d) => (d.cause === 'removed' ? sum : sum + d.age), 0),
     surnames: surnames.size,
     food,
+    berries,
   };
 };

@@ -100,7 +100,9 @@
       "Grafer i faner (Befolkning, Død, Stammer, Kamp og sykdom, Gener, Arv) med én rad grafer, og kartet tilpasser seg skjermhøyden, så siden ikke må scrolles. Dødsårsakene er delt i to grafer. Kortere navn i fargevalget.",
       "Vann: kartet får innsjøer og elver (regler for antall). Vann kan ikke krysses, aktørene glir langs kanten, og land ved vann er mer fruktbart. Stammene starter nær vann.",
       "Tørst: aktørene drikker ved vann og leter etter vann når de er tørste. Barn som ammes, får væske fra moren. Tørst er egen dødsårsak.",
-      "Simuleringen fortsetter etter at du har sluppet løs en katastrofe eller lagt til aktører."
+      "Simuleringen fortsetter etter at du har sluppet løs en katastrofe eller lagt til aktører.",
+      "To typer mat: gress (grønt, overalt) og bær (lilla, sjeldne, mye energi, bare på fruktbar jord). Nytt gen «kosthold» avgjør hvor mye aktøren får ut av hver; et kosthold midt imellom får full verdi av begge.",
+      "Årstider: matveksten er høyest om sommeren og lavest om vinteren (regler for årets lengde og variasjon). Vinteren gir et blått slør over kartet, og årstiden står i nøkkeltallene."
     ]
   }
 }

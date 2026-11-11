@@ -1,4 +1,5 @@
 import { activeEles, ELE_DEFS, eleEffects, iceCover } from '../sim/ele';
+import { seasonFactor } from '../sim/step';
 import type { Actor, AttackReason, World } from '../sim/types';
 import { capacityOf, maxHpOf, radiusOf } from '../sim/world';
 import { actorColor, type ColorMode } from './colors';
@@ -156,6 +157,10 @@ export class Renderer {
         img.data[o] = w.food[i] ? 70 : 40 + 60 * (1 - fert);
         img.data[o + 1] = w.food[i] ? 150 : 30 + 40 * fert;
         img.data[o + 2] = w.food[i] ? 90 : 60 + 120 * fert;
+      } else if (w.food[i] === 2) {
+        img.data[o] = 120;
+        img.data[o + 1] = 40;
+        img.data[o + 2] = 110;
       } else if (w.food[i]) {
         img.data[o] = 38;
         img.data[o + 1] = 92;
@@ -423,6 +428,12 @@ export class Renderer {
     ctx.fillStyle = '#0b0d10';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     this.drawField(w, opt.showFertility);
+    // Winter: a faint blue veil, stronger the lower the growth.
+    const season = seasonFactor(w);
+    if (season < 0.98) {
+      this.ctx.fillStyle = `rgba(170, 200, 255, ${Math.min(0.25, 0.3 * (1 - season))})`;
+      this.ctx.fillRect(this.ox, this.oy, w.width * this.scale, w.height * this.scale);
+    }
     this.drawEles(w);
     this.drawCarcasses(w);
 

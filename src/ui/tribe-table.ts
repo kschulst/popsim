@@ -38,7 +38,7 @@ export class TribeTable {
     this.tribes.push({
       name: `Stamme ${n + 1}`,
       color: PALETTE.find((c) => !this.tribes.some((t) => t.color === c)) ?? PALETTE[n % PALETTE.length],
-      genome: template ? { ...template.genome } : { size: 1.5, maxSpeed: 1.6, vision: 70, aggression: 0.4, longevity: 1, reproThreshold: 0.65, mutationRate: 0.1 },
+      genome: template ? { ...template.genome } : { size: 1.5, maxSpeed: 1.6, vision: 70, aggression: 0.4, longevity: 1, diet: 0.5, reproThreshold: 0.65, mutationRate: 0.1 },
       heritability: 0.5,
       seeds: 5,
     });

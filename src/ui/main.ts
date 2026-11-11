@@ -8,6 +8,7 @@ import { cloneWorld, createEmptyWorld, createWorld, DEFAULT_CONFIG, populateWorl
 import { fullName, NAME_SOURCE } from '../sim/names';
 import { APP_NAME, IS_DEV, VERSION, VERSION_LABEL } from '../version';
 import { mortality, type Mortality } from '../sim/mortality';
+import { seasonName } from '../sim/step';
 import { Charts } from './charts';
 import { COLOR_MODE_LABELS, type ColorMode } from './colors';
 import { BranchEditor, RulesPanel } from './editor';
@@ -57,11 +58,14 @@ const mortalityText = (m: Mortality) =>
   `<b>${m.births}</b> født · <b>${m.deaths}</b> døde · <b>${pct(m.ageShare)}</b> alderdom · <b>${pct(m.killedShare)}</b> drept · dødsalder <b>${Number.isFinite(m.meanAge) ? Math.round(m.meanAge) : '–'}</b>`;
 
 /** Mortality figures up to the displayed tick: whole lineage and the last RECENT_TICKS ticks. */
+const SEASON_ICONS: Record<string, string> = { vår: '🌱', sommer: '☀', høst: '🍂', vinter: '❄' };
+
 const renderVitals = (rows: TickStats[], at: number, w: World) => {
+  const season = seasonName(w);
   const all = mortality(rows, -1, at);
   const recent = mortality(rows, at - RECENT_TICKS, at);
   $('vitals').innerHTML =
-    `<span class="anc-overall" title="Gjennomsnittlig avstamning blant de levende på tick som vises"><b>${w.actors.length}</b> levende · Avstamning: ${ancestryBreakdown(w, 16)}</span>` +
+    `<span class="anc-overall" title="Gjennomsnittlig avstamning blant de levende på tick som vises">${season ? `${SEASON_ICONS[season] ?? ''} ${season} · ` : ''}<b>${w.actors.length}</b> levende · Avstamning: ${ancestryBreakdown(w, 16)}</span>` +
     `<span title="Fra tick 0 til tick som vises. Dødsalder i ticks.">Hittil: ${mortalityText(all)}</span>` +
     `<span title="De siste ${RECENT_TICKS} ticks før tick som vises. Dødsalder i ticks.">Siste ${RECENT_TICKS}: ${mortalityText(recent)}</span>`;
 };

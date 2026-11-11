@@ -1,6 +1,6 @@
 export type Sex = 'F' | 'M';
 
-export const GENE_KEYS = ['size', 'maxSpeed', 'vision', 'aggression', 'longevity', 'reproThreshold', 'mutationRate'] as const;
+export const GENE_KEYS = ['size', 'maxSpeed', 'vision', 'aggression', 'longevity', 'diet', 'reproThreshold', 'mutationRate'] as const;
 export type GeneKey = (typeof GENE_KEYS)[number];
 export type Genome = Record<GeneKey, number>;
 /** Per-gene inheritance strength (0.05–1): how strongly the gene value is passed on to children. */
@@ -100,6 +100,13 @@ export interface Rules {
   purityWeight: number;
   /** Score lost per vision length of distance to the candidate. */
   mateDistanceWeight: number;
+  /** Berries: energy per cell, chance to appear on fertile ground, and spread from berry neighbours. */
+  berryEnergy: number;
+  berrySpontaneous: number;
+  berrySpread: number;
+  /** Seasons: ticks per year (0 = no seasons) and how much growth swings between summer and winter. */
+  seasonLength: number;
+  seasonStrength: number;
   /** Lakes and rivers on new maps (applies to new runs). */
   waterLakes: number;
   waterRivers: number;
@@ -379,6 +386,8 @@ export interface TickStats {
   deathAgeSum: number;
   surnames: number;
   food: number;
+  /** Cells with berries (also counted in `food`). */
+  berries: number;
 }
 
 export interface World {
@@ -388,7 +397,7 @@ export interface World {
   cols: number;
   rows: number;
   cellSize: number;
-  /** 1 if the cell has food, 0 if empty. */
+  /** Food per cell: 0 none, 1 grass, 2 berries. */
   food: Uint8Array;
   /** Growth rate per cell (0–1.5). Negative means water: no food, no walking, drinkable. */
   fertility: Float32Array;

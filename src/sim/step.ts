@@ -26,9 +26,34 @@ const COURT_TICKS = 25;
  * Empty cells get food with probability fertility × (spontaneous + spread × food neighbours).
  * Neighbour counts use the state at the start of the tick.
  */
+/** Growth multiplier from the season: 1 + strength × sin(2π · tick / year). */
+export const seasonFactor = (w: World): number => {
+  const L = w.rules.seasonLength ?? 0;
+  if (L <= 0) return 1;
+  return Math.max(0, 1 + (w.rules.seasonStrength ?? 0) * Math.sin((2 * Math.PI * w.tick) / L));
+};
+
+/** Season name for the tick: spring, summer, autumn or winter. */
+export const seasonName = (w: World): string | null => {
+  const L = w.rules.seasonLength ?? 0;
+  if (L <= 0) return null;
+  const p = (((w.tick % L) + L) % L) / L;
+  return p < 0.125 || p >= 0.875 ? 'vår' : p < 0.375 ? 'sommer' : p < 0.625 ? 'høst' : 'vinter';
+};
+
+/** Energy an actor gets from a food cell, by type and its diet gene (0 grass … 1 berries). */
+export const foodGain = (type: number, a: Actor, r: World['rules']): number => {
+  const diet = a.genome.diet ?? 0.5;
+  // Mild trade-off: a middle diet (0.5) gets the full value of both; specialists gain ±30 %/±40 %.
+  return type === 2 ? (r.berryEnergy ?? 0) * (0.6 + 0.8 * diet) : r.foodEnergy * (1.15 - 0.3 * diet);
+};
+
 const regrowFood = (w: World, fx: EleEffects): void => {
-  const foodSpreadRate = w.rules.foodSpreadRate * fx.spread * fx.growth;
-  const foodSpontaneous = w.rules.foodSpontaneous * fx.spontaneous * fx.growth;
+  const season = seasonFactor(w);
+  const foodSpreadRate = w.rules.foodSpreadRate * fx.spread * fx.growth * season;
+  const foodSpontaneous = w.rules.foodSpontaneous * fx.spontaneous * fx.growth * season;
+  const berrySpread = (w.rules.berrySpread ?? 0) * fx.spread * fx.growth * season;
+  const berrySpontaneous = (w.rules.berrySpontaneous ?? 0) * fx.spontaneous * fx.growth * season;
   const cf = fx.cellFactor;
   const { cols, rows, fertility } = w;
   const prev = w.food.slice();
@@ -40,15 +65,22 @@ const regrowFood = (w: World, fx: EleEffects): void => {
       if (factor < 0.05) w.food[i] = 0;
       if (prev[i]) continue;
       let n = 0;
+      let nb = 0;
       for (let dr = -1; dr <= 1; dr++) {
         const rr = r + dr;
         if (rr < 0 || rr >= rows) continue;
         for (let dc = -1; dc <= 1; dc++) {
           const cc = c + dc;
-          if ((dr || dc) && cc >= 0 && cc < cols) n += prev[rr * cols + cc];
+          if (!(dr || dc) || cc < 0 || cc >= cols) continue;
+          const v = prev[rr * cols + cc];
+          if (v === 1) n++;
+          else if (v === 2) nb++;
         }
       }
-      if (Math.random() < fertility[i] * factor * (foodSpontaneous + foodSpreadRate * n)) w.food[i] = 1;
+      // Berries only on fertile ground; otherwise grass.
+      const f = fertility[i] * factor;
+      if (fertility[i] > 0.6 && Math.random() < f * (berrySpontaneous + berrySpread * nb)) w.food[i] = 2;
+      else if (Math.random() < f * (foodSpontaneous + foodSpreadRate * n)) w.food[i] = 1;
     }
   }
 };
@@ -150,9 +182,10 @@ const seekFood = (a: Actor, w: World, vision: number): { x: number; y: number } 
       const tx = (cx + 0.5) * cellSize;
       const ty = (cy + 0.5) * cellSize;
       const d2 = (tx - a.x) ** 2 + (ty - a.y) ** 2;
-      if (d2 > v2 || !food[cy * cols + cx]) continue;
-      // Random jitter breaks ties between equally distant cells.
-      const score = d2 + Math.random();
+      const type = food[cy * cols + cx];
+      if (d2 > v2 || !type) continue;
+      // Best value for the walk: distance per energy gained (random jitter breaks ties).
+      const score = (Math.sqrt(d2) + cellSize) / Math.max(0.1, foodGain(type, a, w.rules)) + Math.random() * 1e-3;
       if (score < best) {
         best = score;
         bx = tx;
@@ -161,11 +194,12 @@ const seekFood = (a: Actor, w: World, vision: number): { x: number; y: number } 
       }
     }
   }
-  // Carcasses count like food cells; the nearest wins.
+  // Carcasses count like food worth one bite.
   for (const c of w.carcasses ?? []) {
     const d2 = (c.x - a.x) ** 2 + (c.y - a.y) ** 2;
-    if (d2 <= v2 && d2 < best) {
-      best = d2;
+    const score = (Math.sqrt(d2) + cellSize) / Math.max(0.1, Math.min(c.energy, w.rules.carrionBite ?? 0));
+    if (d2 <= v2 && score < best) {
+      best = score;
       bx = c.x;
       by = c.y;
       found = true;
@@ -942,9 +976,9 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     // 5. Eat from the current cell, and from a carcass within reach.
     const ci = cellIndex(w, a.x, a.y);
     if (w.food[ci] && a.energy < cap) {
+      a.energy = Math.min(cap, a.energy + foodGain(w.food[ci], a, rules));
       w.food[ci] = 0;
       a.foodEaten++;
-      a.energy = Math.min(cap, a.energy + rules.foodEnergy);
     }
     if (a.energy < cap && w.carcasses?.length) {
       for (const c of w.carcasses) {

@@ -144,7 +144,10 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
   {
     title: 'Ruter med mat',
     group: 'Befolkning',
-    series: [{ label: 'mat', color: '#5fb36d', value: (s) => s.food }],
+    series: [
+      { label: 'gress', color: '#5fb36d', value: (s) => s.food - (s.berries ?? 0) },
+      { label: 'bær', color: '#b0509c', value: (s) => s.berries ?? 0 },
+    ],
   },
   {
     title: 'Arvestyrke (snitt per egenskap)',
