@@ -11,8 +11,13 @@ interface Series {
   scale?: number;
 }
 
+/** Chart tabs, in display order. */
+export const CHART_GROUPS = ['Befolkning', 'Død', 'Stammer', 'Kamp og sykdom', 'Gener', 'Arv'] as const;
+type ChartGroup = (typeof CHART_GROUPS)[number];
+
 interface ChartDef {
   title: string;
+  group: ChartGroup;
   series: Series[];
   /** Optional ±band around the first series. */
   band?: (s: TickStats) => [number, number];
@@ -24,6 +29,7 @@ interface ChartDef {
 const buildDefs = (tribes: Tribe[]): ChartDef[] => [
   {
     title: 'Populasjon',
+    group: 'Befolkning',
     series: [
       { label: 'totalt', color: '#d8dde4', value: (s) => s.females + s.males },
       { label: 'hunner', color: '#e8799b', value: (s) => s.females },
@@ -33,42 +39,68 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
   },
   {
     title: 'Generasjon',
+    group: 'Befolkning',
     series: [
       { label: 'snitt', color: '#c9b4ff', value: (s) => s.generationMean },
       { label: 'maks', color: '#7d6bb0', value: (s) => s.generationMax },
     ],
   },
   {
-    title: 'Fødsler og dødsårsaker per 50 ticks (fostre = tapte fostre)',
+    title: 'Fødsler og dødsfall per 50 ticks',
+    group: 'Befolkning',
     rolling: 50,
     series: [
       { label: 'fødsler', color: '#7ed69b', value: (s) => s.births },
+      {
+        label: 'døde',
+        color: '#d8dde4',
+        value: (s) =>
+          s.deathsStarvation + s.deathsAge + (s.deathsKilled ?? 0) + (s.deathsChildbirth ?? 0) + (s.deathsInfant ?? 0) + (s.deathsDisease ?? 0) + (s.deathsCatastrophe ?? 0),
+      },
+    ],
+  },
+  {
+    title: 'Dødsårsaker per 50 ticks',
+    group: 'Død',
+    rolling: 50,
+    series: [
       { label: 'sult', color: '#e0a35a', value: (s) => s.deathsStarvation },
       { label: 'alder', color: '#9aa0a8', value: (s) => s.deathsAge },
       { label: 'drept', color: '#ff5a4f', value: (s) => s.deathsKilled ?? 0 },
+      { label: 'sykdom', color: '#c6e85a', value: (s) => s.deathsDisease ?? 0 },
+    ],
+  },
+  {
+    title: 'Andre dødsårsaker per 50 ticks',
+    group: 'Død',
+    rolling: 50,
+    series: [
       { label: 'fødsel', color: '#f15bb5', value: (s) => s.deathsChildbirth ?? 0 },
       { label: 'spedbarn', color: '#5fd3c7', value: (s) => s.deathsInfant ?? 0 },
-      { label: 'sykdom', color: '#c6e85a', value: (s) => s.deathsDisease ?? 0 },
       { label: 'katastrofe', color: '#ff8a3a', value: (s) => s.deathsCatastrophe ?? 0 },
-      { label: 'fostre', color: '#c9b4ff', value: (s) => s.pregnancyLosses ?? 0 },
+      { label: 'fostre tapt', color: '#c9b4ff', value: (s) => s.pregnancyLosses ?? 0 },
     ],
   },
   {
     title: 'Syke',
+    group: 'Kamp og sykdom',
     series: [{ label: 'syke', color: '#c6e85a', value: (s) => s.infected ?? 0 }],
   },
   {
     title: 'Stammeandel (snitt avstamning)',
+    group: 'Stammer',
     domain: [0, 1],
     series: tribes.map((t, i) => ({ label: t.name, color: t.color, value: (s: TickStats) => s.tribeShare?.[i] ?? 0 })),
   },
   {
     title: 'Renhet (snitt største stammeandel)',
+    group: 'Stammer',
     domain: [0, 1],
     series: [{ label: 'renhet', color: '#f2c94c', value: (s) => s.purityMean ?? 0 }],
   },
   {
     title: 'Kamp per 50 ticks',
+    group: 'Kamp og sykdom',
     rolling: 50,
     series: [
       { label: 'treff', color: '#e0a35a', value: (s) => s.hits ?? 0 },
@@ -77,6 +109,7 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
   },
   {
     title: 'Snitt dødsalder (siste 100 ticks)',
+    group: 'Død',
     rolling: 100,
     series: [
       {
@@ -89,6 +122,7 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
   },
   {
     title: 'Andel døde av alderdom, % (siste 100 ticks)',
+    group: 'Død',
     rolling: 100,
     domain: [0, 100],
     series: [
@@ -103,14 +137,17 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
   },
   {
     title: 'Klaner (levende etternavn)',
+    group: 'Stammer',
     series: [{ label: 'klaner', color: '#f2c94c', value: (s) => s.surnames }],
   },
   {
     title: 'Ruter med mat',
+    group: 'Befolkning',
     series: [{ label: 'mat', color: '#5fb36d', value: (s) => s.food }],
   },
   {
     title: 'Arvestyrke (snitt per egenskap)',
+    group: 'Arv',
     domain: [0, 1],
     series: GENE_KEYS.map((k, i) => ({
       label: GENE_LABELS[k].toLowerCase().slice(0, 5),
@@ -121,6 +158,7 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
   ...GENE_KEYS.map(
     (k): ChartDef => ({
       title: `${GENE_LABELS[k]} (snitt ± sd)`,
+      group: (['size', 'maxSpeed', 'vision', 'aggression'] as string[]).includes(k) ? 'Gener' : 'Arv',
       domain: GENE_RANGES[k],
       series: [{ label: 'snitt', color: '#8fd3e0', value: (s) => s.geneMean[k] }],
       band: (s) => [s.geneMean[k] - s.geneSd[k], s.geneMean[k] + s.geneSd[k]],
@@ -157,7 +195,42 @@ export class Charts {
   private defs: ChartDef[] = [];
   private defsKey = '';
 
-  constructor(private readonly root: HTMLElement) {}
+  private group: ChartGroup = 'Befolkning';
+  private readonly grid: HTMLElement;
+  private readonly tabs: HTMLElement;
+
+  constructor(root: HTMLElement) {
+    try {
+      const saved = localStorage.getItem('popsim.chartGroup') as ChartGroup | null;
+      if (saved && (CHART_GROUPS as readonly string[]).includes(saved)) this.group = saved;
+    } catch {
+      /* storage unavailable */
+    }
+    root.innerHTML = '<nav class="chart-tabs"></nav><div class="chart-grid"></div>';
+    this.tabs = root.querySelector('.chart-tabs')!;
+    this.grid = root.querySelector('.chart-grid')!;
+    this.tabs.innerHTML = CHART_GROUPS.map((g) => `<button data-group="${g}">${g}</button>`).join('');
+    this.tabs.addEventListener('click', (e) => {
+      const g = (e.target as HTMLElement).closest<HTMLElement>('[data-group]')?.dataset.group as ChartGroup | undefined;
+      if (!g) return;
+      this.group = g;
+      try {
+        localStorage.setItem('popsim.chartGroup', g);
+      } catch {
+        /* ignore */
+      }
+      this.markTabs();
+      this.onTab?.();
+    });
+    this.markTabs();
+  }
+
+  /** Called when the user switches tab, so the owner can re-render. */
+  onTab?: () => void;
+
+  private markTabs(): void {
+    for (const b of this.tabs.querySelectorAll<HTMLElement>('button')) b.classList.toggle('on', b.dataset.group === this.group);
+  }
 
   render(rows: TickStats[], cursorTick: number, tribes: Tribe[], onSeek: (tick: number) => void): void {
     const key = tribes.map((t) => t.name + t.color).join('|');
@@ -165,14 +238,14 @@ export class Charts {
       this.defs = buildDefs(tribes);
       this.defsKey = key;
     }
-    const DEFS = this.defs;
-    const root = d3.select(this.root);
+    const DEFS = this.defs.filter((d) => d.group === this.group);
+    const root = d3.select(this.grid);
     const maxTick = Math.max(1, rows.length ? rows[rows.length - 1].tick : 1);
     const x = d3.scaleLinear([0, maxTick], [M.left, W - M.right]);
 
     const charts = root
       .selectAll<SVGSVGElement, ChartDef>('svg.chart')
-      .data(DEFS)
+      .data(DEFS, (d) => d.title)
       .join((enter) => {
         const svg = enter.append('svg').attr('class', 'chart').attr('viewBox', `0 0 ${W} ${H}`);
         svg.append('text').attr('class', 'chart-title').attr('x', M.left).attr('y', 13);
@@ -225,7 +298,7 @@ export class Charts {
         .selectAll('text')
         .data(def.series.length > 1 ? def.series : [])
         .join('text')
-        .attr('x', (_, i) => M.left + i * (def.series.length > 7 ? 28 : def.series.length > 6 ? 31 : def.series.length > 5 ? 36 : 48))
+        .attr('x', (_, i) => M.left + i * (def.series.length > 5 ? 36 : 54))
         .attr('y', 25)
         .attr('fill', (s) => s.color)
         .text((s) => s.label);

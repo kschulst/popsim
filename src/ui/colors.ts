@@ -6,11 +6,11 @@ import type { Actor, Tribe, World } from '../sim/types';
 export type ColorMode = 'tribe' | 'lineage' | 'generation' | 'genome' | 'aggression';
 
 export const COLOR_MODE_LABELS: Record<ColorMode, string> = {
-  tribe: 'Stamme (største andel, metning = renhet)',
-  lineage: 'Klan (etternavn)',
-  generation: 'Generasjon',
-  genome: 'Genom (fart → fargetone, syn → metning)',
-  aggression: 'Aggresjon',
+  tribe: 'Farge: stamme',
+  lineage: 'Farge: klan',
+  generation: 'Farge: generasjon',
+  genome: 'Farge: genom',
+  aggression: 'Farge: aggresjon',
 };
 
 const hueOf = (w: World, surname: string): number => {

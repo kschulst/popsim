@@ -47,6 +47,7 @@ let revision = 0;
 
 const renderer = new Renderer($<HTMLCanvasElement>('world'));
 const charts = new Charts($('charts'));
+charts.onTab = () => touch();
 
 /** Window for the "recent" mortality figures, in ticks. */
 const RECENT_TICKS = 500;

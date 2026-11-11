@@ -60,8 +60,8 @@ input[type='number'] { width: 90px; }
 main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
-  height: min(64vh, 680px);
-  min-height: 360px;
+  /* Leave room for the header, branch summary and one row of charts so the page needs no scrolling. */
+  height: max(360px, calc(100vh - 400px));
 }
 
 .world { position: relative; min-width: 0; }
@@ -169,12 +169,11 @@ ul.changes { margin: 0; padding-left: 18px; }
 }
 .vitals b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 
-.charts {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 6px 14px;
-  padding: 8px 16px 24px;
-}
+.charts { padding: 6px 16px 20px; }
+.chart-tabs { display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap; }
+.chart-tabs button { background: transparent; border-color: transparent; color: var(--muted); }
+.chart-tabs button.on { color: var(--text); border-color: var(--line); background: var(--panel-2); }
+.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px 14px; }
 svg.chart { width: 100%; height: auto; font-size: 9px; cursor: pointer; }
 svg.chart .chart-title { fill: var(--text); font-size: 10px; }
 svg.chart .band { fill: rgba(143, 211, 224, 0.15); }
