@@ -1,4 +1,5 @@
 import { Registry, type Death, type LifeRecord } from '../sim/genealogy';
+import { DEFAULT_RULES } from '../sim/rules';
 import type { TickStats, World } from '../sim/types';
 import { APP_NAME, VERSION } from '../version';
 import { History, type Branch, type HistoryConfig } from './history';
@@ -58,8 +59,10 @@ const encodeWorld = (w: World): WorldJson => {
   const { fertility: _omit, ...rest } = w;
   return { ...rest, food: u8ToBase64(w.food) };
 };
+/** Rules missing from older files (added later) get their current defaults. */
 const decodeWorld = (w: WorldJson, fertility: Float32Array): World => ({
   ...w,
+  rules: { ...structuredClone(DEFAULT_RULES), ...w.rules },
   food: base64ToU8(w.food),
   fertility,
 });

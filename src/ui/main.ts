@@ -14,7 +14,7 @@ import { BranchEditor, RulesPanel } from './editor';
 import { ancestryBreakdown, Inspector, kinMap } from './inspector';
 import { Leaderboards } from './leaderboards';
 import { createEle, ELE_DEFS } from '../sim/ele';
-import { ATTACK_COLORS, ATTACK_LABELS, Renderer } from './renderer';
+import { ATTACK_COLORS, ATTACK_LABELS, MARK_COLORS, Renderer } from './renderer';
 import { Timeline } from './timeline';
 
 /** Oldest export version this build can read (v3 adds pregnancy, ageing and disease to actors). */
@@ -557,19 +557,20 @@ const zoomCenter = (factor: number) => {
 $('zoom-in').onclick = () => zoomCenter(1.5);
 $('zoom-out').onclick = () => zoomCenter(1 / 1.5);
 $('zoom-reset').onclick = () => renderer.resetView();
+const M = MARK_COLORS;
 $('map-legend').innerHTML =
   '<strong>Angrep</strong> (pil mot den som angripes; flere streker til én = flere angriper den)<br>' +
   (Object.keys(ATTACK_COLORS) as (keyof typeof ATTACK_COLORS)[])
     .map((k) => `<span class="ln" style="border-color:${ATTACK_COLORS[k]}"></span>${ATTACK_LABELS[k]}`)
     .join('<br>') +
   '<br><strong>Partner</strong><br>' +
-  '<span class="ln dash" style="border-color:#f082aa"></span>søker partner<br>' +
-  '<span class="ln" style="border-color:#6ee68c"></span><span class="g" style="color:#6ee68c">♥</span>godtok hverandre (paret seg)<br>' +
-  '<span class="ln" style="border-color:#aaaab4"></span><span class="g" style="color:#ff5a46">✕</span>avvist; krysset står ved den som sa nei<br>' +
-  '<span class="ln dot" style="border-color:#78b4ff"></span>far som passer på gravid<br>' +
+  `<span class="ln dash" style="border-color:${M.seeking}"></span>søker partner<br>` +
+  `<span class="ln" style="border-color:${M.mated}"></span><span class="g" style="color:${M.mated}">♥</span>godtok hverandre (paret seg)<br>` +
+  `<span class="ln" style="border-color:${M.rejected}"></span><span class="g" style="color:${M.rejectCross}">✕</span>avvist; krysset står ved den som sa nei<br>` +
+  `<span class="ln dot" style="border-color:${M.guarding}"></span>far som passer på gravid<br>` +
   '<strong>Symboler over aktører</strong> (fra 2× zoom)<br>' +
-  '<span class="g" style="color:#ff6a5a">⚔</span>angriper <span class="g" style="color:#ff3b3b">!</span>angripes <span class="g" style="color:#ffd27a">↯</span>flykter<br>' +
-  '<span class="g" style="color:#f28fb6">♥</span>kurtiserer/kurtiseres <span class="g">✿</span>gravid<br>' +
+  `<span class="g" style="color:${M.attacking}">⚔</span>angriper <span class="g" style="color:${M.attacked}">!</span>angripes <span class="g" style="color:${M.fleeing}">↯</span>flykter<br>` +
+  `<span class="g" style="color:${M.courting}">♥</span>kurtiserer/kurtiseres <span class="g" style="color:${M.pregnant}">✿</span>gravid<br>` +
   '<span class="g">●</span>hvit prikk: gravid · stiplet farget ring: syk';
 $('legend-toggle').onclick = () => {
   $('map-legend').hidden = !$('map-legend').hidden;

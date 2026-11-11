@@ -81,7 +81,8 @@
       "Amming: etter fødselen ammes barnet i 30 ticks. Barnet holder seg nær moren og trekker energi fra henne, og moren kan ikke bli gravid igjen før perioden er over. Svangerskapet er kortet ned til 30 ticks.",
       "Partnersøk: en aktør som er klar, men ikke ser noen klar partner, går mot nærmeste aktør av motsatt kjønn som ikke er nær slekt. Uten dette stoppet formeringen i små stammer der nesten alle er i slekt.",
       "Angrepsstreker i farge etter årsak: mat, rival om partner, forsvar av gravid eller partner, blander seg inn, slår tilbake. Større ♥ for paring og ✕ for avvisning. Knappen «Forklaring» på kartet viser hva streker og symboler betyr.",
-      "Tidslinje i toppmenyen: glidebryter som viser hvor i tiden du er og kan dras, knapper for 10 steg frem og tilbake (også Shift + piltaster), og speilvendte knapper for ett steg (|◀ og ▶|)."
+      "Tidslinje i toppmenyen: glidebryter som viser hvor i tiden du er og kan dras, knapper for 10 steg frem og tilbake (også Shift + piltaster), og speilvendte knapper: |◀ ▶| for ett steg og |◀◀ ▶▶| for 10.",
+      "Rettet etter kodegjennomgang: partnersøket stopper ved kandidaten i stedet for å pendle, hopper over ammende, gravide, voktende og de som nettopp avviste, og vises som partnerstrek; angrepsfargen følger den reelle årsaken; ammende barn holder seg ved moren; regler som mangler i eldre filer får standardverdier ved import; forklaringen bruker samme farger som kartet."
     ]
   }
 }

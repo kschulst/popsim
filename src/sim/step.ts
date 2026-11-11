@@ -263,50 +263,53 @@ export const tribeBonusOf = (a: Actor, bonus: number[]): number => {
   return s;
 };
 
-/**
- * Best-scoring ready partner in sight, or null. a's score for b is the shared score plus b's tribe
- * bonus; b's score for a adds a's bonus. Both must reach minMateScore.
- */
-const findMate = (ctx: TickContext, a: Actor, vision: number): Actor | null => {
-  const { w } = ctx;
-  const bonus = w.rules.tribeBonus ?? [];
-  const min = w.rules.minMateScore;
-  const bonusA = tribeBonusOf(a, bonus);
-  let best: Actor | null = null;
-  let bestScore = -Infinity;
-  for (const b of ctx.hash.near(a.x, a.y, vision)) {
-    if (b.sex === a.sex || b.id === a.snub || ctx.dead.has(b.id) || !readyToMate(b, w)) continue;
-    const d = Math.hypot(b.x - a.x, b.y - a.y);
-    if (d > vision) continue;
-    const base = mateScore(ctx, a, b, d);
-    const score = base + tribeBonusOf(b, bonus);
-    if (score < min || base + bonusA < min || score <= bestScore) continue;
-    best = b;
-    bestScore = score;
-  }
-  return best;
-};
+/** Prospects must be able to mate within this many ticks to be worth approaching. */
+const PROSPECT_WAIT = 20;
 
 /**
- * When no partner is ready: the best-scoring opposite-sex adult in sight that would be acceptable
- * (score ≥ minMateScore, so not close kin), ready or not. Heading there finds partners in small,
- * closely related groups instead of wandering at random.
+ * One scan of the neighbourhood for partners.
+ * - mate: best-scoring ready partner; a's score for b adds b's tribe bonus and vice versa, and
+ *   both must reach minMateScore.
+ * - prospect: when no mate is ready, the best acceptable opposite-sex adult (score ≥ minMateScore,
+ *   so not close kin) that can mate soon: not pregnant, not guarding a mother, not nursing or in a
+ *   long cooldown, and not one that just rejected a. Approaching it finds partners in small,
+ *   closely related groups instead of wandering at random.
  */
-const findProspect = (ctx: TickContext, a: Actor, vision: number): Actor | null => {
+const findPartner = (ctx: TickContext, a: Actor, vision: number): { mate: Actor | null; prospect: Actor | null } => {
   const { w } = ctx;
-  let best: Actor | null = null;
-  let bestScore = w.rules.minMateScore;
+  const r = w.rules;
+  const bonus = r.tribeBonus ?? [];
+  const min = r.minMateScore;
+  const bonusA = tribeBonusOf(a, bonus);
+  let mate: Actor | null = null;
+  let mateScoreBest = -Infinity;
+  let prospect: Actor | null = null;
+  let prospectScore = min;
   for (const b of ctx.hash.near(a.x, a.y, vision)) {
-    if (b.sex === a.sex || b.id === a.snub || ctx.dead.has(b.id) || b.pregnancy || b.age < w.rules.mateCooldown) continue;
+    if (b.sex === a.sex || b.id === a.snub || b.snub === a.id || ctx.dead.has(b.id)) continue;
     const d = Math.hypot(b.x - a.x, b.y - a.y);
-    if (d > vision || d < 10) continue;
-    const sc = mateScore(ctx, a, b, d);
-    if (sc > bestScore) {
-      best = b;
-      bestScore = sc;
+    if (d > vision) continue;
+    const ready = readyToMate(b, w);
+    const soon =
+      !ready &&
+      b.pregnancy === null &&
+      b.caresFor === null &&
+      b.age >= r.mateCooldown &&
+      b.cooldown <= PROSPECT_WAIT;
+    if (!ready && !soon) continue;
+    const base = mateScore(ctx, a, b, d);
+    if (ready) {
+      const score = base + tribeBonusOf(b, bonus);
+      if (score >= min && base + bonusA >= min && score > mateScoreBest) {
+        mate = b;
+        mateScoreBest = score;
+      }
+    } else if (base > prospectScore) {
+      prospect = b;
+      prospectScore = base;
     }
   }
-  return best;
+  return { mate, prospect: mate ? null : prospect };
 };
 
 /**
@@ -433,13 +436,13 @@ const considerAttack = (ctx: TickContext, a: Actor, vision: number, food: { x: n
     if (desire > bestDesire) {
       best = b;
       bestDesire = desire;
-      // The largest motive term names the reason.
-      const terms: [AttackReason, number][] = [
-        ['food', r.hungerWeight * hunger + r.foodCompetitionWeight * foodComp],
-        ['rival', r.rivalryWeight * rival],
-        ['protect', nearProtectee * r.hungerWeight * protHunger * (prot?.weight ?? 0)],
-      ];
-      bestReason = terms.reduce((m, t) => (t[1] > m[1] ? t : m))[0];
+      // The reason is the largest candidate-specific motive. General hunger applies to every
+      // candidate equally, so it only names the reason when nothing else does ('food').
+      const foodTerm = r.foodCompetitionWeight * foodComp;
+      const rivalTerm = r.rivalryWeight * rival;
+      const protectTerm = nearProtectee * r.hungerWeight * protHunger * (prot?.weight ?? 0);
+      bestReason =
+        rivalTerm > foodTerm && rivalTerm >= protectTerm ? 'rival' : protectTerm > foodTerm ? 'protect' : 'food';
     }
   }
   if (best) {
@@ -746,16 +749,19 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     } else if (care && Math.hypot(care.x - a.x, care.y - a.y) > rules.guardDistance) {
       goal = care;
       speed = maxSpeed;
-    } else if (nursingMother && Math.hypot(nursingMother.x - a.x, nursingMother.y - a.y) > 15) {
-      goal = nursingMother;
-      speed = maxSpeed;
+    } else if (nursingMother) {
+      // A nursing child eats only food close to its mother; otherwise it stays with her.
+      const nearFood = food && Math.hypot(food.x - nursingMother.x, food.y - nursingMother.y) <= 25 ? food : null;
+      goal = nearFood ?? nursingMother;
+      if (goal === nursingMother && Math.hypot(nursingMother.x - a.x, nursingMother.y - a.y) > 15) speed = maxSpeed;
     } else {
       const ready = readyToMate(a, w);
-      if (ready) mate = findMate(ctx, a, vision);
-      a.mateTarget = mate?.id ?? null;
+      const found = ready ? findPartner(ctx, a, vision) : { mate: null, prospect: null };
+      mate = found.mate;
       // Ready but no partner ready in sight: approach an acceptable prospect, else explore.
-      const prospect = ready && !mate ? findProspect(ctx, a, vision) : null;
-      goal = mate ?? prospect ?? (ready ? null : food);
+      // Both count as courting (shown as the dashed partner line, and used to detect rivals).
+      a.mateTarget = (mate ?? found.prospect)?.id ?? null;
+      goal = mate ?? found.prospect ?? (ready ? null : food);
       if (!goal) {
         a.wander += gaussian() * Math.max(0.2, rules.directionNoise);
         dx = Math.cos(a.wander);
@@ -767,7 +773,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       dx = goal.x - a.x;
       dy = goal.y - a.y;
       const dist = Math.hypot(dx, dy);
-      if (!target && goal !== care && goal !== nursingMother) speed = maxSpeed * Math.min(1, dist / w.cellSize);
+      if (!target && goal !== care && !(goal === nursingMother && speed > 0)) speed = maxSpeed * Math.min(1, dist / w.cellSize);
       const angle = Math.atan2(dy, dx) + gaussian() * rules.directionNoise;
       dx = Math.cos(angle);
       dy = Math.sin(angle);
@@ -822,7 +828,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     // Nursing: the child draws energy from its mother when close, not full, and she can spare it.
     if (nursingMother && Math.hypot(nursingMother.x - a.x, nursingMother.y - a.y) <= 30) {
       const mCap = capacityOf(nursingMother, rules);
-      const take = Math.min(rules.nursingRate, cap - a.energy, nursingMother.energy - 0.2 * mCap);
+      const take = Math.min(rules.nursingRate ?? 0, cap - a.energy, nursingMother.energy - 0.2 * mCap);
       if (take > 0) {
         nursingMother.energy -= take;
         a.energy += take * 0.8;

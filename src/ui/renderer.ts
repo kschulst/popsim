@@ -18,10 +18,6 @@ export interface RenderOptions {
 export const DETAIL_ZOOM = 3;
 const MAX_ZOOM = 16;
 
-/**
- * Canvas 2D renderer. The world is fitted to the canvas (preserving aspect ratio) and then zoomed
- * by `zoom` around the world point (cx, cy).
- */
 /** Line colour per attack reason; also used by the map legend. */
 export const ATTACK_COLORS: Record<AttackReason, string> = {
   food: '#ff4b3a',
@@ -39,6 +35,24 @@ export const ATTACK_LABELS: Record<AttackReason, string> = {
   defend: 'slår tilbake',
 };
 
+/** Colours of partner lines and status badges; also used by the map legend. */
+export const MARK_COLORS = {
+  seeking: '#f082aa',
+  mated: '#6ee68c',
+  rejected: '#aaaab4',
+  rejectCross: '#ff5a46',
+  guarding: '#78b4ff',
+  attacking: '#ff6a5a',
+  attacked: '#ff3b3b',
+  fleeing: '#ffd27a',
+  courting: '#f28fb6',
+  pregnant: '#ffffff',
+};
+
+/**
+ * Canvas 2D renderer. The world is fitted to the canvas (preserving aspect ratio) and then zoomed
+ * by `zoom` around the world point (cx, cy).
+ */
 export class Renderer {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly fieldCanvas = document.createElement('canvas');
@@ -302,7 +316,8 @@ export class Renderer {
     const { ctx } = this;
     ctx.lineWidth = dpr;
     ctx.setLineDash([3 * dpr, 3 * dpr]);
-    ctx.strokeStyle = 'rgba(240, 130, 170, 0.55)';
+    ctx.strokeStyle = MARK_COLORS.seeking;
+    ctx.globalAlpha = 0.6;
     ctx.beginPath();
     for (const a of w.actors) {
       const m = a.mateTarget === null ? undefined : byId.get(a.mateTarget);
@@ -311,9 +326,10 @@ export class Renderer {
       ctx.lineTo(sx(m), sy(m));
     }
     ctx.stroke();
+    ctx.globalAlpha = 1;
     // Caring fathers: dotted blue line to the pregnant mother.
     ctx.setLineDash([1.5 * dpr, 3 * dpr]);
-    ctx.strokeStyle = 'rgba(120, 180, 255, 0.7)';
+    ctx.strokeStyle = MARK_COLORS.guarding;
     ctx.beginPath();
     for (const a of w.actors) {
       const m = a.caresFor === null ? undefined : byId.get(a.caresFor);
@@ -329,7 +345,8 @@ export class Renderer {
       if (!c || !b) continue;
       const alpha = Math.min(1, c.ttl / 12);
       const ok = c.selfAccepted && c.otherAccepted;
-      ctx.strokeStyle = ok ? `rgba(110, 230, 140, ${alpha})` : `rgba(170, 170, 180, ${alpha * 0.8})`;
+      ctx.globalAlpha = ok ? alpha : alpha * 0.8;
+      ctx.strokeStyle = ok ? MARK_COLORS.mated : MARK_COLORS.rejected;
       ctx.lineWidth = (ok ? 3 : 2) * dpr;
       ctx.beginPath();
       ctx.moveTo(sx(a), sy(a));
@@ -341,20 +358,21 @@ export class Renderer {
         ctx.font = `bold ${Math.round(16 * dpr)}px system-ui, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = `rgba(0, 0, 0, ${0.7 * alpha})`;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillText(glyph, x + dpr, y + dpr);
         ctx.fillStyle = color;
         ctx.fillText(glyph, x, y);
         ctx.textAlign = 'start';
       };
       if (ok) {
-        mark('♥', `rgba(110, 230, 140, ${alpha})`, mx, my - 10 * dpr);
+        mark('♥', MARK_COLORS.mated, mx, my - 10 * dpr);
       } else {
         // Big cross near whoever said no (both ends if both did).
         const at = (from: Actor, to: Actor) => [sx(from) + (sx(to) - sx(from)) * 0.3, sy(from) + (sy(to) - sy(from)) * 0.3] as const;
-        if (!c.selfAccepted) mark('✕', `rgba(255, 90, 70, ${alpha})`, ...at(a, b));
-        if (!c.otherAccepted) mark('✕', `rgba(255, 90, 70, ${alpha})`, ...at(b, a));
+        if (!c.selfAccepted) mark('✕', MARK_COLORS.rejectCross, ...at(a, b));
+        if (!c.otherAccepted) mark('✕', MARK_COLORS.rejectCross, ...at(b, a));
       }
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -484,11 +502,11 @@ export class Renderer {
     for (const a of w.actors) {
       if (!badgeZoom && a.id !== opt.selectedId) continue;
       const parts: [string, string][] = [];
-      if (a.target !== null) parts.push(['⚔', '#ff6a5a']);
-      if (attacked.has(a.id)) parts.push(['!', '#ff3b3b']);
-      if (a.fleeing > 0) parts.push(['↯', '#ffd27a']);
-      if (a.mateTarget !== null || courted.has(a.id)) parts.push(['♥', '#f28fb6']);
-      if (a.pregnancy) parts.push(['✿', '#ffffff']);
+      if (a.target !== null) parts.push(['⚔', MARK_COLORS.attacking]);
+      if (attacked.has(a.id)) parts.push(['!', MARK_COLORS.attacked]);
+      if (a.fleeing > 0) parts.push(['↯', MARK_COLORS.fleeing]);
+      if (a.mateTarget !== null || courted.has(a.id)) parts.push(['♥', MARK_COLORS.courting]);
+      if (a.pregnancy) parts.push(['✿', MARK_COLORS.pregnant]);
       if (!parts.length) continue;
       const r = radiusOf(a) * s;
       const y = sy(a) - r - (detail ? Math.max(2, r * 0.3) + 6 * dpr : 3 * dpr);
