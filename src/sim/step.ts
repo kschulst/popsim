@@ -59,13 +59,20 @@ const readyToMate = (a: Actor, w: World): boolean =>
   a.caresFor === null &&
   a.energy >= a.genome.reproThreshold * capacityOf(a, w.rules);
 
-/** Effective vision and top speed after injury. */
-const visionOf = (a: Actor, w: World) => a.genome.vision * hpFactor(a, w.rules);
-const speedOf = (a: Actor, w: World) => a.genome.maxSpeed * hpFactor(a, w.rules);
+/** Biological age: age divided by the longevity gene. */
+const bioAge = (a: Actor) => a.age / (a.genome.longevity || 1);
+
+/** 1 until senescence starts, then falling linearly to 1 − senescenceStrength. */
+export const vigorOf = (a: Actor, r: World['rules']): number =>
+  1 - r.senescenceStrength * clamp((bioAge(a) - r.senescenceOnset) / Math.max(1, r.senescenceSpan), 0, 1);
+
+/** Effective vision and top speed after injury and ageing. */
+const visionOf = (a: Actor, w: World) => a.genome.vision * hpFactor(a, w.rules) * vigorOf(a, w.rules);
+const speedOf = (a: Actor, w: World) => a.genome.maxSpeed * hpFactor(a, w.rules) * vigorOf(a, w.rules);
 
 /** Fighting strength: size × (0.5 + 0.5 × energy share) × √(hp share). */
 export const strengthOf = (a: Actor, w: World): number =>
-  a.genome.size * (0.5 + 0.5 * Math.min(1, a.energy / capacityOf(a, w.rules))) * hpFactor(a, w.rules);
+  a.genome.size * (0.5 + 0.5 * Math.min(1, a.energy / capacityOf(a, w.rules))) * hpFactor(a, w.rules) * vigorOf(a, w.rules);
 
 /** Nearest food cell within `vision`, or null if none is visible. */
 const seekFood = (a: Actor, w: World, vision: number): { x: number; y: number } | null => {
@@ -166,11 +173,31 @@ class TickContext {
     return best;
   }
 
+  /** Pregnancies lost this tick (mother died, or stillbirth). */
+  losses = 0;
+
+  die(a: Actor, cause: TickDeath['cause'], killer?: Actor): void {
+    if (this.dead.has(a.id)) return;
+    this.dead.add(a.id);
+    if (killer) killer.kills++;
+    this.deaths.push({
+      id: a.id,
+      cause,
+      age: a.age,
+      killer: killer?.id,
+      tally: {
+        kills: a.kills,
+        damageDealt: a.damageDealt,
+        damageTaken: a.damageTaken,
+        hitsTaken: a.hitsTaken,
+        foodEaten: a.foodEaten,
+        distance: a.distance,
+      },
+    });
+  }
+
   kill(victim: Actor, killer: Actor): void {
-    if (this.dead.has(victim.id)) return;
-    this.dead.add(victim.id);
-    this.deaths.push({ id: victim.id, cause: 'killed', age: victim.age, killer: killer.id });
-    killer.kills++;
+    this.die(victim, 'killed', killer);
   }
 }
 
@@ -381,6 +408,7 @@ const strike = (ctx: TickContext, a: Actor, t: Actor): void => {
   t.lastHitBy = a.id;
   a.damageDealt += dmg;
   t.damageTaken += dmg;
+  t.hitsTaken++;
   ctx.hits++;
   if (t.hp <= 0) {
     ctx.kill(t, a);
@@ -405,6 +433,12 @@ const conceive = (a: Actor, b: Actor, w: World): boolean => {
   const r = w.rules;
   const mother = a.sex === 'F' ? a : b;
   const father = a.sex === 'F' ? b : a;
+  // Ageing lowers fertility: conception fails with probability 1 − vigor(mother) × vigor(father).
+  if (Math.random() > vigorOf(mother, r) * vigorOf(father, r)) {
+    mother.cooldown = Math.max(mother.cooldown, r.rejectionCooldown);
+    father.cooldown = Math.max(father.cooldown, r.rejectionCooldown);
+    return false;
+  }
   let n = 1;
   while (n < 4 && Math.random() < r.multipleBirthRate) n++;
 
@@ -452,13 +486,23 @@ const conceive = (a: Actor, b: Actor, w: World): boolean => {
 };
 
 /** Births at the end of a pregnancy. The energy paid by both parents is split by each child's need. */
-const deliver = (mother: Actor, w: World): Actor[] => {
+const deliver = (ctx: TickContext, mother: Actor): Actor[] => {
+  const w = ctx.w;
   const p = mother.pregnancy!;
   mother.pregnancy = null;
   const r = w.rules;
   const need = p.embryos.reduce((s, e) => s + e.energy, 0);
   const paid = p.fatherPaid + p.motherPaid;
-  return p.embryos.map((e) => {
+  const n = p.embryos.length;
+  // Childbirth risks grow with the number of children and with too little energy.
+  const motherShare = Math.min(1, mother.energy / capacityOf(mother, r));
+  const paidShare = need > 0 ? Math.min(1, paid / need) : 1;
+  const motherRisk = r.birthRisk * n * (1 + 2 * (1 - motherShare));
+  const childRisk = r.birthRisk * n * (1 + 2 * (1 - paidShare));
+  const born = p.embryos.filter(() => Math.random() >= childRisk);
+  ctx.losses += n - born.length;
+  if (Math.random() < motherRisk) ctx.die(mother, 'childbirth');
+  return born.map((e) => {
     const angle = rand(0, Math.PI * 2);
     const child: Actor = {
       id: w.nextId++,
@@ -495,6 +539,9 @@ const deliver = (mother: Actor, w: World): Actor[] => {
       damageDealt: 0,
       damageTaken: 0,
       kills: 0,
+      hitsTaken: 0,
+      foodEaten: 0,
+      distance: 0,
     };
     child.hp = maxHpOf(child, r);
     return child;
@@ -643,6 +690,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     }
     a.x += a.vx;
     a.y += a.vy;
+    a.distance += Math.hypot(a.vx, a.vy);
     if (a.x < radius || a.x > w.width - radius) {
       a.x = clamp(a.x, radius, w.width - radius);
       a.vx = 0;
@@ -658,7 +706,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     // 4. Energy cost and healing.
     const sp2 = a.vx * a.vx + a.vy * a.vy;
     a.energy -=
-      rules.baseCost * a.genome.size * (1 + (rules.agingFactor * a.age) / rules.maxAge) +
+      rules.baseCost * a.genome.size * (1 + (rules.agingFactor * bioAge(a)) / 1000) +
       rules.moveCost * a.genome.size * sp2;
     const maxHp = maxHpOf(a, rules);
     if (a.hp < maxHp && a.energy > cap / 2) {
@@ -671,6 +719,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     const ci = cellIndex(w, a.x, a.y);
     if (w.food[ci] && a.energy < cap) {
       w.food[ci] = 0;
+      a.foodEaten++;
       a.energy = Math.min(cap, a.energy + rules.foodEnergy);
     }
 
@@ -681,7 +730,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       const pay = remaining / Math.max(1, preg.due - w.tick + 1);
       a.energy -= pay;
       preg.motherPaid += pay;
-      if (w.tick >= preg.due && a.energy > 0) births.push(...deliver(a, w));
+      if (w.tick >= preg.due && a.energy > 0) births.push(...deliver(ctx, a));
     }
 
     // The caring father, and relatives in proportion to kin weight, share energy with a pregnant
@@ -703,17 +752,29 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       if (courtship(ctx, a, mate)) conceive(a, mate, w);
     }
 
-    // 7. Death from starvation or age.
-    if (a.energy <= 0) {
-      ctx.dead.add(a.id);
-      ctx.deaths.push({ id: a.id, cause: 'starvation', age: a.age });
-    } else if (a.age >= rules.maxAge) {
-      ctx.dead.add(a.id);
-      ctx.deaths.push({ id: a.id, cause: 'age', age: a.age });
+    // 7. Death: starvation, ageing (rising risk), frailty from low energy, infancy.
+    if (!ctx.dead.has(a.id)) {
+      const ageRisk = rules.agingHazard * 2 ** (bioAge(a) / Math.max(1, rules.agingDoubling));
+      const share = a.energy / cap;
+      const frailRisk =
+        share < rules.frailtyThreshold ? rules.frailtyHazard * (1 - share / Math.max(1e-9, rules.frailtyThreshold)) : 0;
+      let infantRisk = 0;
+      if (a.age < rules.infancyTicks) {
+        infantRisk = rules.infantHazard * (1 - a.age / rules.infancyTicks);
+        const parentNear = (a.parents ?? []).some((pid) => {
+          const p = ctx.alive(pid);
+          return p !== undefined && Math.hypot(p.x - a.x, p.y - a.y) <= 40;
+        });
+        if (parentNear) infantRisk *= 0.3;
+      }
+      if (a.energy <= 0) ctx.die(a, 'starvation');
+      else if (a.age >= rules.maxAge || Math.random() < ageRisk) ctx.die(a, 'age');
+      else if (Math.random() < frailRisk) ctx.die(a, 'starvation');
+      else if (Math.random() < infantRisk) ctx.die(a, 'infant');
     }
   }
 
-  let pregnancyLosses = 0;
+  let pregnancyLosses = ctx.losses;
   if (ctx.dead.size) {
     for (const a of w.actors) if (ctx.dead.has(a.id) && a.pregnancy) pregnancyLosses += a.pregnancy.embryos.length;
     w.actors = w.actors.filter((a) => !ctx.dead.has(a.id));

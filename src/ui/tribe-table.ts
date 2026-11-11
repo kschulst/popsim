@@ -3,7 +3,7 @@ import { clamp } from '../sim/random';
 import type { GeneKey, Tribe } from '../sim/types';
 
 /** Genes set per tribe in the dialog; the rest are copied from the first default tribe. */
-const COLUMNS: GeneKey[] = ['size', 'maxSpeed', 'vision', 'aggression'];
+const COLUMNS: GeneKey[] = ['size', 'maxSpeed', 'vision', 'aggression', 'longevity'];
 const PALETTE = ['#c77dff', '#ff9f43', '#2ec4b6', '#f15bb5', '#9aa0a8'];
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -38,7 +38,7 @@ export class TribeTable {
     this.tribes.push({
       name: `Stamme ${n + 1}`,
       color: PALETTE.find((c) => !this.tribes.some((t) => t.color === c)) ?? PALETTE[n % PALETTE.length],
-      genome: template ? { ...template.genome } : { size: 1.5, maxSpeed: 1.6, vision: 70, aggression: 0.4, reproThreshold: 0.65, mutationRate: 0.1 },
+      genome: template ? { ...template.genome } : { size: 1.5, maxSpeed: 1.6, vision: 70, aggression: 0.4, longevity: 1, reproThreshold: 0.65, mutationRate: 0.1 },
       heritability: 0.5,
       seeds: 5,
     });

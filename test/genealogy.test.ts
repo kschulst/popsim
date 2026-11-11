@@ -39,8 +39,8 @@ describe('kinship', () => {
 
 const rec = (id: number, born: number, ps: [number, number] | null = null): LifeRecord => ({
   id, born, parents: ps, given: 'A', surname: 'B', sex: 'F', generation: 0,
-  genome: { size: 1, maxSpeed: 1, vision: 50, aggression: 0.5, reproThreshold: 0.5, mutationRate: 0.1 },
-  dominance: { size: 0.5, maxSpeed: 0.5, vision: 0.5, aggression: 0.5, reproThreshold: 0.5, mutationRate: 0.5 },
+  genome: { size: 1, maxSpeed: 1, vision: 50, aggression: 0.5, longevity: 1, reproThreshold: 0.5, mutationRate: 0.1 },
+  dominance: { size: 0.5, maxSpeed: 0.5, vision: 0.5, aggression: 0.5, longevity: 0.5, reproThreshold: 0.5, mutationRate: 0.5 },
   ancestry: [1],
 });
 

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { inherit } from '../src/sim/genome';
 import type { Dominance, Genome } from '../src/sim/types';
 
-const g = (size: number): Genome => ({ size, maxSpeed: 1, vision: 50, aggression: 0.5, reproThreshold: 0.6, mutationRate: 0.01 });
-const d = (v: number): Dominance => ({ size: v, maxSpeed: v, vision: v, aggression: v, reproThreshold: v, mutationRate: v });
+const g = (size: number): Genome => ({ size, maxSpeed: 1, vision: 50, aggression: 0.5, longevity: 1, reproThreshold: 0.6, mutationRate: 0.01 });
+const d = (v: number): Dominance => ({ size: v, maxSpeed: v, vision: v, aggression: v, longevity: v, reproThreshold: v, mutationRate: v });
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 describe('inherit', () => {

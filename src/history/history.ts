@@ -149,7 +149,7 @@ export class History {
     const reg = b.registry;
     const ev = step(b.head, (aid) => reg.get(aid)?.parents);
     for (const c of ev.births) reg.add(recordOf(c));
-    for (const d of ev.deaths) reg.die(d.id, { tick: b.head.tick, cause: d.cause, killer: d.killer });
+    for (const d of ev.deaths) reg.die(d.id, { tick: b.head.tick, cause: d.cause, killer: d.killer, tally: d.tally });
     b.headTick = b.head.tick;
     b.stats.push(computeStats(b.head, ev));
     const copy = storedCopy(b.head);

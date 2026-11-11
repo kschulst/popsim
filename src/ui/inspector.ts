@@ -10,13 +10,21 @@ import {
 } from '../sim/genealogy';
 import { GENE_LABELS, normGene } from '../sim/genome';
 import { fullName } from '../sim/names';
-import { GENE_KEYS, type World } from '../sim/types';
+import { GENE_KEYS, type DeathCause, type World } from '../sim/types';
+import { vigorOf } from '../sim/step';
 import { purity } from '../sim/tribes';
 import { capacityOf, maxHpOf } from '../sim/world';
 import { surnameColor } from './colors';
 import { DETAIL_ZOOM } from './renderer';
 
-const CAUSE_LABELS = { starvation: 'sult', age: 'alder', killed: 'drept', removed: 'fjernet ved forgreining' };
+export const CAUSE_LABELS: Record<DeathCause, string> = {
+  starvation: 'sult',
+  age: 'alderdom',
+  killed: 'drept',
+  childbirth: 'døde i fødsel',
+  infant: 'spedbarnsdød',
+  removed: 'fjernet ved forgreining',
+};
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -137,7 +145,7 @@ export class Inspector {
     const kinSummary = [...counts.entries()].map(([r, n]) => `${n} ${RELATION_LABELS[r]}`).join(', ');
 
     const status = live
-      ? `lever · alder ${live.age} · energi ${live.energy.toFixed(0)}/${capacityOf(live, w.rules).toFixed(0)} · helse ${Math.max(0, live.hp).toFixed(0)}/${maxHpOf(live, w.rules).toFixed(0)}`
+      ? `lever · alder ${live.age}${vigorOf(live, w.rules) < 0.995 ? ` (svekket ${Math.round((1 - vigorOf(live, w.rules)) * 100)} %)` : ''} · energi ${live.energy.toFixed(0)}/${capacityOf(live, w.rules).toFixed(0)} · helse ${Math.max(0, live.hp).toFixed(0)}/${maxHpOf(live, w.rules).toFixed(0)}`
       : death
         ? `død tick ${death.tick} (${CAUSE_LABELS[death.cause]}${death.killer !== undefined ? ` av ${link(death.killer)}` : ''})`
         : 'ikke i live';

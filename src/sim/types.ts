@@ -1,6 +1,6 @@
 export type Sex = 'F' | 'M';
 
-export const GENE_KEYS = ['size', 'maxSpeed', 'vision', 'aggression', 'reproThreshold', 'mutationRate'] as const;
+export const GENE_KEYS = ['size', 'maxSpeed', 'vision', 'aggression', 'longevity', 'reproThreshold', 'mutationRate'] as const;
 export type GeneKey = (typeof GENE_KEYS)[number];
 export type Genome = Record<GeneKey, number>;
 /** Per-gene inheritance strength (0.05–1): how strongly the gene value is passed on to children. */
@@ -28,7 +28,23 @@ export interface Rules {
   baseCost: number;
   moveCost: number;
   agingFactor: number;
+  /** Hard upper age limit (safety cap). */
   maxAge: number;
+  /** Ageing death risk per tick at age 0: risk = agingHazard × 2^(age / longevity / agingDoubling). */
+  agingHazard: number;
+  agingDoubling: number;
+  /** Senescence: from onset (age / longevity) vigor falls linearly over `senescenceSpan` by `senescenceStrength`. */
+  senescenceOnset: number;
+  senescenceSpan: number;
+  senescenceStrength: number;
+  /** Below frailtyThreshold × capacity energy, extra death risk up to frailtyHazard per tick (cause: starvation). */
+  frailtyThreshold: number;
+  frailtyHazard: number;
+  /** Base risk of death in childbirth, for the mother and for each child. */
+  birthRisk: number;
+  /** Infant mortality: risk per tick up to infantHazard, falling to 0 at age infancyTicks; lower near a parent. */
+  infancyTicks: number;
+  infantHazard: number;
   friction: number;
   steerStrength: number;
   directionNoise: number;
@@ -143,6 +159,22 @@ export interface Actor {
   damageDealt: number;
   damageTaken: number;
   kills: number;
+  /** Times hit in fights. */
+  hitsTaken: number;
+  /** Food cells eaten. */
+  foodEaten: number;
+  /** Distance moved (world units). */
+  distance: number;
+}
+
+/** Lifetime counters kept in the death record. */
+export interface Tally {
+  kills: number;
+  damageDealt: number;
+  damageTaken: number;
+  hitsTaken: number;
+  foodEaten: number;
+  distance: number;
 }
 
 /** A child conceived but not yet born; its genes are fixed at conception. */
@@ -187,7 +219,7 @@ export interface Tribe {
   seeds: number;
 }
 
-export type DeathCause = 'starvation' | 'age' | 'killed' | 'removed';
+export type DeathCause = 'starvation' | 'age' | 'killed' | 'childbirth' | 'infant' | 'removed';
 
 export interface TickStats {
   tick: number;
@@ -202,6 +234,8 @@ export interface TickStats {
   deathsStarvation: number;
   deathsAge: number;
   deathsKilled: number;
+  deathsChildbirth: number;
+  deathsInfant: number;
   /** Embryos lost because the mother died while pregnant. */
   pregnancyLosses: number;
   /** Females currently pregnant. */
@@ -249,4 +283,5 @@ export interface TickDeath {
   cause: DeathCause;
   age: number;
   killer?: number;
+  tally: Tally;
 }

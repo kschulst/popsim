@@ -109,6 +109,9 @@ export const spawnSeed = (world: World, opts: NewActor): Actor => {
     damageDealt: 0,
     damageTaken: 0,
     kills: 0,
+    hitsTaken: 0,
+    foodEaten: 0,
+    distance: 0,
   };
   a.hp = maxHpOf(a, world.rules);
   a.energy = capacityOf(a, world.rules) * (opts.energyFraction ?? 0.8);

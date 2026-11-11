@@ -6,6 +6,7 @@ export const GENE_RANGES: Record<GeneKey, [number, number]> = {
   maxSpeed: [0.3, 3],
   vision: [10, 120],
   aggression: [0, 1],
+  longevity: [0.5, 2],
   reproThreshold: [0.4, 0.95],
   mutationRate: [0.01, 0.3],
 };
@@ -15,6 +16,7 @@ export const GENE_LABELS: Record<GeneKey, string> = {
   maxSpeed: 'Maks fart',
   vision: 'Syn',
   aggression: 'Aggresjon',
+  longevity: 'Levealder',
   reproThreshold: 'Paringsterskel',
   mutationRate: 'Mutasjonsrate',
 };

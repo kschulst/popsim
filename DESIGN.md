@@ -21,7 +21,16 @@ Hver versjon er en git-tag (`v1`, `v2` …) og publiseres frosset under `/vN/` p
 - **Tilfeldighet**: kjøringer er ikke-deterministiske (`Math.random`). Tilfeldighet brukes i retning, mutasjon, kjønn, arv, matvekst og oppdateringsrekkefølge.
 - **Miljø**: rutenett (64×48). Hver rute har mat eller ikke (binært), og en fast fruktbarhet (0,2–1). En tom rute får mat med sannsynlighet `fruktbarhet × (foodSpontaneous + foodSpreadRate × antall naboruter med mat)`. Et nedbeitet område gror derfor innover fra kantene, og beiting setter varige spor for senere generasjoner. Å spise tømmer ruten og gir `foodEnergy` energi, begrenset av kapasiteten.
 - **Regelbeskrivelser**: hver regel har en beskrivelse i UI-et (hover eller ?-knapp).
-- **Energi**: kapasitet = `energyPerSize × size`. Kostnad per tick = `baseCost × size × (1 + agingFactor × alder/maxAge) + moveCost × size × fart²`. Død ved energi ≤ 0 eller alder ≥ `maxAge`.
+- **Energi**: kapasitet = `energyPerSize × size`. Kostnad per tick = `baseCost × size × (1 + agingFactor × biologisk alder/1000) + moveCost × size × fart²`.
+- **Død og levetid**:
+  - Biologisk alder = alder / genet `longevity` (0,5–2, standard 1 per stamme).
+  - Aldring: risiko per tick `agingHazard × 2^(biologisk alder / agingDoubling)` (Gompertz). Standard gir median levealder rundt 950 ticks og spredning fra omtrent 550 til 1250. `maxAge` (3000) er bare en sikkerhetsgrense.
+  - Svekkelse: fra biologisk alder `senescenceOnset` faller fart, syn, slagstyrke og sjanse for unnfangelse lineært over `senescenceSpan` til `1 − senescenceStrength`.
+  - Sult: død ved energi ≤ 0, og under `frailtyThreshold × kapasitet` en ekstra risiko opptil `frailtyHazard` per tick.
+  - Fødsel: moren dør med sannsynlighet `birthRisk × antall barn × (1 + 2 × (1 − energiandel))`; hvert barn dødfødes med `birthRisk × antall barn × (1 + 2 × (1 − betalt andel))`.
+  - Spedbarn: risiko `infantHazard × (1 − alder/infancyTicks)` per tick, 30 % av det når mor eller far er innen 40 enheter.
+  - Drept: se Konflikt.
+  - Dødsårsakene vises i grafen «Fødsler og dødsårsaker» og i inspektøren. Ved død lagres tellere (drap, skade gitt og tatt, treff, mat spist, distanse) i stamtreet.
 - **Fysisk plass** (v2): kropper overlapper ikke. Etter bevegelse skyves overlappende aktører fra hverandre, halvparten hver.
 - **Formering**: to aktører av motsatt kjønn i kontakt, begge over `reproThreshold × kapasitet`, ingen nedkjøling, ikke i kamp eller på flukt, og partnerpoeng over `minMateScore` (se Partnervalg). Barnets startenergi betales av foreldrene etter `parentalCostSplit` (andel betalt av hunnen). Kjønn trekkes 50/50. Ingen parbinding.
 - **Arv**: hver egenskap har en arvestyrke (0,05–1). Barnets verdi er en blanding av foreldrenes, vektet med mors andel av foreldrenes samlede arvestyrke for egenskapen, pluss gaussisk støy (`inheritanceNoise`). Arvestyrken for hver egenskap arves fra én tilfeldig forelder. Deretter muterer begge (standardavvik `mutationRate × intervall × mutationScale`). Hver seed får et eget grunnivå for arvestyrke, så stammene er ulike fra start.
@@ -35,6 +44,7 @@ Hver versjon er en git-tag (`v1`, `v2` …) og publiseres frosset under `/vN/` p
 | `maxSpeed` | 0,3–3 | maks fart, treffsjanse |
 | `vision` | 10–120 | radius for å se mat, partnere og andre aktører |
 | `aggression` (v2) | 0–1 | angrepsvilje, mot (lavere fluktsannsynlighet), vilje til å blande seg i kamper |
+| `longevity` | 0,5–2 | levealder: deler alderen i aldringsrisiko, svekkelse og aldringskostnad |
 | `reproThreshold` | 0,4–0,95 | andel av kapasitet som kreves for paring |
 | `mutationRate` | 0,01–0,3 | mutasjonsstyrke, muterer selv |
 
@@ -59,7 +69,7 @@ Hver versjon er en git-tag (`v1`, `v2` …) og publiseres frosset under `/vN/` p
 
 `partnerpoeng = 1 + tribePreference × felles avstamning × (renhet_a × renhet_b)^purityWeight − slektsstraff − mateDistanceWeight × avstand / snitt syn`
 
-**Kresenhet**: ved kontakt godtar hver part den andre med sannsynlighet `1 − e^(−(poeng − minMateScore) / choosiness)` (standard `choosiness` 1). Den avviste må vente `rejectionCooldown` ticks, og den som avviste, ser bort fra kandidaten neste gang. Uten kresenhet får alle som er klare, en partner, så attraktivitet ville bare påvirke hvem som parer seg med hvem, ikke hvor mange barn hver får. Hanner har egen nedkjøling (`maleMateCooldown`). Kortere nedkjøling for hanner og høy `parentalCostSplit` gjør hunnene til den knappe ressursen.
+**Kresenhet**: ved kontakt godtar hver part den andre med sannsynlighet `1 − e^(−(poeng − minMateScore) / choosiness)` . Den avviste må vente `rejectionCooldown` ticks, og den som avviste, ser bort fra kandidaten neste gang. Standard `choosiness` er 0,5; med 1 ble paring mellom stammer så sjelden at 2 av 6 testkjøringer døde ut. Uten kresenhet får alle som er klare, en partner, så attraktivitet ville bare påvirke hvem som parer seg med hvem, ikke hvor mange barn hver får. Hanner har egen nedkjøling (`maleMateCooldown`). Kortere nedkjøling for hanner og høy `parentalCostSplit` gjør hunnene til den knappe ressursen.
 
 I tillegg får kandidaten en bonus for avstamningen sin: `Σ tribeBonus[i] × kandidatens andel fra stamme i` (regel per stamme, standard 0, justerbar under kjøring). a sin vurdering av b legger til b sin bonus, og omvendt. Paring krever at begge vurderingene er minst `minMateScore` (begge må godta). Aktøren går mot kandidaten med høyest poeng. Slektsstraff (erstatter `incestDepth` fra v1):
 

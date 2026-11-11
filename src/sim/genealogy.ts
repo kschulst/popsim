@@ -1,4 +1,4 @@
-import type { Actor, DeathCause, Dominance, Genome, KinWeights, Rules, Sex } from './types';
+import type { Actor, DeathCause, Dominance, Genome, KinWeights, Rules, Sex, Tally } from './types';
 
 export interface LifeRecord {
   id: number;
@@ -18,6 +18,8 @@ export interface Death {
   cause: DeathCause;
   /** Id of the actor that dealt the killing blow (cause 'killed'). */
   killer?: number;
+  /** Lifetime counters at death (absent for removals and old files). */
+  tally?: Tally;
 }
 
 export const recordOf = (a: Actor): LifeRecord => ({
