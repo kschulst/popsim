@@ -684,6 +684,7 @@ canvas.addEventListener('pointermove', (e) => {
   if (!drag) {
     const id = actorAt(worldPoint(e));
     const p = cssPoint(e);
+    canvas.classList.toggle('over-actor', id !== null);
     if (id === null) hideTip();
     else if (hover?.id === id) Object.assign(hover, { px: p.x, py: p.y });
     else hover = { id, since: performance.now(), px: p.x, py: p.y };
@@ -716,6 +717,7 @@ canvas.addEventListener('pointerup', endPointer);
 canvas.addEventListener('pointercancel', endPointer);
 canvas.addEventListener('pointerleave', () => {
   brushPos = null;
+  canvas.classList.remove('over-actor');
   hideTip();
 });
 canvas.addEventListener(
