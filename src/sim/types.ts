@@ -45,6 +45,11 @@ export interface Rules {
   mateDistanceWeight: number;
   /** Lowest mate score both partners accept. */
   minMateScore: number;
+  /**
+   * Extra attractiveness per tribe (index into World.tribes). A candidate's bonus is the sum of
+   * bonus × its ancestry share from each tribe. Missing entries count as 0.
+   */
+  tribeBonus: number[];
   kinPenaltyClose: number;
   kinPenaltyHalf: number;
   kinPenaltySecond: number;

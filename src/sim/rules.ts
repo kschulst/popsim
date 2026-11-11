@@ -33,6 +33,7 @@ export const DEFAULT_RULES: Rules = {
   purityWeight: 1,
   mateDistanceWeight: 0.5,
   minMateScore: 0.6,
+  tribeBonus: [],
   kinPenaltyClose: 10,
   kinPenaltyHalf: 5,
   kinPenaltySecond: 3,
@@ -58,7 +59,7 @@ export const DEFAULT_RULES: Rules = {
   kinWeights: { ...DEFAULT_KIN_WEIGHTS },
 };
 
-type NumericRuleKey = Exclude<keyof Rules, 'surnameRule' | 'kinWeights'>;
+type NumericRuleKey = Exclude<keyof Rules, 'surnameRule' | 'kinWeights' | 'tribeBonus'>;
 
 export interface RuleField {
   key: NumericRuleKey;
@@ -160,6 +161,9 @@ export const KIN_WEIGHT_LABELS: Record<keyof KinWeights, string> = {
   auntUncle: 'Tante/onkel, nevø/niese',
   cousin: 'Fetter/kusine',
 };
+
+export const TRIBE_BONUS_DESCRIPTION =
+  'Ekstra partnerpoeng for kandidater, vektet med kandidatens andel fra hver stamme. Med bonus 1 for en stamme får en ren aktør fra stammen +1 poeng, en med halv avstamning +0,5. Negative verdier gjør avstamningen mindre attraktiv. Bonusen gjelder når hvem som helst vurderer kandidaten, også stammens egne. Begge parter må fortsatt nå minste partnerpoeng.';
 
 export const SURNAME_RULE_DESCRIPTION =
   'Hvilken forelder barnet arver etternavnet fra. Etternavnet bestemmer klan og fargen i avstamningsvisningen.';

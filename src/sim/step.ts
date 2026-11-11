@@ -150,20 +150,33 @@ const mateScore = (ctx: TickContext, a: Actor, b: Actor, dist: number): number =
   return 1 + tribe - kinPenalty(ctx.kin(a, b), r) - (r.mateDistanceWeight * dist) / meanVision;
 };
 
-/** Best-scoring ready partner in sight whose score both accept, or null. */
+/** Attractiveness bonus of an actor: Σ tribeBonus[i] × ancestry share from tribe i. */
+export const tribeBonusOf = (a: Actor, bonus: number[]): number => {
+  let s = 0;
+  for (let i = 0; i < bonus.length; i++) s += (bonus[i] ?? 0) * (a.ancestry[i] ?? 0);
+  return s;
+};
+
+/**
+ * Best-scoring ready partner in sight, or null. a's score for b is the shared score plus b's tribe
+ * bonus; b's score for a adds a's bonus. Both must reach minMateScore.
+ */
 const findMate = (ctx: TickContext, a: Actor, vision: number): Actor | null => {
   const { w } = ctx;
+  const bonus = w.rules.tribeBonus ?? [];
+  const min = w.rules.minMateScore;
+  const bonusA = tribeBonusOf(a, bonus);
   let best: Actor | null = null;
-  let bestScore = w.rules.minMateScore;
+  let bestScore = -Infinity;
   for (const b of ctx.hash.near(a.x, a.y, vision)) {
     if (b.sex === a.sex || ctx.dead.has(b.id) || !readyToMate(b, w)) continue;
     const d = Math.hypot(b.x - a.x, b.y - a.y);
     if (d > vision) continue;
-    const s = mateScore(ctx, a, b, d);
-    if (s >= bestScore) {
-      best = b;
-      bestScore = s;
-    }
+    const base = mateScore(ctx, a, b, d);
+    const score = base + tribeBonusOf(b, bonus);
+    if (score < min || base + bonusA < min || score <= bestScore) continue;
+    best = b;
+    bestScore = score;
   }
   return best;
 };

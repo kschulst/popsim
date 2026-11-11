@@ -8,8 +8,9 @@ import {
   RULE_FIELDS,
   SURNAME_RULE_DESCRIPTION,
   SURNAME_RULE_LABELS,
+  TRIBE_BONUS_DESCRIPTION,
 } from '../sim/rules';
-import { GENE_KEYS, type GeneKey, type KinWeights, type Rules, type World } from '../sim/types';
+import { GENE_KEYS, type GeneKey, type KinWeights, type Rules, type Tribe, type World } from '../sim/types';
 import { assignHues, spawnSeed } from '../sim/world';
 
 const fmt = (v: number) => String(Number(v.toFixed(4)));
@@ -22,6 +23,8 @@ export type RuleChange = (apply: (r: Rules) => void, description: string) => voi
 
 export class RulesPanel {
   private current: Rules | null = null;
+  private tribes: Tribe[] = [];
+  private tribesKey = '';
 
   constructor(
     private readonly root: HTMLElement,
@@ -64,6 +67,10 @@ export class RulesPanel {
       .join('');
     root.innerHTML = `<p class="muted">Endring av en regel lager en ny gren fra tidspunktet som vises (eller endrer utkastet når du redigerer en gren). Hold musepekeren over en regel eller klikk ? for å se hva den gjør.</p>
       <label class="check"><input type="checkbox" class="show-all-help"> Vis alle beskrivelser</label>
+      <fieldset class="tribe-bonus"><legend>Attraktivitet per avstamning</legend>
+        <p class="help">${TRIBE_BONUS_DESCRIPTION}</p>
+        <div class="bonus-rows"></div>
+      </fieldset>
       ${groups}
       <fieldset><legend>Arv</legend>${surname}</fieldset>
       <fieldset><legend>Slektsvekter (tas i bruk i v3)</legend>
@@ -99,6 +106,17 @@ export class RulesPanel {
         this.onChange((r) => {
           (r[key] as number) = v;
         }, `Regel: ${field.label} ${this.current ? fmt(this.current[key] as number) : '?'} → ${fmt(v)}`);
+      } else if (el.dataset.bonus !== undefined) {
+        const i = Number(el.dataset.bonus);
+        const v = Number(el.value);
+        if (!Number.isFinite(v)) return;
+        const old = fmt(this.current?.tribeBonus?.[i] ?? 0);
+        const name = this.tribes[i]?.name ?? `stamme ${i + 1}`;
+        this.onChange((r) => {
+          const next = this.tribes.map((_, j) => r.tribeBonus?.[j] ?? 0);
+          next[i] = v;
+          r.tribeBonus = next;
+        }, `Attraktivitet: ${name} ${old} → ${fmt(v)}`);
       } else if (el.dataset.kin) {
         const key = el.dataset.kin as keyof KinWeights;
         const v = Number(el.value);
@@ -110,9 +128,25 @@ export class RulesPanel {
   }
 
   /** Shows the given rules, leaving the focused input alone. */
-  show(rules: Rules): void {
+  show(rules: Rules, tribes: Tribe[]): void {
     this.current = rules;
+    const key = tribes.map((t) => t.name + t.color).join('|');
+    if (key !== this.tribesKey) {
+      this.tribes = tribes;
+      this.tribesKey = key;
+      this.root.querySelector('.bonus-rows')!.innerHTML = tribes
+        .map(
+          (t, i) =>
+            `<div class="field-row"><span><span class="swatch" style="background:${t.color}"></span>${escAttr(t.name)}</span><input type="number" aria-label="Attraktivitet ${escAttr(t.name)}" step="0.1" min="-5" max="5" data-bonus="${i}"></div>`,
+        )
+        .join('');
+    }
     const focused = document.activeElement;
+    for (const el of this.root.querySelectorAll<HTMLInputElement>('[data-bonus]')) {
+      if (el === focused) continue;
+      const s = fmt(rules.tribeBonus?.[Number(el.dataset.bonus)] ?? 0);
+      if (el.value !== s) el.value = s;
+    }
     for (const el of this.root.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-key],[data-kin]')) {
       if (el === focused) continue;
       const v = el.dataset.key

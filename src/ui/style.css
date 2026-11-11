@@ -216,3 +216,6 @@ canvas#world.panning { cursor: grabbing; }
 #new-dialog { max-width: min(760px, calc(100vw - 32px)); }
 .tribe-table { overflow-x: auto; }
 .tribe-table input[type='text'] { width: 80px; }
+
+.tribe-bonus .help { display: block; }
+.swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }

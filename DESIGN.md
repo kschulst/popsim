@@ -59,7 +59,7 @@ Hver versjon er en git-tag (`v1`, `v2` …) og publiseres frosset under `/vN/` p
 
 `partnerpoeng = 1 + tribePreference × felles avstamning × (renhet_a × renhet_b)^purityWeight − slektsstraff − mateDistanceWeight × avstand / snitt syn`
 
-Poenget er symmetrisk, og paring krever at det er minst `minMateScore` (begge må godta). Aktøren går mot kandidaten med høyest poeng. Slektsstraff (erstatter `incestDepth` fra v1):
+I tillegg får kandidaten en bonus for avstamningen sin: `Σ tribeBonus[i] × kandidatens andel fra stamme i` (regel per stamme, standard 0, justerbar under kjøring). a sin vurdering av b legger til b sin bonus, og omvendt. Paring krever at begge vurderingene er minst `minMateScore` (begge må godta). Aktøren går mot kandidaten med høyest poeng. Slektsstraff (erstatter `incestDepth` fra v1):
 
 | Relasjon | Straff |
 |---|---|

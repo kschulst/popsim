@@ -397,7 +397,7 @@ const frame = (now: number) => {
     $('btn-play').textContent = playing ? '⏸' : '▶';
     const exact = history.has(branchId, w.tick) ? '' : ' (nærmeste snapshot)';
     $('status').textContent = `Tick ${w.tick}${exact} / ${b.headTick} · ${b.name} · ${w.actors.length ? `${w.actors.length} aktører` : 'bestanden er utdødd'}`;
-    rules.show(w.rules);
+    rules.show(w.rules, w.tribes);
     inspector.render(w, reg, selectedId);
     timeline.render(history, branchId, w.tick, (bid, t) => {
       playing = false;

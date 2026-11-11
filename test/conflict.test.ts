@@ -38,3 +38,30 @@ describe('conflict', () => {
     expect(damaged).toBeGreaterThan(10);
   });
 });
+
+describe('tribe attractiveness bonus', () => {
+  it('makes a candidate with that ancestry preferred', () => {
+    const tribes = DEFAULT_CONFIG.tribes.slice(0, 3).map((t) => ({ ...t, seeds: 1 }));
+    let picked = 0;
+    for (let trial = 0; trial < 20; trial++) {
+      const w = createWorld({ ...DEFAULT_CONFIG, tribes });
+      w.food.fill(0);
+      w.rules.directionNoise = 0;
+      const favour = trial % 2; // alternate which male's tribe gets the bonus
+      w.rules.tribeBonus = favour ? [0, 2, 0] : [2, 0, 0];
+      const [m0, m1, f] = w.actors;
+      for (const a of w.actors) {
+        a.genome.aggression = 0;
+        a.genome.vision = 100;
+        a.energy = 1000;
+        a.genome.size = 1.5;
+      }
+      Object.assign(f, { sex: 'F', x: 400, y: 300 });
+      Object.assign(m0, { sex: 'M', x: 340, y: 300 });
+      Object.assign(m1, { sex: 'M', x: 460, y: 300 });
+      step(w, () => null);
+      if (f.mateTarget === (favour ? m1.id : m0.id)) picked++;
+    }
+    expect(picked).toBe(20);
+  });
+});
