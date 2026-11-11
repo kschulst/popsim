@@ -6,7 +6,7 @@ import { DEFAULT_TRIBES } from '../sim/tribes';
 import { TribeTable } from './tribe-table';
 import { cloneWorld, createWorld, DEFAULT_CONFIG, radiusOf } from '../sim/world';
 import { NAME_SOURCE } from '../sim/names';
-import { APP_NAME, VERSION } from '../version';
+import { APP_NAME, IS_DEV, VERSION, VERSION_LABEL } from '../version';
 import { mortality, type Mortality } from '../sim/mortality';
 import { Charts } from './charts';
 import { COLOR_MODE_LABELS, type ColorMode } from './colors';
@@ -168,7 +168,7 @@ const doExport = async () => {
   const blob = await exportGzip(history, branchId);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${APP_NAME}-v${VERSION}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json.gz`;
+  a.download = `${APP_NAME}-${VERSION_LABEL}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json.gz`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
@@ -177,10 +177,10 @@ const doImport = async (file: File) => {
   try {
     const data = await importGzip(file);
     if (data.version < MIN_IMPORT_VERSION) {
-      alert(`Filen er laget med v${data.version}. Aktørene i v${VERSION} har stammer, helse og kamp, som filen mangler. Åpne filen i v${data.version} (versjonsvelgeren nederst til venstre på nettsiden).`);
+      alert(`Filen er laget med v${data.version}. Aktørene i ${VERSION_LABEL} har stammer, helse og kamp, som filen mangler. Åpne filen i v${data.version} (versjonsvelgeren nederst til venstre på nettsiden).`);
       return;
     }
-    if (data.version !== VERSION && !confirm(`Filen er laget med v${data.version}, dette er v${VERSION}. Reglene kan oppføre seg annerledes. Importere likevel?`)) return;
+    if (data.version !== VERSION && !confirm(`Filen er laget med v${data.version}, dette er ${VERSION_LABEL}. Reglene kan oppføre seg annerledes. Importere likevel?`)) return;
     const res = fromExport(data);
     editor.stop();
     $('tab-editor').hidden = true;
@@ -208,7 +208,8 @@ document.querySelector('.tabs')!.addEventListener('click', (e) => {
   if (tab) showTab(tab);
 });
 
-$('version').textContent = `v${VERSION}`;
+$('version').textContent = VERSION_LABEL;
+if (IS_DEV) $('version').title = `Utviklingsversjon bygget fra main. Blir v${VERSION} når den fryses.`;
 $('footer').innerHTML =
   `Navn fra <a href="${NAME_SOURCE.firstNames.url}">${NAME_SOURCE.publisher}, tabell ${NAME_SOURCE.firstNames.table}</a> ` +
   `og <a href="${NAME_SOURCE.surnames.url}">${NAME_SOURCE.surnames.table}</a> (${NAME_SOURCE.firstNames.year}), ${NAME_SOURCE.license}.`;

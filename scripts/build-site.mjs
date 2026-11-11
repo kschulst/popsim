@@ -8,7 +8,8 @@ import { join, resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const site = join(root, 'site');
 const work = join(root, '.site-work');
-const run = (cmd, args, cwd = root) => execFileSync(cmd, args, { cwd, stdio: 'inherit' });
+const run = (cmd, args, cwd = root, env = {}) =>
+  execFileSync(cmd, args, { cwd, stdio: 'inherit', env: { ...process.env, ...env } });
 
 rmSync(site, { recursive: true, force: true });
 rmSync(work, { recursive: true, force: true });
@@ -43,7 +44,8 @@ for (const v of versions) {
   }
 }
 
-run('npx', ['vite', 'build', '--base', './', '--outDir', join(site, 'dev'), '--emptyOutDir']);
+// VITE_CHANNEL=dev makes the app show "dev" as its version.
+run('npx', ['vite', 'build', '--base', './', '--outDir', join(site, 'dev'), '--emptyOutDir'], root, { VITE_CHANNEL: 'dev' });
 injectSwitcher(join(site, 'dev'));
 copyFileSync(join(root, 'scripts', 'site', 'switcher.js'), join(site, 'switcher.js'));
 // Only list versions that were actually built.
@@ -86,8 +88,8 @@ ul.changes li { border: 0; background: none; padding: 0; margin: 2px 0; }
 <h1>popsim</h1>
 <p class="muted">Agentbasert simulering av en bestand i et 2D-økosystem. Hver versjon er frosset og kan fortsatt kjøres.</p>
 <ul>
-${items}
 <li><a href="dev/"><strong>dev</strong> ${esc(data.dev.title)}</a><p>${esc(data.dev.summary)}</p><details><summary>Endret siden siste versjon</summary>${changeList(data.dev)}</details></li>
+${items}
 </ul>
 </main></body></html>
 `,

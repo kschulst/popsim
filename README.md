@@ -64,4 +64,6 @@ Hver bygde versjon får en versjonsvelger nederst til venstre (`scripts/site/swi
 
 `versions.json` har `versions` (frosne versjoner, hver med `changes` mot forrige versjon) og `dev` (endringer på main siden siste versjon). Før du legger til noe på main, før det opp i `dev.changes`.
 
+`src/version.ts` har `VERSION`, som på main er neste versjon som skal fryses. Bygg av main (lokal dev-server og `/dev/` på nettstedet) viser «dev» som versjon i headeren; taggede versjoner viser `vN`.
+
 For å fryse en ny versjon: flytt `dev.changes` inn i en ny oppføring i `versions` og tøm `dev.changes`, legg til versjonen under «Versjoner» øverst i denne filen, commit og tag `vN`, push taggen. Øk deretter `VERSION` i `src/version.ts` på main for neste versjon.

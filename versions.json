@@ -46,7 +46,8 @@
     "title": "Under utvikling",
     "summary": "Bygget fra main. Kan endre seg uten varsel.",
     "changes": [
-      "Attraktivitet per avstamning: egen bonus per stamme i partnervalget, justerbar under kjøring i Regler-fanen."
+      "Attraktivitet per avstamning: egen bonus per stamme i partnervalget, justerbar under kjøring i Regler-fanen.",
+      "Versjonsvelgeren og indekssiden lister dev først, deretter nyeste versjon. Dev-bygget viser «dev» som versjon i headeren."
     ]
   }
 }

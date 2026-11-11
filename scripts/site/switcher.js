@@ -51,13 +51,18 @@
     panel.className = 'vs-panel';
     panel.hidden = true;
 
+    // Newest first (dev, then vN … v1); values are chronological indices.
     const options = (sel) =>
-      entries.map((e, j) => `<option value="${j}"${j === sel ? ' selected' : ''}>${esc(label(e))}</option>`).join('');
+      entries
+        .map((e, j) => `<option value="${j}"${j === sel ? ' selected' : ''}>${esc(label(e))}</option>`)
+        .reverse()
+        .join('');
 
     panel.innerHTML = `
 <h4>Versjoner</h4>
 <ul class="vs-list">
-${entries
+${[...entries]
+  .reverse()
   .map(
     (e) =>
       `<li>${e.tag === current ? `<span class="vs-cur">● ${esc(label(e))}</span>` : `<a href="${base}${e.tag}/">${esc(label(e))}</a>`} <span class="vs-muted">${esc(e.title)}</span></li>`,
