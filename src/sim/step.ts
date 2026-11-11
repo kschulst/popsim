@@ -5,6 +5,7 @@ import { clamp, gaussian, rand, shuffle } from './random';
 import { SpatialHash } from './spatial';
 import { maybeOutbreak, progressInfection } from './disease';
 import { activeEles, applyEles, createEle, eleEffects, pickEle, type EleEffects } from './ele';
+import { MACHINE_SIZE, stepMachines, strikeMachine } from './machines';
 import { mixAncestry, overlap, purity } from './tribes';
 import type { Actor, AttackReason, Embryo, TickDeath, TickEvents, World } from './types';
 import { capacityOf, hpFactor, maxHpOf, radiusOf } from './world';
@@ -672,6 +673,17 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
   );
   ctx.fx = eleEffects(w);
   regrowFood(w, ctx.fx);
+  stepMachines(
+    w,
+    w.actors.filter((a) => !ctx.dead.has(a.id)),
+    (a, dmg) => {
+      a.hp -= dmg;
+      a.flash = FLASH_TICKS;
+      a.damageTaken += dmg;
+      a.hitsTaken++;
+      if (a.hp <= 0) ctx.die(a, 'catastrophe');
+    },
+  );
   const births: Actor[] = [];
 
   for (const a of shuffle([...w.actors])) {
@@ -863,6 +875,9 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     } else if (mate && Math.hypot(mate.x - a.x, mate.y - a.y) <= radius + radiusOf(mate) + 1 && readyToMate(a, w) && readyToMate(mate, w)) {
       if (courtship(ctx, a, mate)) conceive(a, mate, w, ctx.fx);
     }
+
+    // Machines (ELE) next to the actor: strike them when free to.
+    if (!target && w.machines?.length) strikeMachine(w, a, strengthOf(a, w), radius + MACHINE_SIZE + rules.attackReach);
 
     // 7. Death: starvation, ageing (rising risk), frailty from low energy, infancy.
     if (!ctx.dead.has(a.id)) {

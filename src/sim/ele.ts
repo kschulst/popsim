@@ -1,4 +1,5 @@
 import { newDisease, infect } from './disease';
+import { spawnMachines } from './machines';
 import { clamp, gaussian, pick, rand } from './random';
 import type { EleEvent, EleKey, World } from './types';
 
@@ -17,7 +18,7 @@ export interface EleDef {
   duration: [number, number];
 }
 
-export const ELE_KEYS: EleKey[] = ['meteor', 'volcano', 'plague', 'iceAge', 'locusts', 'drought', 'infertility', 'radiation', 'rage'];
+export const ELE_KEYS: EleKey[] = ['meteor', 'volcano', 'plague', 'iceAge', 'locusts', 'drought', 'infertility', 'radiation', 'rage', 'machines'];
 
 export const ELE_DEFS: Record<EleKey, EleDef> = {
   meteor: {
@@ -67,6 +68,12 @@ export const ELE_DEFS: Record<EleKey, EleDef> = {
     icon: '☢',
     description: 'Mutasjonsstyrken ganges med 10: rask og kaotisk evolusjon.',
     duration: [200, 400],
+  },
+  machines: {
+    name: 'Maskinoppvåkning',
+    icon: '⚙',
+    description: 'Grå maskiner våkner, høster mat, bygger flere maskiner av energien og angriper aktører i veien. Aktørene slår tilbake, og jo flere de er rundt en maskin, jo fortere går den i stykker. Over når alle maskinene er ødelagt eller tiden løper ut.',
+    duration: [1500, 3000],
   },
   rage: {
     name: 'Raseri',
@@ -246,6 +253,7 @@ export const applyEles = (
         }
         clearFood(w, e.x!, e.y!, r);
       }
+      if (e.key === 'machines') spawnMachines(w, e);
       if (e.key === 'plague') {
         const d = newDisease(w, `${ELE_DEFS.plague.name} (katastrofe)`);
         d.name = e.name;

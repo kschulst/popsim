@@ -234,7 +234,21 @@ export interface Courtship {
   ttl: number;
 }
 
-export type EleKey = 'meteor' | 'volcano' | 'plague' | 'iceAge' | 'locusts' | 'drought' | 'infertility' | 'radiation' | 'rage';
+export type EleKey = 'meteor' | 'volcano' | 'plague' | 'iceAge' | 'locusts' | 'drought' | 'infertility' | 'radiation' | 'rage' | 'machines';
+
+/** A machine from a machine awakening (not an actor: no kin, tribe or genealogy). */
+export interface Machine {
+  id: number;
+  /** The awakening it belongs to. */
+  event: number;
+  x: number;
+  y: number;
+  heading: number;
+  energy: number;
+  hp: number;
+  /** Ticks until it can strike again. */
+  cd: number;
+}
 
 /** One extinction level event, kept in the world for display, effects and statistics. */
 export interface EleEvent {
@@ -359,6 +373,9 @@ export interface World {
   diseases: Disease[];
   /** Every extinction level event so far. */
   events: EleEvent[];
+  /** Machines from a machine awakening, and the last machine id used. */
+  machines: Machine[];
+  machineSeq?: number;
 }
 
 /** Events produced by one tick, consumed by the genealogy registry and stats. */

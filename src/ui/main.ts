@@ -14,7 +14,7 @@ import { BranchEditor, RulesPanel } from './editor';
 import { ancestryBreakdown, CAUSE_LABELS, describeActor, Inspector, kinMap, lifeSpanText } from './inspector';
 import { surnameColor } from './colors';
 import { Leaderboards } from './leaderboards';
-import { createEle, ELE_DEFS } from '../sim/ele';
+import { createEle, ELE_DEFS, ELE_KEYS } from '../sim/ele';
 import { ATTACK_COLORS, ATTACK_LABELS, MARK_COLORS, Renderer } from './renderer';
 import { Timeline } from './timeline';
 
@@ -525,6 +525,25 @@ colorSelect.onchange = () => (colorMode = colorSelect.value as ColorMode);
 const tribeTable = new TribeTable($('tribe-table'), DEFAULT_TRIBES);
 $('tribe-add').onclick = () => tribeTable.add();
 $('tribe-reset').onclick = () => tribeTable.set(DEFAULT_TRIBES);
+// File menu: close it after picking an item.
+$('file-menu').addEventListener('click', (e) => {
+  if ((e.target as HTMLElement).closest('button')) ($('file-menu') as HTMLDetailsElement).open = false;
+});
+
+const eleDialog = $<HTMLDialogElement>('ele-dialog');
+const elePick = $<HTMLSelectElement>('ele-pick');
+elePick.innerHTML = ELE_KEYS.map((k) => `<option value="${k}">${ELE_DEFS[k].icon} ${ELE_DEFS[k].name}</option>`).join('');
+const showElePickDesc = () => ($('ele-pick-desc').textContent = ELE_DEFS[elePick.value as EleKey].description);
+elePick.onchange = showElePickDesc;
+showElePickDesc();
+$('btn-ele').onclick = () => {
+  playing = false;
+  eleDialog.showModal();
+};
+eleDialog.addEventListener('close', () => {
+  if (eleDialog.returnValue === 'ok') requestEle(elePick.value as EleKey);
+});
+
 const addDialog = $<HTMLDialogElement>('add-dialog');
 $('btn-add').onclick = () => {
   playing = false;

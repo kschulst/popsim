@@ -27,9 +27,15 @@
         <label class="check"><input type="checkbox" id="show-fertility" /> Fruktbarhet</label>
         <label class="check" title="Vis streker for partnersøk, paring og avvisning"><input type="checkbox" id="show-courtship" checked /> Partnerstreker</label>
         <button id="btn-add" title="Legg til nye aktører fra en stamme der du klikker på kartet">＋ Aktører</button>
-        <button id="btn-new" title="Ny kjøring">Ny</button>
-        <button id="btn-export">Eksporter</button>
-        <button id="btn-import">Importer</button>
+        <button id="btn-ele" title="Slipp løs en katastrofe">＋ Katastrofe</button>
+        <details class="menu" id="file-menu">
+          <summary>Fil ▾</summary>
+          <div class="menu-items">
+            <button id="btn-new">Ny kjøring…</button>
+            <button id="btn-export">Eksporter</button>
+            <button id="btn-import">Importer…</button>
+          </div>
+        </details>
         <input id="import-file" type="file" accept=".gz,.json" hidden />
       </div>
       </div>
@@ -83,6 +89,18 @@
     </details>
     <section id="charts" class="charts"></section>
     <footer id="footer"></footer>
+    <dialog id="ele-dialog">
+      <form method="dialog">
+        <h3>Slipp løs en katastrofe</h3>
+        <label><span>Katastrofe</span><select id="ele-pick"></select></label>
+        <p class="muted" id="ele-pick-desc"></p>
+        <p class="muted">Skjer fra tidspunktet som vises. Meteoren treffer der du klikker på kartet etterpå. Styrke og hyppighet stilles i Regler-fanen.</p>
+        <div class="row">
+          <button value="ok" class="primary">Slipp løs</button>
+          <button value="cancel">Avbryt</button>
+        </div>
+      </form>
+    </dialog>
     <dialog id="add-dialog">
       <form method="dialog">
         <h3>Legg til aktører</h3>

@@ -289,11 +289,23 @@ export class Renderer {
           break;
       }
     }
+    // Machines: dark grey squares with a red eye.
+    for (const m of w.machines ?? []) {
+      const r = 4 * s;
+      ctx.fillStyle = '#6b7079';
+      ctx.fillRect(X(m.x) - r, Y(m.y) - r, 2 * r, 2 * r);
+      ctx.strokeStyle = '#1b1d21';
+      ctx.lineWidth = dpr;
+      ctx.strokeRect(X(m.x) - r, Y(m.y) - r, 2 * r, 2 * r);
+      ctx.fillStyle = '#ff3b30';
+      ctx.fillRect(X(m.x) - r * 0.3, Y(m.y) - r * 0.3, r * 0.6, r * 0.6);
+    }
     // Label in the top-left corner.
     ctx.font = `${12 * dpr}px system-ui, sans-serif`;
     ctx.textBaseline = 'top';
     active.forEach((e, i) => {
-      const text = `${ELE_DEFS[e.key].icon} ${e.name} · ${e.end - w.tick} ticks igjen`;
+      const machines = e.key === 'machines' ? ` · ${(w.machines ?? []).filter((m) => m.event === e.id).length} maskiner` : '';
+      const text = `${ELE_DEFS[e.key].icon} ${e.name}${machines} · ${e.end - w.tick} ticks igjen`;
       const y = 8 * dpr + i * 18 * dpr;
       const tw = ctx.measureText(text).width;
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
