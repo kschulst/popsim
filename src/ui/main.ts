@@ -52,9 +52,8 @@ const charts = new Charts($('charts'));
 const RECENT_TICKS = 500;
 
 const pct = (v: number) => (Number.isFinite(v) ? `${Math.round(v * 100)} %` : '–');
-const ticks = (v: number) => (Number.isFinite(v) ? `${Math.round(v)} ticks` : '–');
 const mortalityText = (m: Mortality) =>
-  `<b>${m.deaths}</b> døde · alderdom <b>${pct(m.ageShare)}</b> · drept <b>${pct(m.killedShare)}</b> · snitt dødsalder <b>${ticks(m.meanAge)}</b>`;
+  `<b>${m.deaths}</b> døde · <b>${pct(m.ageShare)}</b> alderdom · <b>${pct(m.killedShare)}</b> drept · dødsalder <b>${Number.isFinite(m.meanAge) ? Math.round(m.meanAge) : '–'}</b>`;
 
 /** Mortality figures up to the displayed tick: whole lineage and the last RECENT_TICKS ticks. */
 const renderVitals = (rows: TickStats[], at: number, w: World) => {
@@ -62,8 +61,8 @@ const renderVitals = (rows: TickStats[], at: number, w: World) => {
   const recent = mortality(rows, at - RECENT_TICKS, at);
   $('vitals').innerHTML =
     `<span class="anc-overall" title="Gjennomsnittlig avstamning blant de levende på tick som vises">Avstamning: ${ancestryBreakdown(w, 16)}</span>` +
-    `<span title="Fra tick 0 til tick som vises, langs denne grenens historikk. Fjerning i grenredigering telles ikke.">Hittil: ${mortalityText(all)}</span>` +
-    `<span title="De siste ${RECENT_TICKS} ticks før tick som vises.">Siste ${RECENT_TICKS} ticks: ${mortalityText(recent)}</span>`;
+    `<span title="Fra tick 0 til tick som vises. Dødsalder i ticks.">Hittil: ${mortalityText(all)}</span>` +
+    `<span title="De siste ${RECENT_TICKS} ticks før tick som vises. Dødsalder i ticks.">Siste ${RECENT_TICKS}: ${mortalityText(recent)}</span>`;
 };
 const timeline = new Timeline($('timeline'));
 // The branch timeline is folded away by default; its open state is remembered per browser.

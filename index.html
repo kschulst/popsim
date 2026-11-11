@@ -8,6 +8,7 @@
   </head>
   <body>
     <header>
+      <div class="header-main">
       <h1>popsim <span class="version" id="version"></span></h1>
       <div class="controls">
         <button id="btn-start" title="Til starten av grenen">⏮</button>
@@ -31,6 +32,8 @@
         <button id="btn-import">Importer</button>
         <input id="import-file" type="file" accept=".gz,.json" hidden />
       </div>
+      </div>
+      <div id="vitals" class="vitals header-vitals"></div>
     </header>
     <main>
       <section class="world">
@@ -60,7 +63,6 @@
           <input id="scrub" type="range" min="0" max="0" value="0" step="1" title="Dra for å gå til et tidspunkt langs denne grenens historikk" />
           <span id="scrub-label" class="status"></span>
         </div>
-        <div id="vitals" class="vitals"></div>
       </section>
       <aside>
         <nav class="tabs">
