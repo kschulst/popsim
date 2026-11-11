@@ -186,6 +186,24 @@ const BOARDS: Board[] = [
         return [{ id, value: v, text: `${Math.round(v * 100)} % (${t?.acceptedBy ?? 0} av ${n})` }];
       }),
   },
+  {
+    key: 'affairs',
+    group: 'Individer',
+    title: 'Flest utroskap',
+    description: 'Barn unnfanget med en annen enn ektefellen mens aktøren var gift.',
+    livingFilter: true,
+    rows: (c) => c.ids.map((id) => ({ id, value: tallyOf(c, id)?.affairs ?? 0 })).filter((r) => r.value > 0),
+  },
+  {
+    key: 'married',
+    group: 'Individer',
+    title: 'Lengst gift (levende)',
+    description: 'Ticks siden giftemålet, blant levende gifte.',
+    rows: (c) =>
+      [...c.live.values()]
+        .filter((a) => a.spouse !== null && a.spouse !== undefined)
+        .map((a) => ({ id: a.id, value: c.tick - (a.marriedAt ?? 0), text: `${c.tick - (a.marriedAt ?? 0)} ticks` })),
+  },
   tallyBoard('foodEaten', 'Mest mat spist', 'Antall matruter spist.'),
   tallyBoard('distance', 'Lengst tilbakelagt', 'Distanse i verdensenheter.'),
   {

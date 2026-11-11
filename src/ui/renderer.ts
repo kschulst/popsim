@@ -45,6 +45,7 @@ export const MARK_COLORS = {
   rejected: '#aaaab4',
   rejectCross: '#ff5a46',
   guarding: '#78b4ff',
+  married: '#ffd25a',
   attacking: '#ff6a5a',
   attacked: '#ff3b3b',
   fleeing: '#ffd27a',
@@ -368,6 +369,19 @@ export class Renderer {
       if (!m || a.court) continue;
       ctx.moveTo(sx(a), sy(a));
       ctx.lineTo(sx(m), sy(m));
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    // Married couples: thin gold line (drawn once per couple).
+    ctx.strokeStyle = MARK_COLORS.married;
+    ctx.lineWidth = dpr;
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    for (const a of w.actors) {
+      const sp = a.spouse === null || a.spouse === undefined || a.spouse < a.id ? undefined : byId.get(a.spouse);
+      if (!sp) continue;
+      ctx.moveTo(sx(a), sy(a));
+      ctx.lineTo(sx(sp), sy(sp));
     }
     ctx.stroke();
     ctx.globalAlpha = 1;

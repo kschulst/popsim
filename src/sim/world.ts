@@ -175,6 +175,11 @@ export const spawnSeed = (world: World, opts: NewActor): Actor => {
     distance: 0,
     hydration: 1,
     lonely: 0,
+    spouse: null,
+    widowOf: null,
+    marriedAt: 0,
+    lastConception: 0,
+    affairs: 0,
     courtships: 0,
     acceptedBy: 0,
   };

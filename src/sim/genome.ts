@@ -8,6 +8,7 @@ export const GENE_RANGES: Record<GeneKey, [number, number]> = {
   aggression: [0, 1],
   longevity: [0.5, 2],
   diet: [0, 1],
+  fidelity: [0, 1],
   reproThreshold: [0.4, 0.95],
   mutationRate: [0.01, 0.3],
 };
@@ -19,6 +20,7 @@ export const GENE_LABELS: Record<GeneKey, string> = {
   aggression: 'Aggresjon',
   longevity: 'Levealder',
   diet: 'Kosthold (bær)',
+  fidelity: 'Troskap',
   reproThreshold: 'Paringsterskel',
   mutationRate: 'Mutasjonsrate',
 };

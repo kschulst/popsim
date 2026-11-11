@@ -785,6 +785,7 @@ $('map-legend').innerHTML =
   `<span class="ln" style="border-color:${M.mated}"></span><span class="g" style="color:${M.mated}">♥</span>godtok hverandre (paret seg)<br>` +
   `<span class="ln" style="border-color:${M.rejected}"></span><span class="g" style="color:${M.rejectCross}">✕</span>avvist; krysset står ved den som sa nei<br>` +
   `<span class="ln dot" style="border-color:${M.guarding}"></span>far som passer på gravid<br>` +
+  `<span class="ln" style="border-color:${M.married};opacity:.6"></span>gift par<br>` +
   '<strong>Symboler over aktører</strong> (fra 2× zoom)<br>' +
   `<span class="g" style="color:${M.attacking}">⚔</span>angriper <span class="g" style="color:${M.attacked}">!</span>angripes <span class="g" style="color:${M.fleeing}">↯</span>flykter<br>` +
   `<span class="g" style="color:${M.courting}">♥</span>kurtiserer/kurtiseres <span class="g" style="color:${M.pregnant}">✿</span>gravid<br>` +

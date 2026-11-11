@@ -1,6 +1,6 @@
 export type Sex = 'F' | 'M';
 
-export const GENE_KEYS = ['size', 'maxSpeed', 'vision', 'aggression', 'longevity', 'diet', 'reproThreshold', 'mutationRate'] as const;
+export const GENE_KEYS = ['size', 'maxSpeed', 'vision', 'aggression', 'longevity', 'diet', 'fidelity', 'reproThreshold', 'mutationRate'] as const;
 export type GeneKey = (typeof GENE_KEYS)[number];
 export type Genome = Record<GeneKey, number>;
 /** Per-gene inheritance strength (0.05–1): how strongly the gene value is passed on to children. */
@@ -127,6 +127,12 @@ export interface Rules {
   carrionBite: number;
   /** Lowest mate score both partners accept. */
   minMateScore: number;
+  /** Chance that a couple marries at a conception when neither is married. */
+  marriageRate: number;
+  /** Extra partner score for the spouse. */
+  spouseBonus: number;
+  /** Married couples without a child for this long may divorce (rarely). 0 = never. */
+  divorceAfter: number;
   /** How far standards drop per 300 ticks of waiting for a partner (at most 4 points). */
   desperation: number;
   /**
@@ -218,6 +224,14 @@ export interface Actor {
   foodEaten: number;
   /** Distance moved (world units). */
   distance: number;
+  /** Spouse, or null. `widowOf` is the last spouse who died; `marriedAt` the tick of marriage. */
+  spouse: number | null;
+  widowOf: number | null;
+  marriedAt: number;
+  /** Tick of the last conception with this actor as a parent. */
+  lastConception: number;
+  /** Conceptions with someone other than the spouse while married. */
+  affairs: number;
   /** Ticks spent ready to mate without finding a partner (lowers standards; reset at conception). */
   lonely: number;
   /** Water in the body, 0–1; 0 means death by thirst. */
@@ -237,6 +251,7 @@ export interface Tally {
   distance: number;
   courtships?: number;
   acceptedBy?: number;
+  affairs?: number;
 }
 
 /** A child conceived but not yet born; its genes are fixed at conception. */

@@ -118,6 +118,8 @@ export const describeActor = (w: World, reg: Registry, a: Actor): string[] => {
   if (a.target !== null) lines.push(`Angriper ${name(a.target)}${rel(a.target)} ${REASONS[a.targetReason ?? 'food'] ?? ''}`.trim());
   if (attackers.length) lines.push(`Blir angrepet av ${attackers.map((x) => name(x.id) + rel(x.id)).join(', ')}`);
   if (a.caresFor !== null) lines.push(`Passer på ${name(a.caresFor)} som er gravid`);
+  if (a.spouse !== null && a.spouse !== undefined) lines.push(`Gift med ${name(a.spouse)}`);
+  else if (a.widowOf !== null && a.widowOf !== undefined) lines.push(`${a.sex === 'F' ? 'Enke' : 'Enkemann'} etter ${name(a.widowOf)}`);
   if (a.pregnancy) {
     const n = a.pregnancy.embryos.length;
     lines.push(`Gravid med ${n === 1 ? 'ett barn' : n === 2 ? 'tvillinger' : `${n} barn`}, termin tick ${a.pregnancy.due}`);
@@ -284,6 +286,8 @@ export class Inspector {
         conflict += `<dt>Gravid</dt><dd>${n === 1 ? 'ett barn' : n === 2 ? 'tvillinger' : n === 3 ? 'trillinger' : `${n} barn`} med ${link(p.father)} · termin tick ${p.due} · betalt ${p.motherPaid.toFixed(0)}/${p.motherNeed.toFixed(0)} energi</dd>`;
       }
       if (live.caresFor !== null) conflict += `<dt>Omsorg</dt><dd>passer på ${link(live.caresFor)} til fødselen</dd>`;
+      if (live.spouse !== null) conflict += `<dt>Gift</dt><dd>med ${link(live.spouse)} siden tick ${live.marriedAt ?? 0}${live.affairs ? ` · ${live.affairs} utroskap` : ''}</dd>`;
+      else if (live.widowOf !== null && live.widowOf !== undefined) conflict += `<dt>${live.sex === 'F' ? 'Enke' : 'Enkemann'}</dt><dd>etter ${link(live.widowOf)}</dd>`;
       const dz = w.diseases ?? [];
       if (live.infection && dz[live.infection.disease]) {
         const d = dz[live.infection.disease];

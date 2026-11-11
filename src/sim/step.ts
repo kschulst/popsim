@@ -328,6 +328,7 @@ class TickContext {
         distance: a.distance,
         courtships: a.courtships ?? 0,
         acceptedBy: a.acceptedBy ?? 0,
+        affairs: a.affairs ?? 0,
       },
     });
   }
@@ -364,8 +365,11 @@ const courtship = (ctx: TickContext, a: Actor, b: Actor): boolean => {
   const r = ctx.w.rules;
   const bonus = r.tribeBonus ?? [];
   const base = mateScore(ctx, a, b, Math.hypot(b.x - a.x, b.y - a.y));
-  const aAccepts = Math.random() < acceptance(base + tribeBonusOf(b, bonus), r, minScoreOf(a, r));
-  const bAccepts = Math.random() < acceptance(base + tribeBonusOf(a, bonus), r, minScoreOf(b, r));
+  // Spouses get a bonus; a married actor accepts anyone else only with probability 1 − fidelity.
+  const loyal = (x: Actor, y: Actor) => (x.spouse === null || x.spouse === y.id ? 1 : 1 - (x.genome.fidelity ?? 0.6));
+  const sb = (x: Actor, y: Actor) => (x.spouse === y.id ? (r.spouseBonus ?? 0) : 0);
+  const aAccepts = Math.random() < acceptance(base + tribeBonusOf(b, bonus) + sb(a, b), r, minScoreOf(a, r)) * loyal(a, b);
+  const bAccepts = Math.random() < acceptance(base + tribeBonusOf(a, bonus) + sb(b, a), r, minScoreOf(b, r)) * loyal(b, a);
   if (!aAccepts) {
     a.snub = b.id;
     a.snubTtl = 4 * r.rejectionCooldown;
@@ -430,7 +434,7 @@ const findPartner = (ctx: TickContext, a: Actor, vision: number): { mate: Actor 
     if (ctx.hasWater && waterBetween(w, a, b)) continue;
     const base = mateScore(ctx, a, b, d);
     if (ready) {
-      const score = base + tribeBonusOf(b, bonus);
+      const score = base + tribeBonusOf(b, bonus) + (a.spouse === b.id ? (r.spouseBonus ?? 0) : 0);
       if (score >= min && base + bonusA >= minScoreOf(b, r) && score > mateScoreBest) {
         mate = b;
         mateScoreBest = score;
@@ -487,10 +491,10 @@ const startFleeing = (a: Actor, from: Actor | null, w: World): void => {
 /** Onlooker picks a side in a visible fight if its loyalty difference × aggression is large enough. */
 const considerJoining = (ctx: TickContext, a: Actor, vision: number): boolean => {
   const r = ctx.w.rules;
-  // A caring father attacks anyone attacking the mother he guards.
-  if (a.caresFor !== null) {
+  // A caring father attacks anyone attacking the mother he guards; spouses defend each other.
+  if (a.caresFor !== null || a.spouse !== null) {
     for (const x of ctx.hash.near(a.x, a.y, vision)) {
-      if (x.target === a.caresFor && x !== a && !ctx.dead.has(x.id)) {
+      if ((x.target === a.caresFor || x.target === a.spouse) && x.target !== null && x !== a && !ctx.dead.has(x.id)) {
         a.target = x.id;
         a.targetReason = 'protect';
         return true;
@@ -675,7 +679,16 @@ const conceive = (a: Actor, b: Actor, w: World, fx: EleEffects): boolean => {
   mother.cooldown = Math.max(r.gestationTicks, r.mateCooldown);
   father.cooldown = r.maleMateCooldown ?? r.mateCooldown;
   mother.mateTarget = father.mateTarget = null;
-  if (Math.random() < r.paternalCare) father.caresFor = mother.id;
+  // Marriage: a couple without spouses may marry; a husband always guards his pregnant wife.
+  if (mother.spouse === null && father.spouse === null && Math.random() < (r.marriageRate ?? 0)) {
+    mother.spouse = father.id;
+    father.spouse = mother.id;
+    mother.marriedAt = father.marriedAt = w.tick;
+    mother.widowOf = father.widowOf = null;
+  }
+  for (const [x, y] of [[mother, father], [father, mother]] as const) if (x.spouse !== null && x.spouse !== y.id) x.affairs = (x.affairs ?? 0) + 1;
+  mother.lastConception = father.lastConception = w.tick;
+  if (father.spouse === mother.id || Math.random() < r.paternalCare) father.caresFor = mother.id;
   return true;
 };
 
@@ -743,6 +756,11 @@ const deliver = (ctx: TickContext, mother: Actor): Actor[] => {
       distance: 0,
       hydration: 1,
       lonely: 0,
+      spouse: null,
+      widowOf: null,
+      marriedAt: 0,
+      lastConception: 0,
+      affairs: 0,
       courtships: 0,
       acceptedBy: 0,
     };
@@ -868,6 +886,17 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     // A nursing child stays with its mother.
     const nursingMother = a.age < (rules.nursingTicks ?? 0) && a.parents ? ctx.alive(a.parents[0]) : undefined;
 
+    // Marriage: widowhood when the spouse is gone; rare divorce after a long time without children.
+    let spouse = ctx.alive(a.spouse);
+    if (a.spouse !== null && !spouse) {
+      a.widowOf = a.spouse;
+      a.spouse = null;
+    } else if (spouse && rules.divorceAfter > 0 && w.tick - Math.max(a.marriedAt ?? 0, a.lastConception ?? 0) > rules.divorceAfter && Math.random() < 0.001) {
+      spouse.spouse = null;
+      a.spouse = null;
+      spouse = undefined;
+    }
+
     // 2. Choose what to do: flee > fight > join a fight > attack > guard > nurse > mate > eat > wander.
     const food = a.fleeing > 0 ? null : seekFood(a, w, vision);
     // Thirst: drink when next to water; go looking for water when running low.
@@ -914,6 +943,9 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     } else if (care && Math.hypot(care.x - a.x, care.y - a.y) > rules.guardDistance) {
       goal = care;
       speed = maxSpeed;
+    } else if (spouse && Math.hypot(spouse.x - a.x, spouse.y - a.y) > 2 * rules.guardDistance && a.energy > 0.4 * cap && !food) {
+      // Spouses keep together when there is nothing more pressing.
+      goal = spouse;
     } else if (nursingMother) {
       // A nursing child eats only food close to its mother; otherwise it stays with her.
       const nearFood = food && Math.hypot(food.x - nursingMother.x, food.y - nursingMother.y) <= 25 ? food : null;
@@ -1049,6 +1081,18 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       a.energy -= pay;
       preg.motherPaid += pay;
       if (w.tick >= preg.due && a.energy > 0) births.push(...deliver(ctx, a));
+    }
+
+    // Spouses share energy when one is low and the other can spare it.
+    if (spouse && Math.hypot(spouse.x - a.x, spouse.y - a.y) <= rules.guardDistance) {
+      const sCap = capacityOf(spouse, rules);
+      if (spouse.energy < 0.4 * sCap && a.energy > 0.6 * cap) {
+        const give = Math.min(rules.provisionRate, a.energy - 0.6 * cap, 0.4 * sCap - spouse.energy);
+        if (give > 0) {
+          a.energy -= give;
+          spouse.energy += give * 0.9;
+        }
+      }
     }
 
     // The caring father, and relatives in proportion to kin weight, share energy with a pregnant
