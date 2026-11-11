@@ -11,7 +11,7 @@ import { mortality, type Mortality } from '../sim/mortality';
 import { Charts } from './charts';
 import { COLOR_MODE_LABELS, type ColorMode } from './colors';
 import { BranchEditor, RulesPanel } from './editor';
-import { Inspector, kinMap } from './inspector';
+import { ancestryBreakdown, Inspector, kinMap } from './inspector';
 import { Renderer } from './renderer';
 import { Timeline } from './timeline';
 
@@ -54,10 +54,11 @@ const mortalityText = (m: Mortality) =>
   `<b>${m.deaths}</b> døde · alderdom <b>${pct(m.ageShare)}</b> · drept <b>${pct(m.killedShare)}</b> · snitt dødsalder <b>${ticks(m.meanAge)}</b>`;
 
 /** Mortality figures up to the displayed tick: whole lineage and the last RECENT_TICKS ticks. */
-const renderVitals = (rows: TickStats[], at: number) => {
+const renderVitals = (rows: TickStats[], at: number, w: World) => {
   const all = mortality(rows, -1, at);
   const recent = mortality(rows, at - RECENT_TICKS, at);
   $('vitals').innerHTML =
+    `<span class="anc-overall" title="Gjennomsnittlig avstamning blant de levende på tick som vises">Avstamning: ${ancestryBreakdown(w, 16)}</span>` +
     `<span title="Fra tick 0 til tick som vises, langs denne grenens historikk. Fjerning i grenredigering telles ikke.">Hittil: ${mortalityText(all)}</span>` +
     `<span title="De siste ${RECENT_TICKS} ticks før tick som vises.">Siste ${RECENT_TICKS} ticks: ${mortalityText(recent)}</span>`;
 };
@@ -417,7 +418,7 @@ const frame = (now: number) => {
       seek(bid, t);
     });
     const statsRows = history.statsPath(branchId);
-    renderVitals(statsRows, w.tick);
+    renderVitals(statsRows, w.tick, w);
     charts.render(statsRows, w.tick, w.tribes, (t) => {
       // Seek within the lineage: pick the branch on the path that covers t.
       playing = false;

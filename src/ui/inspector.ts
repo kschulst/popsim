@@ -34,7 +34,25 @@ export const kinMap = (w: World, reg: Registry, id: number): Map<number, number>
 };
 
 /** SVG path slices for a pie of radius 1 centred at the origin. */
-const pieSlices = (anc: number[], colors: string[]): string => {
+/** Mean ancestry share per tribe over the living population. */
+export const meanAncestry = (w: World): number[] => {
+  const sum = w.tribes.map(() => 0);
+  for (const a of w.actors) for (let i = 0; i < sum.length; i++) sum[i] += a.ancestry[i] ?? 0;
+  return sum.map((v) => (w.actors.length ? v / w.actors.length : 0));
+};
+
+/** Pie plus legend of the population's mean ancestry. */
+export const ancestryBreakdown = (w: World, size: number): string => {
+  const mean = meanAncestry(w);
+  const rows = w.tribes
+    .map((t, i) => ({ t, v: mean[i] }))
+    .sort((a, b) => b.v - a.v)
+    .map(({ t, v }) => `<span class="anc-item"><span class="swatch" style="background:${t.color}"></span>${esc(t.name)} <b>${(v * 100).toFixed(v > 0 && v < 0.1 ? 1 : 0).replace('.', ',')} %</b></span>`)
+    .join('');
+  return `<svg viewBox="-1 -1 2 2" width="${size}" height="${size}" class="pie">${pieSlices(mean, w.tribes.map((t) => t.color))}</svg>${rows}`;
+};
+
+export const pieSlices = (anc: number[], colors: string[]): string => {
   const parts: string[] = [];
   let a0 = -Math.PI / 2;
   anc.forEach((v, i) => {
@@ -66,7 +84,10 @@ export class Inspector {
 
   render(w: World, reg: Registry, id: number | null): void {
     if (id === null) {
-      this.root.innerHTML = `<p class="muted">Klikk på en aktør i verdenen for å se detaljer og slektskap.</p>
+      this.root.innerHTML = `<h3>Avstamning i bestanden</h3>
+        <p class="muted">Gjennomsnittlig andel fra hver stamme blant de ${w.actors.length} levende.</p>
+        <div class="ancestry-overall">${ancestryBreakdown(w, 72)}</div>
+        <p class="muted">Klikk på en aktør i verdenen for å se detaljer og slektskap.</p>
         <p class="muted">● hunn &nbsp; ◆ hann. Gjennomsiktighet viser energinivå. Rød strek: angriper → mål. Gul kant: flykter. Hvitt blink: treff. Stiplet rosa strek: søker partner. Grønn: paret seg. Grå med kryss: avvist, krysset står ved den som sa nei. Hvit prikk: gravid. Blå prikket strek: far som passer på den gravide.</p>
         <p class="muted">Rull for å zoome, dra for å flytte, dobbeltklikk for å vise hele verdenen. Fra ${DETAIL_ZOOM}× zoom vises avstamning som kakediagram og helse som en bar.</p>`;
       return;
@@ -126,7 +147,7 @@ export class Inspector {
       .map((t, i) => ({ t, v: ancestry[i] ?? 0 }))
       .filter((x) => x.v > 0.0005)
       .sort((a, b) => b.v - a.v)
-      .map(({ t, v }) => `<li><span class="swatch" style="background:${t.color}"></span>${esc(t.name)} ${(v * 100).toFixed(v < 0.1 ? 1 : 0)} %</li>`)
+      .map(({ t, v }) => `<li><span class="swatch" style="background:${t.color}"></span>${esc(t.name)} ${(v * 100).toFixed(v < 0.1 ? 1 : 0).replace('.', ',')} %</li>`)
       .join('');
 
     let conflict = '';

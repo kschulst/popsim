@@ -221,3 +221,9 @@ canvas#world.panning { cursor: grabbing; }
 .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
 
 #timeline .rule-mark { fill: #f2994a; }
+
+.anc-overall { display: inline-flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; flex-basis: 100%; }
+.anc-overall svg { flex: none; }
+.anc-item { white-space: nowrap; }
+.ancestry-overall { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 6px 0 14px; font-size: 13px; }
+.ancestry-overall svg { flex: none; margin-right: 6px; }
