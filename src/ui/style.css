@@ -219,3 +219,5 @@ canvas#world.panning { cursor: grabbing; }
 
 .tribe-bonus .help { display: block; }
 .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
+
+#timeline .rule-mark { fill: #f2994a; }

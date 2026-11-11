@@ -61,6 +61,7 @@ export class Timeline {
         g.append('circle').attr('class', 'start').attr('r', 3.5);
         g.append('text').attr('class', 'label').attr('text-anchor', 'end');
         g.append('title');
+        g.append('g').attr('class', 'rule-marks');
         return g;
       })
       .attr('class', (b) => `lane${b.id === activeId ? ' active' : ''}${lineage.has(b.id) ? ' lineage' : ''}`);
@@ -88,8 +89,25 @@ export class Timeline {
       .text(
         (b) =>
           `${b.name}\nTick ${b.startTick}–${b.headTick}` +
-          (b.changes.length ? `\n\nEndringer:\n• ${b.changes.join('\n• ')}` : ''),
+          (b.changes.length ? `\n\nEndringer:\n• ${b.changes.join('\n• ')}` : '') +
+          (b.ruleLog?.length ? `\n\nRegelendringer i grenen:\n• ${b.ruleLog.map((r) => `tick ${r.tick}: ${r.text}`).join('\n• ')}` : ''),
       );
+
+    // Rule changes made in place: a small tick on the lane, with the change as tooltip.
+    lanes.each(function (b) {
+      d3.select(this)
+        .select('g.rule-marks')
+        .selectAll<SVGGElement, { tick: number; text: string }>('g')
+        .data(b.ruleLog ?? [])
+        .join((e) => {
+          const g = e.append('g');
+          g.append('rect').attr('class', 'rule-mark').attr('width', 3).attr('height', 12).attr('x', -1.5).attr('y', -6);
+          g.append('title');
+          return g;
+        })
+        .attr('transform', (r) => `translate(${x(r.tick)},${y(b)})`)
+        .call((g) => g.select('title').text((r) => `Tick ${r.tick}: ${r.text}`));
+    });
 
     lanes.on('click', function (event: MouseEvent, b) {
       const [px] = d3.pointer(event, svg.node());

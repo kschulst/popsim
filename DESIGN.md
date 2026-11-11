@@ -124,7 +124,7 @@ Slektsvekter brukes i lojalitet (v2) og i samarbeid (v3). De er naturlover (regl
 - Hver gren holder en ringbuffer med full tilstand for hver av de siste `ringSize` (300) ticks, og et fullt snapshot hver `snapshotInterval` (10) ticks for hele grenen.
 - Frem og tilbake går per tick innenfor ringbufferen, ellers per snapshot. Avspilling bakover i tid spiller av lagret historikk. Simulering skjer bare fra enden av en gren.
 - **Forgreining** fra et lagret tidspunkt lager en ny gren. Før start kan regler, hele populasjonen, én aktør og miljøet endres. Endringene lagres som beskrivelse på grenen.
-- Endring av en regel uten redigeringspanelet lager automatisk en ny gren fra tidspunktet som vises.
+- Endring av en regel uten redigeringspanelet ved enden av grenen endrer reglene i grenen fra og med den ticken (lagres i grenens regellogg og merkes på tidslinjen). På et tidligere tidspunkt lages en ny gren, siden tickene etter ellers ville blitt ugyldige. Valget «Lag alltid ny gren ved regelendring» (lagres i nettleseren) gir ny gren hver gang.
 - Historikken vises som en tidslinje med én linje per gren og en kobling ved forgreiningspunktet.
 - Historikken ligger i minnet. Den kan eksporteres og importeres som komprimert JSON. Filen inneholder versjonsnummeret, og import i en annen versjon gir en advarsel. v2 avviser filer fra v1, fordi aktørene mangler stammer og helse. De kan åpnes i v1 via versjonsvelgeren.
 

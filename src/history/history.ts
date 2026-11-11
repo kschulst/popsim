@@ -20,6 +20,8 @@ export interface Branch {
   /** Tick in the parent branch the branch starts from (0 for the root). */
   startTick: number;
   changes: string[];
+  /** Rule changes made in place at the head of the branch (without forking). */
+  ruleLog: { tick: number; text: string }[];
   createdAt: number;
   headTick: number;
   /** Live state at headTick. Simulation only advances from here. */
@@ -109,9 +111,24 @@ export class History {
       ring: [storedCopy(head)],
       registry: o.registry,
       stats: [],
+      ruleLog: [],
     };
     this.branches.set(b.id, b);
     return b;
+  }
+
+  /**
+   * Changes the rules at the head of a branch without forking. The stored states for the head
+   * tick are updated too, so the change shows immediately; earlier states keep their old rules.
+   */
+  amendRules(id: number, apply: (r: World['rules']) => void, text: string): void {
+    const b = this.get(id);
+    apply(b.head.rules);
+    const last = b.ring[b.ring.length - 1];
+    if (last?.tick === b.headTick) apply(last.rules);
+    const snap = b.snapshots.get(b.headTick);
+    if (snap && snap !== last) apply(snap.rules);
+    b.ruleLog.push({ tick: b.headTick, text });
   }
 
   /** Inserts a fully built branch (used by import). */

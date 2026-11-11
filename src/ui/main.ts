@@ -142,7 +142,14 @@ const changeRule = (apply: (r: Rules) => void, description: string) => {
     editor.log(description);
     return;
   }
-  // Outside the editor a rule change forks a new branch from the displayed tick.
+  // At the head of a branch, change the rules in place unless the user wants a branch per change.
+  // Earlier ticks always fork: changing them in place would invalidate the ticks after them.
+  const b0 = history.get(branchId);
+  if (!rules.branchOnChange && tick === b0.headTick) {
+    history.amendRules(branchId, apply, description);
+    touch();
+    return;
+  }
   const draft = cloneWorld(history.stateAt(branchId, tick));
   apply(draft.rules);
   const b = history.fork(branchId, draft.tick, draft, [description]);

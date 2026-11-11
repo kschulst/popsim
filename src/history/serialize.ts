@@ -13,6 +13,7 @@ interface BranchJson {
   parentId: number | null;
   startTick: number;
   changes: string[];
+  ruleLog?: { tick: number; text: string }[];
   createdAt: number;
   headTick: number;
   /** Shared by every state in the branch. */
@@ -75,6 +76,7 @@ export const toExport = (h: History, activeBranchId: number): ExportFile => ({
     parentId: b.parentId,
     startTick: b.startTick,
     changes: b.changes,
+    ruleLog: b.ruleLog,
     createdAt: b.createdAt,
     headTick: b.headTick,
     fertility: f32ToBase64(b.head.fertility),
@@ -115,6 +117,7 @@ export const fromExport = (file: ExportFile): { history: History; activeBranchId
       parentId: bj.parentId,
       startTick: bj.startTick,
       changes: bj.changes,
+      ruleLog: bj.ruleLog ?? [],
       createdAt: bj.createdAt,
       headTick: bj.headTick,
       head,

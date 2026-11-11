@@ -26,6 +26,11 @@ export class RulesPanel {
   private tribes: Tribe[] = [];
   private tribesKey = '';
 
+  /** Whether every rule change outside the editor forks a new branch (persisted per browser). */
+  get branchOnChange(): boolean {
+    return this.root.querySelector<HTMLInputElement>('.branch-on-change')!.checked;
+  }
+
   constructor(
     private readonly root: HTMLElement,
     private readonly onChange: RuleChange,
@@ -65,7 +70,8 @@ export class RulesPanel {
           `<div class="field-row"><span>${l}</span><input type="number" aria-label="Slektsvekt ${escAttr(l)}" step="0.05" min="0" max="3" data-kin="${k}"></div>`,
       )
       .join('');
-    root.innerHTML = `<p class="muted">Endring av en regel lager en ny gren fra tidspunktet som vises (eller endrer utkastet når du redigerer en gren). Hold musepekeren over en regel eller klikk ? for å se hva den gjør.</p>
+    root.innerHTML = `<p class="muted">Ved enden av grenen endres reglene i samme gren fra og med tidspunktet som vises, og endringen merkes på tidslinjen. Ser du på et tidligere tidspunkt, lages en ny gren, siden tickene etter ellers ville blitt ugyldige. Når du redigerer en gren, endres utkastet. Hold musepekeren over en regel eller klikk ? for å se hva den gjør.</p>
+      <label class="check"><input type="checkbox" class="branch-on-change"> Lag alltid ny gren ved regelendring</label>
       <label class="check"><input type="checkbox" class="show-all-help"> Vis alle beskrivelser</label>
       <fieldset class="tribe-bonus"><legend>Attraktivitet per avstamning</legend>
         <p class="help">${TRIBE_BONUS_DESCRIPTION}</p>
@@ -77,6 +83,20 @@ export class RulesPanel {
         <p class="help">${KIN_WEIGHTS_DESCRIPTION}</p>
         ${kin}
       </fieldset>`;
+
+    const branchBox = root.querySelector<HTMLInputElement>('.branch-on-change')!;
+    try {
+      branchBox.checked = localStorage.getItem('popsim.branchOnRuleChange') === '1';
+    } catch {
+      /* storage unavailable: keep the default (off) */
+    }
+    branchBox.addEventListener('change', () => {
+      try {
+        localStorage.setItem('popsim.branchOnRuleChange', branchBox.checked ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+    });
 
     root.addEventListener('click', (e) => {
       const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button.info');
