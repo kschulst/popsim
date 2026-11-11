@@ -60,7 +60,7 @@ const renderVitals = (rows: TickStats[], at: number, w: World) => {
   const all = mortality(rows, -1, at);
   const recent = mortality(rows, at - RECENT_TICKS, at);
   $('vitals').innerHTML =
-    `<span class="anc-overall" title="Gjennomsnittlig avstamning blant de levende på tick som vises">Avstamning: ${ancestryBreakdown(w, 16)}</span>` +
+    `<span class="anc-overall" title="Gjennomsnittlig avstamning blant de levende på tick som vises"><b>${w.actors.length}</b> levende · Avstamning: ${ancestryBreakdown(w, 16)}</span>` +
     `<span title="Fra tick 0 til tick som vises. Dødsalder i ticks.">Hittil: ${mortalityText(all)}</span>` +
     `<span title="De siste ${RECENT_TICKS} ticks før tick som vises. Dødsalder i ticks.">Siste ${RECENT_TICKS}: ${mortalityText(recent)}</span>`;
 };
