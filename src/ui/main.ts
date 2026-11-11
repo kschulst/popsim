@@ -53,7 +53,7 @@ const RECENT_TICKS = 500;
 
 const pct = (v: number) => (Number.isFinite(v) ? `${Math.round(v * 100)} %` : '–');
 const mortalityText = (m: Mortality) =>
-  `<b>${m.deaths}</b> døde · <b>${pct(m.ageShare)}</b> alderdom · <b>${pct(m.killedShare)}</b> drept · dødsalder <b>${Number.isFinite(m.meanAge) ? Math.round(m.meanAge) : '–'}</b>`;
+  `<b>${m.births}</b> født · <b>${m.deaths}</b> døde · <b>${pct(m.ageShare)}</b> alderdom · <b>${pct(m.killedShare)}</b> drept · dødsalder <b>${Number.isFinite(m.meanAge) ? Math.round(m.meanAge) : '–'}</b>`;
 
 /** Mortality figures up to the displayed tick: whole lineage and the last RECENT_TICKS ticks. */
 const renderVitals = (rows: TickStats[], at: number, w: World) => {

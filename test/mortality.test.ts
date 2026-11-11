@@ -3,13 +3,14 @@ import { mortality } from '../src/sim/mortality';
 import type { TickStats } from '../src/sim/types';
 
 const row = (tick: number, starv: number, age: number, ageSum: number): TickStats =>
-  ({ tick, deathsStarvation: starv, deathsAge: age, deathAgeSum: ageSum }) as TickStats;
+  ({ tick, births: 1, deathsStarvation: starv, deathsAge: age, deathAgeSum: ageSum }) as TickStats;
 
 describe('mortality', () => {
   it('computes age share and mean age at death within the window', () => {
     const rows = [row(1, 2, 0, 100), row(2, 1, 1, 1100), row(3, 0, 2, 2000)];
     const all = mortality(rows, 0, 3);
     expect(all.deaths).toBe(6);
+    expect(all.births).toBe(3);
     expect(all.ageShare).toBeCloseTo(3 / 6);
     expect(all.meanAge).toBeCloseTo(3200 / 6);
     const last = mortality(rows, 1, 2);

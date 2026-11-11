@@ -1,6 +1,8 @@
 import type { TickStats } from './types';
 
 export interface Mortality {
+  /** Children born in the window. */
+  births: number;
   /** All deaths except removals in the branch editor. */
   deaths: number;
   ageDeaths: number;
@@ -18,6 +20,7 @@ export interface Mortality {
  * age at death was recorded have `deathAgeSum` NaN; they count toward the shares but not the mean age.
  */
 export const mortality = (rows: TickStats[], from: number, to: number): Mortality => {
+  let births = 0;
   let deaths = 0;
   let ageDeaths = 0;
   let killed = 0;
@@ -25,6 +28,7 @@ export const mortality = (rows: TickStats[], from: number, to: number): Mortalit
   let ageSum = 0;
   for (const r of rows) {
     if (r.tick <= from || r.tick > to) continue;
+    births += r.births;
     const k = r.deathsKilled ?? 0;
     const n = r.deathsStarvation + r.deathsAge + k + (r.deathsChildbirth ?? 0) + (r.deathsInfant ?? 0) + (r.deathsDisease ?? 0) + (r.deathsCatastrophe ?? 0);
     deaths += n;
@@ -36,6 +40,7 @@ export const mortality = (rows: TickStats[], from: number, to: number): Mortalit
     }
   }
   return {
+    births,
     deaths,
     ageDeaths,
     killed,
