@@ -75,7 +75,7 @@ export class RulesPanel {
           `<div class="field-row"><span>${l}</span><input type="number" aria-label="Slektsvekt ${escAttr(l)}" step="0.05" min="0" max="3" data-kin="${k}"></div>`,
       )
       .join('');
-    root.innerHTML = `<p class="muted">Ved enden av grenen endres reglene i samme gren fra og med tidspunktet som vises, og endringen merkes på tidslinjen. Ser du på et tidligere tidspunkt, lages en ny gren, siden tickene etter ellers ville blitt ugyldige. Når du redigerer en gren, endres utkastet. Hold musepekeren over en regel eller klikk ? for å se hva den gjør.</p>
+    root.innerHTML = `<p class="muted">Endringer gjelder fra tidspunktet som vises. Hold over eller klikk ? for å se hva en regel gjør.</p>
       <label class="check"><input type="checkbox" class="branch-on-change"> Lag alltid ny gren ved regelendring</label>
       <label class="check"><input type="checkbox" class="show-all-help"> Vis alle beskrivelser</label>
       <fieldset class="tribe-bonus"><legend>Attraktivitet per avstamning</legend>
@@ -90,7 +90,7 @@ export class RulesPanel {
           <button type="button" class="ele-go primary">Slipp løs</button>
         </div>
         <p class="help ele-desc"></p>
-        <p class="help">Vektene bestemmer hvor sannsynlig hver katastrofe er når en tilfeldig katastrofe inntreffer (se Katastroferate). 0 betyr aldri. Meteoren treffer stedet du klikker på i verden etter at du har trykket «Slipp løs».</p>
+        <p class="help">Vekt = hvor ofte katastrofen velges når en tilfeldig katastrofe skjer. 0 = aldri. Meteoren treffer der du klikker.</p>
         ${ELE_KEYS.map((k) => `<div class="field-row"><span>${ELE_DEFS[k].icon} ${ELE_DEFS[k].name}</span><input type="number" aria-label="Vekt ${ELE_DEFS[k].name}" step="0.1" min="0" max="10" data-ele="${k}"></div>`).join('')}
       </fieldset>
       <fieldset><legend>Slektsvekter</legend>
@@ -324,7 +324,7 @@ export class BranchEditor {
     this.root.innerHTML = `
       <div class="editor-head">
         <strong>Ny gren fra tick ${this.draft!.tick}</strong>
-        <p class="muted">Endre regler (fanen Regler), populasjon, én aktør eller miljøet. Start grenen når du er ferdig.</p>
+        <p class="muted">Gjør endringene, og trykk «Start gren».</p>
       </div>
       <fieldset><legend>Populasjon</legend>
         <div class="row">

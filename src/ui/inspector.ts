@@ -15,7 +15,6 @@ import { vigorOf } from '../sim/step';
 import { purity } from '../sim/tribes';
 import { capacityOf, maxHpOf } from '../sim/world';
 import { surnameColor } from './colors';
-import { DETAIL_ZOOM } from './renderer';
 
 export const CAUSE_LABELS: Record<DeathCause, string> = {
   starvation: 'sult',
@@ -173,11 +172,9 @@ export class Inspector {
     const backBtn = canGoBack ? `<button data-act="back" class="nav-back" title="Tilbake til forrige aktør">← Tilbake</button>` : '';
     if (id === null) {
       this.root.innerHTML = `${backBtn}<h3>Avstamning i bestanden</h3>
-        <p class="muted">Gjennomsnittlig andel fra hver stamme blant de ${w.actors.length} levende.</p>
+        <p class="muted">Snitt blant ${w.actors.length} levende.</p>
         <div class="ancestry-overall">${ancestryBreakdown(w, 72)}</div>
-        <p class="muted">Klikk på en aktør i verdenen for å se detaljer og slektskap.</p>
-        <p class="muted">● hunn &nbsp; ◆ hann. Gjennomsiktighet viser energinivå. Rød strek: angriper → mål. Gul kant: flykter. Hvitt blink: treff. Stiplet rosa strek: søker partner. Grønn: paret seg. Grå med kryss: avvist, krysset står ved den som sa nei. Hvit prikk: gravid. Symboler over aktørene (fra 2× zoom, alltid for valgt aktør): ⚔ angriper, ! blir angrepet, ↯ flykter, ♥ kurtiserer eller kurtiseres, ✿ gravid. Pilen på den røde streken peker mot den som blir angrepet. Blå prikket strek: far som passer på den gravide. Farget stiplet ring: syk (fargen viser sykdommen).</p>
-        <p class="muted">Rull for å zoome, dra for å flytte, dobbeltklikk for å vise hele verdenen. Fra ${DETAIL_ZOOM}× zoom vises avstamning som kakediagram og helse som en bar.</p>`;
+        <p class="muted">Klikk på en aktør for detaljer. Hold musepekeren over en aktør for å se hva den gjør. «Forklaring» på kartet viser hva strekene og symbolene betyr.</p>`;
       return;
     }
     const rec = reg.get(id);
