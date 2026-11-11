@@ -66,7 +66,7 @@ ${entries
 </ul>
 <p class="vs-muted">Kjøringen følger ikke med når du bytter. Eksporter først hvis du vil ta vare på den.</p>
 <h4>Forskjeller</h4>
-<div class="vs-cmp">Fra <select data-k="from">${options(Math.max(0, idx - 1))}</select> til <select data-k="to">${options(idx)}</select></div>
+<div class="vs-cmp">Fra <select data-k="from">${options(idx > 0 ? idx - 1 : 0)}</select> til <select data-k="to">${options(idx > 0 ? idx : Math.min(1, entries.length - 1))}</select></div>
 <div class="vs-diff"></div>
 <p><a class="vs-muted" href="${base}">Alle versjoner</a></p>`;
 
