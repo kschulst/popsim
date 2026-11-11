@@ -87,7 +87,8 @@
       "Inspektøren viser slektskap ved partnernavn (kurtiserer, kurtiseres av, paret seg med, avviste); nær slekt markeres med ⚠ i varselfarge. Forklaringen på kartet viser også slektsringer og flukt-kant.",
       "Hold musepekeren over en aktør i ett sekund for å se hva den gjør og hva den utsettes for: flykter, angriper (og hvorfor), blir angrepet, passer på, gravid, ammer eller ammes, kurtiserer eller kurtiseres (med slektskap), syk, sulten, skadet, svekket, eller leter etter mat.",
       "Kortere hjelpetekster: regelbeskrivelser, regelpanelet, inspektøren og dialogen «Ny kjøring». Formlene står i DESIGN.md.",
-      "Når bestanden dør ut, stopper avspillingen og en melding over kartet sier når og hvem som døde sist, med knapper for å spole 200 ticks tilbake, forgreine derfra eller starte en ny kjøring."
+      "Når bestanden dør ut, stopper avspillingen og en melding over kartet sier når og hvem som døde sist, med knapper for å spole 200 ticks tilbake, forgreine derfra eller starte en ny kjøring.",
+      "«Ny kjøring» har valget «Velg på kartet»: klikk der hver stamme skal starte. Fruktbarhetskartet vises mens du plasserer."
     ]
   }
 }

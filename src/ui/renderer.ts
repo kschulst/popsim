@@ -12,6 +12,8 @@ export interface RenderOptions {
   /** Draw partner search and courtship lines. */
   showCourtship: boolean;
   brush: { x: number; y: number; r: number } | null;
+  /** Placed tribe homes while the user places tribes. */
+  markers?: { x: number; y: number; color: string; label: string }[];
 }
 
 /** Zoom level from which every actor is drawn as an ancestry pie with a health bar. */
@@ -564,6 +566,24 @@ export class Renderer {
       ctx.arc(bx, by, br, 0, Math.PI * 2);
       ctx.strokeStyle = '#fff';
       ctx.stroke();
+    }
+
+    for (const m of opt.markers ?? []) {
+      const x = sx(m);
+      const y = sy(m);
+      ctx.beginPath();
+      ctx.arc(x, y, 40 * s, 0, Math.PI * 2);
+      ctx.fillStyle = m.color + '55';
+      ctx.fill();
+      ctx.strokeStyle = m.color;
+      ctx.lineWidth = 2 * dpr;
+      ctx.stroke();
+      ctx.font = `bold ${Math.round(13 * dpr)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(m.label, x, y);
+      ctx.textAlign = 'start';
     }
 
     if (opt.brush) {

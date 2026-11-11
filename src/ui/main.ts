@@ -4,7 +4,7 @@ import { exportGzip, fromExport, importGzip } from '../history/serialize';
 import type { EleKey, Rules, TickStats, Tribe, World } from '../sim/types';
 import { DEFAULT_TRIBES } from '../sim/tribes';
 import { TribeTable } from './tribe-table';
-import { cloneWorld, createWorld, DEFAULT_CONFIG, radiusOf } from '../sim/world';
+import { cloneWorld, createEmptyWorld, createWorld, DEFAULT_CONFIG, populateWorld, radiusOf } from '../sim/world';
 import { NAME_SOURCE } from '../sim/names';
 import { APP_NAME, IS_DEV, VERSION, VERSION_LABEL } from '../version';
 import { mortality, type Mortality } from '../sim/mortality';
@@ -106,7 +106,10 @@ const rules = new RulesPanel(
 );
 
 /** The world currently displayed: the edit draft, or the stored state at the cursor. */
-const shownWorld = (): World => editor.draft ?? history.stateAt(branchId, tick);
+/** Tribe placement in progress: an empty world shown on the map until every tribe has a home. */
+let placing: { world: World; homes: { x: number; y: number }[]; order: number[] } | null = null;
+
+const shownWorld = (): World => placing?.world ?? editor.draft ?? history.stateAt(branchId, tick);
 
 const touch = () => revision++;
 
@@ -350,11 +353,29 @@ const updateExtinct = (w: World) => {
   el.hidden = false;
 };
 
-const newRun = (tribes: Tribe[]) => {
+/** Prompt for the next tribe to place, or finish the run when all are placed. */
+const nextPlacement = () => {
+  if (!placing) return;
+  const i = placing.order[placing.homes.length];
+  if (i === undefined) {
+    const homes: ({ x: number; y: number } | undefined)[] = [];
+    placing.order.forEach((ti, k) => (homes[ti] = placing!.homes[k]));
+    const world = populateWorld(placing.world, homes);
+    placing = null;
+    renderer.canvas.classList.remove('aiming');
+    $('banner').hidden = true;
+    startRun(world);
+    return;
+  }
+  const t = placing.world.tribes[i];
+  showBanner(`Klikk der ${t.name} skal starte (${placing.homes.length + 1} av ${placing.order.length}) · Esc avbryter`, 0);
+};
+
+const startRun = (world: World) => {
   editor.stop();
   $('tab-editor').hidden = true;
   history = new History(DEFAULT_HISTORY_CONFIG);
-  branchId = history.createRoot(createWorld({ ...DEFAULT_CONFIG, tribes })).id;
+  branchId = history.createRoot(world).id;
   tick = 0;
   selectedId = null;
   playing = false;
@@ -414,7 +435,7 @@ $('footer').innerHTML =
   `Navn fra <a href="${NAME_SOURCE.firstNames.url}">${NAME_SOURCE.publisher}, tabell ${NAME_SOURCE.firstNames.table}</a> ` +
   `og <a href="${NAME_SOURCE.surnames.url}">${NAME_SOURCE.surnames.table}</a> (${NAME_SOURCE.firstNames.year}), ${NAME_SOURCE.license}.`;
 $('btn-play').onclick = () => {
-  if (editor.active) return;
+  if (editor.active || placing) return;
   playing = !playing;
   touch();
 };
@@ -496,6 +517,18 @@ $('btn-new').onclick = () => {
   tribeTable.set(history.get(branchId).head.tribes);
   $<HTMLDialogElement>('new-dialog').showModal();
 };
+const newRun = (tribes: Tribe[], manual = false) => {
+  if (!manual) return startRun(createWorld({ ...DEFAULT_CONFIG, tribes }));
+  // Manual placement: show the terrain (with fertility) and ask for a home per tribe with seeds.
+  playing = false;
+  const world = createEmptyWorld({ ...DEFAULT_CONFIG, tribes });
+  placing = { world, homes: [], order: tribes.map((_, i) => i).filter((i) => tribes[i].seeds > 0) };
+  renderer.resetView();
+  renderer.canvas.classList.add('aiming');
+  touch();
+  nextPlacement();
+};
+
 $<HTMLDialogElement>('new-dialog').addEventListener('close', () => {
   const d = $<HTMLDialogElement>('new-dialog');
   if (d.returnValue !== 'ok') return;
@@ -504,7 +537,7 @@ $<HTMLDialogElement>('new-dialog').addEventListener('close', () => {
     alert('Det trengs minst 2 seeds til sammen.');
     return;
   }
-  newRun(tribes);
+  newRun(tribes, $<HTMLSelectElement>('placement').value === 'manual');
 });
 $('btn-export').onclick = () => void doExport();
 $('btn-import').onclick = () => $('import-file').click();
@@ -516,7 +549,12 @@ $<HTMLInputElement>('import-file').onchange = (e) => {
 
 document.addEventListener('keydown', (e) => {
   if ((e.target as HTMLElement).closest('input, select, textarea')) return;
-  if (e.key === 'Escape' && pendingMeteor) {
+  if (e.key === 'Escape' && placing) {
+    placing = null;
+    renderer.canvas.classList.remove('aiming');
+    $('banner').hidden = true;
+    touch();
+  } else if (e.key === 'Escape' && pendingMeteor) {
     pendingMeteor = false;
     renderer.canvas.classList.remove('aiming');
     $('banner').hidden = true;
@@ -629,7 +667,11 @@ const endPointer = (e: PointerEvent) => {
   if (painting) editor.endStroke();
   painting = false;
   if (drag && !drag.moved && e.type === 'pointerup') {
-    if (pendingMeteor) {
+    if (placing) {
+      placing.homes.push(worldPoint(e));
+      touch();
+      nextPlacement();
+    } else if (pendingMeteor) {
       pendingMeteor = false;
       canvas.classList.remove('aiming');
       $('banner').hidden = true;
@@ -739,7 +781,8 @@ const frame = (now: number) => {
     colorMode,
     selectedId,
     kin,
-    showFertility: showFertility || (editor.active && editor.brushOn && editor.brushMode.endsWith('Fertile')),
+    showFertility: showFertility || placing !== null || (editor.active && editor.brushOn && editor.brushMode.endsWith('Fertile')),
+    markers: placing ? placing.homes.map((h, k) => ({ ...h, color: placing!.world.tribes[placing!.order[k]].color, label: placing!.world.tribes[placing!.order[k]].name })) : undefined,
     showCourtship,
     brush: brushPos ? { ...brushPos, r: editor.brushRadius } : null,
   });

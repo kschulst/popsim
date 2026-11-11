@@ -153,12 +153,13 @@ const tribeHome = (() => {
   };
 })();
 
-export const createWorld = (config: WorldConfig = DEFAULT_CONFIG): World => {
+/** A world with terrain and food but no actors (used while the user places tribes). */
+export const createEmptyWorld = (config: WorldConfig = DEFAULT_CONFIG): World => {
   const { width, height, cols, rows, rules, tribes } = config;
   const fertility = fertilityMap(cols, rows);
   const food = new Uint8Array(cols * rows);
   for (let i = 0; i < food.length; i++) food[i] = Math.random() < fertility[i] * 0.6 ? 1 : 0;
-  const world: World = {
+  return {
     tick: 0,
     width,
     height,
@@ -175,12 +176,20 @@ export const createWorld = (config: WorldConfig = DEFAULT_CONFIG): World => {
     diseases: [],
     events: [],
   };
+};
+
+/**
+ * Adds each tribe's seeds around its home: `homes[i]` if given (placed by the user), otherwise an
+ * automatic home on an ellipse around the centre.
+ */
+export const populateWorld = (world: World, homes: ({ x: number; y: number } | undefined)[] = []): World => {
+  const { width, height, tribes } = world;
   const taken: string[] = [];
   tribes.forEach((t, ti) => {
     const surnames = uniqueSurnames(t.seeds, taken);
     taken.push(...surnames);
     assignHues(world, surnames, ti);
-    const home = tribeHome(ti, tribes.length, width, height);
+    const home = homes[ti] ?? tribeHome(ti, tribes.length, width, height);
     for (const surname of surnames) {
       spawnSeed(world, {
         surname,
@@ -192,5 +201,7 @@ export const createWorld = (config: WorldConfig = DEFAULT_CONFIG): World => {
   });
   return world;
 };
+
+export const createWorld = (config: WorldConfig = DEFAULT_CONFIG): World => populateWorld(createEmptyWorld(config));
 
 export const cloneWorld = (w: World): World => structuredClone(w);
