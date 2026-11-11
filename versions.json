@@ -84,7 +84,8 @@
       "Tidslinje under kartet: glidebryter som viser hvor i tiden du er og kan dras, knapper for 10 steg frem og tilbake (også Shift + piltaster), og speilvendte knapper: |◀ ▶| for ett steg og |◀◀ ▶▶| for 10.",
       "Rettet etter kodegjennomgang: partnersøket stopper ved kandidaten i stedet for å pendle, hopper over ammende, gravide, voktende og de som nettopp avviste, og vises som partnerstrek; angrepsfargen følger den reelle årsaken; ammende barn holder seg ved moren; regler som mangler i eldre filer får standardverdier ved import; forklaringen bruker samme farger som kartet.",
       "Grenhistorikken (tidslinjen med grener) er foldet sammen under kartet og viser antall grener; klikk for å åpne. Valget huskes i nettleseren.",
-      "Inspektøren viser slektskap ved partnernavn (kurtiserer, kurtiseres av, paret seg med, avviste); nær slekt markeres med ⚠ i varselfarge. Forklaringen på kartet viser også slektsringer og flukt-kant."
+      "Inspektøren viser slektskap ved partnernavn (kurtiserer, kurtiseres av, paret seg med, avviste); nær slekt markeres med ⚠ i varselfarge. Forklaringen på kartet viser også slektsringer og flukt-kant.",
+      "Hold musepekeren over en aktør i ett sekund for å se hva den gjør og hva den utsettes for: flykter, angriper (og hvorfor), blir angrepet, passer på, gravid, ammer eller ammes, kurtiserer eller kurtiseres (med slektskap), syk, sulten, skadet, svekket, eller leter etter mat."
     ]
   }
 }

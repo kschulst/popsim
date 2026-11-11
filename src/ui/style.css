@@ -270,3 +270,7 @@ canvas#world.aiming { cursor: crosshair; }
 details.timeline-wrap > summary { cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 0; }
 
 .kin-warn { color: #ff9b5a; font-weight: 600; white-space: nowrap; }
+
+.hover-tip { position: absolute; z-index: 6; pointer-events: none; background: rgba(14, 16, 20, 0.94); border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; font-size: 12px; line-height: 1.5; max-width: 320px; box-shadow: 0 4px 14px #0008; }
+.hover-tip strong { color: var(--c, var(--text)); }
+.hover-tip .life { margin-left: 4px; }

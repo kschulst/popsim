@@ -11,7 +11,9 @@ import { mortality, type Mortality } from '../sim/mortality';
 import { Charts } from './charts';
 import { COLOR_MODE_LABELS, type ColorMode } from './colors';
 import { BranchEditor, RulesPanel } from './editor';
-import { ancestryBreakdown, Inspector, kinMap } from './inspector';
+import { ancestryBreakdown, describeActor, Inspector, kinMap, lifeSpanText } from './inspector';
+import { surnameColor } from './colors';
+import { fullName } from '../sim/names';
 import { Leaderboards } from './leaderboards';
 import { createEle, ELE_DEFS } from '../sim/ele';
 import { ATTACK_COLORS, ATTACK_LABELS, MARK_COLORS, Renderer } from './renderer';
@@ -499,7 +501,8 @@ const worldPoint = (e: PointerEvent) => {
   const p = cssPoint(e);
   return renderer.toWorld(p.x, p.y);
 };
-const selectAt = (p: { x: number; y: number }) => {
+/** Actor under a world point (with a few pixels of slack), or null. */
+const actorAt = (p: { x: number; y: number }): number | null => {
   const w = shownWorld();
   let best: number | null = null;
   let bestD = Infinity;
@@ -510,7 +513,43 @@ const selectAt = (p: { x: number; y: number }) => {
       bestD = d;
     }
   }
+  return best;
+};
+const selectAt = (p: { x: number; y: number }) => {
+  const best = actorAt(p);
   select(best, { push: best !== null });
+};
+
+// Hover tooltip: after resting on the same actor for HOVER_MS, describe what it is doing.
+const HOVER_MS = 1000;
+let hover: { id: number; since: number; px: number; py: number } | null = null;
+const hideTip = () => {
+  hover = null;
+  $('hover-tip').hidden = true;
+};
+const updateTip = (now: number) => {
+  const tip = $('hover-tip');
+  if (!hover || now - hover.since < HOVER_MS || drag?.moved) {
+    tip.hidden = true;
+    return;
+  }
+  const w = shownWorld();
+  const a = w.actors.find((x) => x.id === hover!.id);
+  if (!a) return hideTip();
+  // The actor may walk away from a still pointer: hide once it is clearly elsewhere.
+  const at = renderer.toWorld(hover.px, hover.py);
+  if (Math.hypot(a.x - at.x, a.y - at.y) > radiusOf(a) + 20 / renderer.zoom + 4) return hideTip();
+  const reg = history.get(branchId).registry;
+  const r = reg.get(a.id);
+  tip.innerHTML =
+    `<strong style="--c:${surnameColor(w, a.surname)}">${a.sex === 'F' ? '♀' : '♂'} ${r ? fullName(r) : '#' + a.id}</strong><span class="life">${lifeSpanText(reg, a.id, w.tick)}</span><br>` +
+    describeActor(w, reg, a).map((l) => l.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`)).join('<br>');
+  tip.hidden = false;
+  const wrap = tip.parentElement!.getBoundingClientRect();
+  const x = Math.min(hover.px + 14, wrap.width - tip.offsetWidth - 6);
+  const y = hover.py + 14 + tip.offsetHeight > wrap.height ? hover.py - tip.offsetHeight - 10 : hover.py + 14;
+  tip.style.left = `${Math.max(4, x)}px`;
+  tip.style.top = `${Math.max(4, y)}px`;
 };
 /** Pointer drag state: start point and whether it has moved far enough to count as a pan. */
 let drag: { x: number; y: number; lastX: number; lastY: number; moved: boolean } | null = null;
@@ -526,6 +565,13 @@ canvas.addEventListener('pointerdown', (e) => {
 });
 canvas.addEventListener('pointermove', (e) => {
   brushPos = editor.active && editor.brushOn ? worldPoint(e) : null;
+  if (!drag) {
+    const id = actorAt(worldPoint(e));
+    const p = cssPoint(e);
+    if (id === null) hideTip();
+    else if (hover?.id === id) Object.assign(hover, { px: p.x, py: p.y });
+    else hover = { id, since: performance.now(), px: p.x, py: p.y };
+  }
   if (painting && brushPos) editor.paint(brushPos.x, brushPos.y);
   if (drag) {
     if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 4) drag.moved = true;
@@ -553,7 +599,10 @@ const endPointer = (e: PointerEvent) => {
 };
 canvas.addEventListener('pointerup', endPointer);
 canvas.addEventListener('pointercancel', endPointer);
-canvas.addEventListener('pointerleave', () => (brushPos = null));
+canvas.addEventListener('pointerleave', () => {
+  brushPos = null;
+  hideTip();
+});
 canvas.addEventListener(
   'wheel',
   (e) => {
@@ -629,6 +678,7 @@ const frame = (now: number) => {
     kin = selectedId === null ? new Map() : kinMap(w, reg, selectedId);
   }
   if (!editor.active) announceEvents(w);
+  updateTip(now);
   updateScrub();
   const zl = `${renderer.zoom < 10 ? renderer.zoom.toFixed(1).replace('.0', '') : Math.round(renderer.zoom)}×`;
   if ($('zoom-level').textContent !== zl) $('zoom-level').textContent = zl;

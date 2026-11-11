@@ -10,7 +10,7 @@ import {
 } from '../sim/genealogy';
 import { GENE_LABELS, normGene } from '../sim/genome';
 import { fullName } from '../sim/names';
-import { GENE_KEYS, type DeathCause, type World } from '../sim/types';
+import { GENE_KEYS, type Actor, type DeathCause, type World } from '../sim/types';
 import { vigorOf } from '../sim/step';
 import { purity } from '../sim/tribes';
 import { capacityOf, maxHpOf } from '../sim/world';
@@ -87,6 +87,62 @@ export const lifeSpanText = (reg: Registry, id: number, atTick: number): string 
   if (!r) return '';
   const d = reg.death(id, atTick);
   return d ? `(f ${r.born} – d ${d.tick})` : `(f ${r.born})`;
+};
+
+/**
+ * Plain-text lines describing what an actor is doing and what is happening to it at the shown
+ * tick (for the hover tooltip). Names are given as "Fornavn Etternavn #id".
+ */
+export const describeActor = (w: World, reg: Registry, a: Actor): string[] => {
+  const name = (id: number) => {
+    const r = reg.get(id);
+    return r ? fullName(r) : `#${id}`;
+  };
+  const parentsOf = (x: number) => reg.get(x)?.parents;
+  const rel = (id: number) => {
+    const k = kinship(a.id, id, parentsOf, 3);
+    return k && k.relation !== 'self' ? ` (${RELATION_LABELS[k.relation]})` : '';
+  };
+  const REASONS: Record<string, string> = {
+    food: 'om mat',
+    rival: 'om en partner',
+    protect: 'for å beskytte en gravid',
+    join: 'i andres kamp',
+    defend: 'slår tilbake',
+  };
+  const lines: string[] = [];
+  const attackers = w.actors.filter((x) => x.target === a.id);
+  const suitors = w.actors.filter((x) => x.mateTarget === a.id);
+  if (a.fleeing > 0) lines.push(`Flykter${a.fleeFrom !== null ? ` fra ${name(a.fleeFrom)}` : ''}`);
+  if (a.target !== null) lines.push(`Angriper ${name(a.target)}${rel(a.target)} ${REASONS[a.targetReason ?? 'food'] ?? ''}`.trim());
+  if (attackers.length) lines.push(`Blir angrepet av ${attackers.map((x) => name(x.id) + rel(x.id)).join(', ')}`);
+  if (a.caresFor !== null) lines.push(`Passer på ${name(a.caresFor)} som er gravid`);
+  if (a.pregnancy) {
+    const n = a.pregnancy.embryos.length;
+    lines.push(`Gravid med ${n === 1 ? 'ett barn' : n === 2 ? 'tvillinger' : `${n} barn`}, termin tick ${a.pregnancy.due}`);
+  }
+  const nursing = w.actors.filter((c) => c.parents?.[0] === a.id && c.age < (w.rules.nursingTicks ?? 0));
+  if (nursing.length) lines.push(`Ammer ${nursing.map((c) => name(c.id)).join(', ')}`);
+  if (a.parents && a.age < (w.rules.nursingTicks ?? 0)) lines.push(`Ammes av ${name(a.parents[0])}`);
+  if (a.court) {
+    const c = a.court;
+    if (c.selfAccepted && c.otherAccepted) lines.push(`Paret seg med ${name(c.with)}${rel(c.with)}`);
+    else {
+      if (!c.selfAccepted) lines.push(`Avviste ${name(c.with)}${rel(c.with)}`);
+      if (!c.otherAccepted) lines.push(`Ble avvist av ${name(c.with)}${rel(c.with)}`);
+    }
+  } else if (a.mateTarget !== null) lines.push(`Kurtiserer ${name(a.mateTarget)}${rel(a.mateTarget)}`);
+  if (suitors.length) lines.push(`Kurtiseres av ${suitors.map((x) => name(x.id) + rel(x.id)).join(', ')}`);
+  const d = a.infection ? w.diseases?.[a.infection.disease] : undefined;
+  if (d) lines.push(`Syk: ${d.name}, ${a.infection!.left} ticks igjen`);
+  const cap = capacityOf(a, w.rules);
+  const hpShare = Math.max(0, a.hp) / maxHpOf(a, w.rules);
+  if (!lines.length) lines.push(a.energy < cap * 0.95 ? 'Leter etter mat' : 'Vandrer');
+  if (a.energy < cap * 0.25) lines.push('Sulten');
+  if (hpShare < 0.5) lines.push(`Skadet (${Math.round(hpShare * 100)} % helse)`);
+  const vig = vigorOf(a, w.rules);
+  if (vig < 0.9) lines.push(`Svekket ${Math.round((1 - vig) * 100)} %`);
+  return lines;
 };
 
 export interface InspectorHooks {
