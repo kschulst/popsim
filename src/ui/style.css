@@ -20,6 +20,9 @@ body {
 }
 
 header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -248,3 +251,7 @@ section.world { position: relative; }
 canvas#world.aiming { cursor: crosshair; }
 .ele-panel .help { display: block; }
 #timeline .ele-mark { fill: #ff4b3a; stroke: #1a0a08; stroke-width: 1; }
+
+.map-zoom { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 4px; align-items: center; z-index: 5; }
+.map-zoom button { min-width: 30px; padding: 3px 8px; background: rgba(29, 34, 42, 0.9); }
+.map-zoom .zoom-level { color: var(--muted); font-size: 12px; min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }

@@ -113,7 +113,7 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
     title: 'Arvestyrke (snitt per egenskap)',
     domain: [0, 1],
     series: GENE_KEYS.map((k, i) => ({
-      label: GENE_LABELS[k].toLowerCase().slice(0, 8),
+      label: GENE_LABELS[k].toLowerCase().slice(0, 5),
       color: ['#8fd3e0', '#f2c94c', '#7ed69b', '#e8799b', '#c9b4ff'][i],
       value: (s: TickStats) => s.dominanceMean[k],
     })),

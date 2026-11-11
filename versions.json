@@ -76,7 +76,8 @@
     "title": "Under utvikling",
     "summary": "Bygget fra main. Kan endre seg uten varsel.",
     "changes": [
-      "Tydeligere hendelser: pil på angrepsstreken mot den som angripes, og symboler over aktørene (⚔ angriper, ! angripes, ↯ flykter, ♥ kurtiserer eller kurtiseres, ✿ gravid) fra 2× zoom og alltid for valgt aktør. Inspektøren viser hvem som angriper og kurtiserer aktøren."
+      "Tydeligere hendelser: pil på angrepsstreken mot den som angripes, og symboler over aktørene (⚔ angriper, ! angripes, ↯ flykter, ♥ kurtiserer eller kurtiseres, ✿ gravid) fra 2× zoom og alltid for valgt aktør. Inspektøren viser hvem som angriper og kurtiserer aktøren.",
+      "Toppmenyen står fast øverst når du scroller. Kartet har knapper for zoom inn, zoom ut og «Hele verden», og viser zoomnivået. Når hele verden vises, scroller musehjulet siden i stedet for å zoome ut."
     ]
   }
 }

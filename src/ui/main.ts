@@ -496,12 +496,21 @@ canvas.addEventListener('pointerleave', () => (brushPos = null));
 canvas.addEventListener(
   'wheel',
   (e) => {
+    // Fully zoomed out and scrolling outward: let the page scroll instead of trapping the wheel.
+    if (renderer.zoom <= 1 && e.deltaY > 0) return;
     e.preventDefault();
     const p = cssPoint(e);
     renderer.zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015));
   },
   { passive: false },
 );
+const zoomCenter = (factor: number) => {
+  const r = canvas.getBoundingClientRect();
+  renderer.zoomAt(r.width / 2, r.height / 2, factor);
+};
+$('zoom-in').onclick = () => zoomCenter(1.5);
+$('zoom-out').onclick = () => zoomCenter(1 / 1.5);
+$('zoom-reset').onclick = () => renderer.resetView();
 canvas.addEventListener('dblclick', () => renderer.resetView());
 
 new ResizeObserver(() => {
@@ -538,6 +547,8 @@ const frame = (now: number) => {
     kin = selectedId === null ? new Map() : kinMap(w, reg, selectedId);
   }
   if (!editor.active) announceEvents(w);
+  const zl = `${renderer.zoom < 10 ? renderer.zoom.toFixed(1).replace('.0', '') : Math.round(renderer.zoom)}×`;
+  if ($('zoom-level').textContent !== zl) $('zoom-level').textContent = zl;
   renderer.render(w, {
     colorMode,
     selectedId,
