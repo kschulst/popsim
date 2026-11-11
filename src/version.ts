@@ -3,7 +3,7 @@ export const APP_NAME = 'popsim';
  * Version number of this code. On main it is the next version to be frozen (one above the latest
  * tag); export files record it.
  */
-export const VERSION = 4;
+export const VERSION = 5;
 
 /**
  * True for builds of main (the site's /dev/, built with VITE_CHANNEL=dev) and the local dev
