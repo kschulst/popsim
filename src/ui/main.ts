@@ -586,7 +586,10 @@ $('map-legend').innerHTML =
   '<strong>Symboler over aktører</strong> (fra 2× zoom)<br>' +
   `<span class="g" style="color:${M.attacking}">⚔</span>angriper <span class="g" style="color:${M.attacked}">!</span>angripes <span class="g" style="color:${M.fleeing}">↯</span>flykter<br>` +
   `<span class="g" style="color:${M.courting}">♥</span>kurtiserer/kurtiseres <span class="g" style="color:${M.pregnant}">✿</span>gravid<br>` +
-  '<span class="g">●</span>hvit prikk: gravid · stiplet farget ring: syk';
+  '<span class="g">●</span>hvit prikk: gravid · stiplet farget ring: syk<br>' +
+  '<strong>Ringer</strong><br>' +
+  '<span class="g" style="color:#ffd25a">◯</span>slektning av valgt aktør (sterkere = nærmere slekt)<br>' +
+  '<span class="g" style="color:#ffdc78">○</span>tynn gul kant: flykter';
 $('legend-toggle').onclick = () => {
   $('map-legend').hidden = !$('map-legend').hidden;
 };
