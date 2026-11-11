@@ -551,21 +551,6 @@ export class Renderer {
         ctx.lineWidth = 3 * dpr;
         ctx.stroke();
       }
-      // Ancestry badge next to the selected actor, readable at any zoom.
-      const br = 14 * dpr;
-      const bx = Math.min(canvas.width - br - 4, x + r + br + 8 * dpr);
-      const by = Math.max(br + 4, y - r - br);
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(bx, by);
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-      ctx.lineWidth = dpr;
-      ctx.stroke();
-      this.pie(w, sel.ancestry, bx, by, br);
-      ctx.beginPath();
-      ctx.arc(bx, by, br, 0, Math.PI * 2);
-      ctx.strokeStyle = '#fff';
-      ctx.stroke();
     }
 
     for (const m of opt.markers ?? []) {

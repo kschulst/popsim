@@ -179,7 +179,7 @@ Slektsvekter brukes i lojalitet (v2) og i samarbeid (v3). De er naturlover (regl
 ## Visualisering
 
 - Verden: Canvas 2D. Matruter tegnes som skarpe kvadrater (mat/ikke mat). Prikkstørrelse etter `size`. Fargen kan vises etter stamme (største andel, metning etter renhet, standard), klan (etternavn), generasjon, genom eller aggresjon.
-- Zoom med musehjulet, panorering ved å dra, dobbeltklikk viser hele verdenen. Fra 3× zoom tegnes alle aktører som kakediagram over avstamningen, med helsebar. Valgt aktør får alltid et kakediagram ved siden av seg.
+- Zoom med musehjulet, panorering ved å dra, dobbeltklikk viser hele verdenen. Fra 3× zoom tegnes alle aktører som kakediagram over avstamningen, med helsebar.
 - Kamp: strek med pil fra angriper til mål, farget etter årsak (mat, rival, forsvar av gravid/partner, blander seg inn, slår tilbake); hvitt blink ved treff, gul kant på aktører som flykter. Symboler over aktører fra 2× zoom. Knappen «Forklaring» viser alle streker og symboler.
 - Grafer og tidslinje: D3 med SVG.
 - Inspektør: klikk på en aktør for å se navn, genom, foreldre, barn, søsken og et lite stamtre. Levende slektninger markeres med ring på lerretet.
