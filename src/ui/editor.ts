@@ -3,7 +3,7 @@ import { infect, newDisease } from '../sim/disease';
 import { ELE_DEFS, ELE_KEYS } from '../sim/ele';
 import { mainTribe } from '../sim/tribes';
 import { clamp } from '../sim/random';
-import { fullName, uniqueSurnames } from '../sim/names';
+import { fullName } from '../sim/names';
 import {
   KIN_WEIGHT_LABELS,
   KIN_WEIGHTS_DESCRIPTION,
@@ -13,7 +13,7 @@ import {
   TRIBE_BONUS_DESCRIPTION,
 } from '../sim/rules';
 import { GENE_KEYS, type EleKey, type GeneKey, type KinWeights, type Rules, type Tribe, type World } from '../sim/types';
-import { assignHues, spawnSeed } from '../sim/world';
+import { seedTribe } from '../sim/world';
 
 const fmt = (v: number) => String(Number(v.toFixed(4)));
 const escAttr = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -438,9 +438,7 @@ export class BranchEditor {
       case 'seeds': {
         const n = Math.max(1, Math.min(200, Number(this.val('seedCount')) || 0));
         const tribe = Number(this.val('seedTribe'));
-        const names = uniqueSurnames(n, Object.keys(w.surnameHues));
-        assignHues(w, names, tribe);
-        for (const surname of names) spawnSeed(w, { surname, tribe });
+        seedTribe(w, tribe, n);
         this.log(`La til ${n} nye seeds fra stammen ${w.tribes[tribe].name}`);
         this.renderClans();
         break;

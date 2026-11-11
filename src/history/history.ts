@@ -118,29 +118,17 @@ export class History {
   }
 
   /**
-   * Changes the rules at the head of a branch without forking. The stored states for the head
-   * tick are updated too, so the change shows immediately; earlier states keep their old rules.
+   * Changes the head state of a branch in place (rules, catastrophes, new actors) and logs it on
+   * the branch. The stored copies of the head tick are replaced so the change shows immediately;
+   * earlier states keep their old values.
    */
-  amendRules(id: number, apply: (r: World['rules']) => void, text: string): void {
+  amendHead(id: number, apply: (w: World) => void, text: string): void {
     const b = this.get(id);
-    apply(b.head.rules);
-    const last = b.ring[b.ring.length - 1];
-    if (last?.tick === b.headTick) apply(last.rules);
-    const snap = b.snapshots.get(b.headTick);
-    if (snap && snap !== last) apply(snap.rules);
-    b.ruleLog.push({ tick: b.headTick, text });
-  }
-
-  /**
-   * Changes the head state of a branch in place (e.g. starting a catastrophe). The stored copies
-   * of the head tick are replaced so the change shows immediately.
-   */
-  amendHead(id: number, apply: (w: World) => void, text?: string): void {
-    const b = this.get(id);
+    const firstNew = b.head.nextId;
     apply(b.head);
-    // Actors added by the change (e.g. new seeds) join the family register.
-    for (const a of b.head.actors) if (!b.registry.get(a.id)) b.registry.add(recordOf(a));
-    if (text) b.ruleLog.push({ tick: b.headTick, text });
+    // Actors added by the change (ids are never reused) join the family register.
+    for (const a of b.head.actors) if (a.id >= firstNew) b.registry.add(recordOf(a));
+    b.ruleLog.push({ tick: b.headTick, text });
     const copy = storedCopy(b.head);
     const last = b.ring[b.ring.length - 1];
     if (last?.tick === b.headTick) b.ring[b.ring.length - 1] = copy;

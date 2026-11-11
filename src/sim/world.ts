@@ -183,23 +183,25 @@ export const createEmptyWorld = (config: WorldConfig = DEFAULT_CONFIG): World =>
  * automatic home on an ellipse around the centre.
  */
 export const populateWorld = (world: World, homes: ({ x: number; y: number } | undefined)[] = []): World => {
-  const { width, height, tribes } = world;
-  const taken: string[] = [];
-  tribes.forEach((t, ti) => {
-    const surnames = uniqueSurnames(t.seeds, taken);
-    taken.push(...surnames);
-    assignHues(world, surnames, ti);
-    const home = homes[ti] ?? tribeHome(ti, tribes.length, width, height);
-    for (const surname of surnames) {
-      spawnSeed(world, {
-        surname,
-        tribe: ti,
-        x: clamp(home.x + gaussian() * HOME_SPREAD, 5, width - 5),
-        y: clamp(home.y + gaussian() * HOME_SPREAD, 5, height - 5),
-      });
-    }
-  });
+  world.tribes.forEach((t, ti) => seedTribe(world, ti, t.seeds, homes[ti] ?? tribeHome(ti, world.tribes.length, world.width, world.height)));
   return world;
+};
+
+/**
+ * Adds `count` seeds of tribe `tribe`, each with its own new surname (hue near the tribe's).
+ * With `home` they are scattered around it (sd HOME_SPREAD); without, placed at random.
+ */
+export const seedTribe = (world: World, tribe: number, count: number, home?: { x: number; y: number }): Actor[] => {
+  const surnames = uniqueSurnames(count, Object.keys(world.surnameHues));
+  assignHues(world, surnames, tribe);
+  return surnames.map((surname) =>
+    spawnSeed(world, {
+      surname,
+      tribe,
+      x: home ? clamp(home.x + gaussian() * HOME_SPREAD, 5, world.width - 5) : undefined,
+      y: home ? clamp(home.y + gaussian() * HOME_SPREAD, 5, world.height - 5) : undefined,
+    }),
+  );
 };
 
 export const createWorld = (config: WorldConfig = DEFAULT_CONFIG): World => populateWorld(createEmptyWorld(config));

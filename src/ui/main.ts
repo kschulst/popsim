@@ -4,10 +4,8 @@ import { exportGzip, fromExport, importGzip } from '../history/serialize';
 import type { EleKey, Rules, TickStats, Tribe, World } from '../sim/types';
 import { DEFAULT_TRIBES } from '../sim/tribes';
 import { TribeTable } from './tribe-table';
-import { assignHues, cloneWorld, createEmptyWorld, createWorld, DEFAULT_CONFIG, populateWorld, radiusOf, spawnSeed } from '../sim/world';
-import { uniqueSurnames } from '../sim/names';
-import { gaussian as gaussianRand } from '../sim/random';
-import { NAME_SOURCE } from '../sim/names';
+import { cloneWorld, createEmptyWorld, createWorld, DEFAULT_CONFIG, populateWorld, radiusOf, seedTribe } from '../sim/world';
+import { fullName, NAME_SOURCE } from '../sim/names';
 import { APP_NAME, IS_DEV, VERSION, VERSION_LABEL } from '../version';
 import { mortality, type Mortality } from '../sim/mortality';
 import { Charts } from './charts';
@@ -15,7 +13,6 @@ import { COLOR_MODE_LABELS, type ColorMode } from './colors';
 import { BranchEditor, RulesPanel } from './editor';
 import { ancestryBreakdown, CAUSE_LABELS, describeActor, Inspector, kinMap, lifeSpanText } from './inspector';
 import { surnameColor } from './colors';
-import { fullName } from '../sim/names';
 import { Leaderboards } from './leaderboards';
 import { createEle, ELE_DEFS } from '../sim/ele';
 import { ATTACK_COLORS, ATTACK_LABELS, MARK_COLORS, Renderer } from './renderer';
@@ -227,111 +224,70 @@ const commitBranch = (name: string) => {
   touch();
 };
 
-const changeRule = (apply: (r: Rules) => void, description: string) => {
+/**
+ * Applies a change to the world shown: to the branch draft while editing; in place at the head of
+ * the branch (logged on the timeline) unless the user wants a branch per change; otherwise as a new
+ * branch from the shown tick, since changing an earlier tick in place would invalidate the ticks
+ * after it. Used by rule changes, catastrophes and added actors.
+ */
+const applyChange = (mutate: (w: World) => void, description: string) => {
   if (editor.draft) {
-    apply(editor.draft.rules);
+    mutate(editor.draft);
     editor.log(description);
-    return;
+  } else if (!rules.branchOnChange && tick === history.get(branchId).headTick) {
+    history.amendHead(branchId, mutate, description);
+  } else {
+    const draft = cloneWorld(history.stateAt(branchId, tick));
+    mutate(draft);
+    const b = history.fork(branchId, draft.tick, draft, [description]);
+    branchId = b.id;
+    history.trimRings(b.id);
+    tick = b.startTick;
   }
-  // At the head of a branch, change the rules in place unless the user wants a branch per change.
-  // Earlier ticks always fork: changing them in place would invalidate the ticks after them.
-  const b0 = history.get(branchId);
-  if (!rules.branchOnChange && tick === b0.headTick) {
-    history.amendRules(branchId, apply, description);
-    touch();
-    return;
-  }
-  const draft = cloneWorld(history.stateAt(branchId, tick));
-  apply(draft.rules);
-  const b = history.fork(branchId, draft.tick, draft, [description]);
-  branchId = b.id;
-  history.trimRings(b.id);
-  tick = b.startTick;
   touch();
 };
 
-/** New actors waiting for the user to click where they should appear. */
-let pendingAdd: { tribe: number; count: number } | null = null;
+const changeRule = (apply: (r: Rules) => void, description: string) => applyChange((w) => apply(w.rules), description);
+
+const at = (p: { x: number; y: number }) => `(${Math.round(p.x)}, ${Math.round(p.y)})`;
+
+/** Adds `count` new seeds of a tribe around a point. */
+const addActors = (tribe: number, count: number, p: { x: number; y: number }) =>
+  applyChange((w) => seedTribe(w, tribe, count, p), `La til ${count} ${shownWorld().tribes[tribe]?.name ?? 'stamme'} ved ${at(p)}`);
+
+/** Starts a catastrophe (a meteor at `p`). */
+const triggerEle = (key: EleKey, p?: { x: number; y: number }) =>
+  applyChange((w) => createEle(w, key, true, p), `Katastrofe: ${ELE_DEFS[key].name}${p ? ` ved ${at(p)}` : ''}`);
 
 /**
- * Adds `count` new seeds of a tribe around a point: into the branch draft while editing, in place
- * at the head of the branch, or as a new branch from an earlier tick (like rule changes).
+ * One pending "click on the map" request (meteor impact, new actors, tribe homes). The next plain
+ * click on the map goes to `onPick` instead of selecting an actor; Esc cancels. `keep` leaves the
+ * request armed after a pick (onPick ends it with endAim()).
  */
-const addActors = (tribe: number, count: number, at: { x: number; y: number }) => {
-  const apply = (w: World) => {
-    const names = uniqueSurnames(count, Object.keys(w.surnameHues));
-    assignHues(w, names, tribe);
-    for (const surname of names) {
-      spawnSeed(w, {
-        surname,
-        tribe,
-        x: Math.min(w.width - 5, Math.max(5, at.x + gaussianRand() * 25)),
-        y: Math.min(w.height - 5, Math.max(5, at.y + gaussianRand() * 25)),
-      });
-    }
-  };
-  const name = shownWorld().tribes[tribe]?.name ?? 'stamme';
-  const text = `La til ${count} ${name} ved (${Math.round(at.x)}, ${Math.round(at.y)})`;
-  if (editor.draft) {
-    apply(editor.draft);
-    editor.log(text);
-    touch();
-    return;
-  }
-  const b0 = history.get(branchId);
-  if (!rules.branchOnChange && tick === b0.headTick) {
-    history.amendHead(branchId, apply, text);
-    touch();
-    return;
-  }
-  const draft = cloneWorld(history.stateAt(branchId, tick));
-  apply(draft);
-  const b = history.fork(branchId, draft.tick, draft, [text]);
-  branchId = b.id;
-  history.trimRings(b.id);
-  tick = b.startTick;
-  touch();
+let pendingClick: { onPick: (p: { x: number; y: number }) => void; onCancel?: () => void; keep?: boolean } | null = null;
+
+const aim = (banner: string, onPick: (p: { x: number; y: number }) => void, opts: { onCancel?: () => void; keep?: boolean } = {}) => {
+  pendingClick = { onPick, ...opts };
+  renderer.canvas.classList.add('aiming');
+  showBanner(`${banner} · Esc avbryter`, 0);
 };
 
-/** Meteor waiting for the user to click its impact point on the map. */
-let pendingMeteor = false;
+const endAim = () => {
+  pendingClick = null;
+  renderer.canvas.classList.remove('aiming');
+  $('banner').hidden = true;
+};
+
+const cancelAim = () => {
+  const onCancel = pendingClick?.onCancel;
+  endAim();
+  onCancel?.();
+};
 
 /** Releases a catastrophe: a meteor first asks for an impact point. */
 const requestEle = (key: EleKey) => {
-  if (key === 'meteor') {
-    pendingMeteor = true;
-    renderer.canvas.classList.add('aiming');
-    showBanner('☄ Klikk i verden for å velge nedslagssted (Esc avbryter)', 0);
-    return;
-  }
-  triggerEle(key);
-};
-
-/**
- * Starts a catastrophe: in the branch draft while editing, in place at the head of the branch, or
- * as a new branch from an earlier tick (like rule changes).
- */
-const triggerEle = (key: EleKey, at?: { x: number; y: number }) => {
-  const label = `Katastrofe: ${ELE_DEFS[key].name}${at ? ` ved (${Math.round(at.x)}, ${Math.round(at.y)})` : ''}`;
-  if (editor.draft) {
-    createEle(editor.draft, key, true, at);
-    editor.log(label);
-    touch();
-    return;
-  }
-  const b0 = history.get(branchId);
-  if (!rules.branchOnChange && tick === b0.headTick) {
-    history.amendHead(branchId, (w) => createEle(w, key, true, at));
-    touch();
-    return;
-  }
-  const draft = cloneWorld(history.stateAt(branchId, tick));
-  createEle(draft, key, true, at);
-  const b = history.fork(branchId, draft.tick, draft, [label]);
-  branchId = b.id;
-  history.trimRings(b.id);
-  tick = b.startTick;
-  touch();
+  if (key === 'meteor') aim('☄ Klikk i verden for å velge nedslagssted', (p) => triggerEle('meteor', p));
+  else triggerEle(key);
 };
 
 let bannerTimer = 0;
@@ -407,13 +363,26 @@ const nextPlacement = () => {
     placing.order.forEach((ti, k) => (homes[ti] = placing!.homes[k]));
     const world = populateWorld(placing.world, homes);
     placing = null;
-    renderer.canvas.classList.remove('aiming');
-    $('banner').hidden = true;
+    endAim();
     startRun(world);
     return;
   }
   const t = placing.world.tribes[i];
-  showBanner(`Klikk der ${t.name} skal starte (${placing.homes.length + 1} av ${placing.order.length}) · Esc avbryter`, 0);
+  aim(
+    `Klikk der ${t.name} skal starte (${placing.homes.length + 1} av ${placing.order.length})`,
+    (p) => {
+      placing!.homes.push(p);
+      touch();
+      nextPlacement();
+    },
+    {
+      keep: true,
+      onCancel: () => {
+        placing = null;
+        touch();
+      },
+    },
+  );
 };
 
 const startRun = (world: World) => {
@@ -557,19 +526,17 @@ colorSelect.onchange = () => (colorMode = colorSelect.value as ColorMode);
 const tribeTable = new TribeTable($('tribe-table'), DEFAULT_TRIBES);
 $('tribe-add').onclick = () => tribeTable.add();
 $('tribe-reset').onclick = () => tribeTable.set(DEFAULT_TRIBES);
+const addDialog = $<HTMLDialogElement>('add-dialog');
 $('btn-add').onclick = () => {
   playing = false;
-  const w = shownWorld();
-  $('add-tribe').innerHTML = w.tribes.map((t, i) => `<option value="${i}">${t.name}</option>`).join('');
-  $<HTMLDialogElement>('add-dialog').showModal();
+  $('add-tribe').innerHTML = shownWorld().tribes.map((t, i) => `<option value="${i}">${t.name}</option>`).join('');
+  addDialog.showModal();
 };
-$<HTMLDialogElement>('add-dialog').addEventListener('close', () => {
-  if ($<HTMLDialogElement>('add-dialog').returnValue !== 'ok') return;
+addDialog.addEventListener('close', () => {
+  if (addDialog.returnValue !== 'ok') return;
   const tribe = Number($<HTMLSelectElement>('add-tribe').value);
   const count = Math.max(1, Math.min(100, Math.round(Number($<HTMLInputElement>('add-count').value) || 1)));
-  pendingAdd = { tribe, count };
-  renderer.canvas.classList.add('aiming');
-  showBanner(`Klikk der ${count} ${shownWorld().tribes[tribe]?.name ?? ''} skal komme · Esc avbryter`, 0);
+  aim(`Klikk der ${count} ${shownWorld().tribes[tribe]?.name ?? ''} skal komme`, (p) => addActors(tribe, count, p));
 });
 $('btn-new').onclick = () => {
   playing = false;
@@ -583,7 +550,6 @@ const newRun = (tribes: Tribe[], manual = false) => {
   const world = createEmptyWorld({ ...DEFAULT_CONFIG, tribes });
   placing = { world, homes: [], order: tribes.map((_, i) => i).filter((i) => tribes[i].seeds > 0) };
   renderer.resetView();
-  renderer.canvas.classList.add('aiming');
   touch();
   nextPlacement();
 };
@@ -608,19 +574,8 @@ $<HTMLInputElement>('import-file').onchange = (e) => {
 
 document.addEventListener('keydown', (e) => {
   if ((e.target as HTMLElement).closest('input, select, textarea')) return;
-  if (e.key === 'Escape' && pendingAdd) {
-    pendingAdd = null;
-    renderer.canvas.classList.remove('aiming');
-    $('banner').hidden = true;
-  } else if (e.key === 'Escape' && placing) {
-    placing = null;
-    renderer.canvas.classList.remove('aiming');
-    $('banner').hidden = true;
-    touch();
-  } else if (e.key === 'Escape' && pendingMeteor) {
-    pendingMeteor = false;
-    renderer.canvas.classList.remove('aiming');
-    $('banner').hidden = true;
+  if (e.key === 'Escape' && pendingClick) {
+    cancelAim();
   } else if (e.key === ' ') {
     e.preventDefault();
     $('btn-play').click();
@@ -730,21 +685,10 @@ const endPointer = (e: PointerEvent) => {
   if (painting) editor.endStroke();
   painting = false;
   if (drag && !drag.moved && e.type === 'pointerup') {
-    if (placing) {
-      placing.homes.push(worldPoint(e));
-      touch();
-      nextPlacement();
-    } else if (pendingAdd) {
-      const p = pendingAdd;
-      pendingAdd = null;
-      canvas.classList.remove('aiming');
-      $('banner').hidden = true;
-      addActors(p.tribe, p.count, worldPoint(e));
-    } else if (pendingMeteor) {
-      pendingMeteor = false;
-      canvas.classList.remove('aiming');
-      $('banner').hidden = true;
-      triggerEle('meteor', worldPoint(e));
+    if (pendingClick) {
+      const req = pendingClick;
+      if (!req.keep) endAim();
+      req.onPick(worldPoint(e));
     } else selectAt(worldPoint(e));
   }
   drag = null;
