@@ -48,8 +48,13 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
       { label: 'drept', color: '#ff5a4f', value: (s) => s.deathsKilled ?? 0 },
       { label: 'fødsel', color: '#f15bb5', value: (s) => s.deathsChildbirth ?? 0 },
       { label: 'spedbarn', color: '#5fd3c7', value: (s) => s.deathsInfant ?? 0 },
+      { label: 'sykdom', color: '#c6e85a', value: (s) => s.deathsDisease ?? 0 },
       { label: 'fostre', color: '#c9b4ff', value: (s) => s.pregnancyLosses ?? 0 },
     ],
+  },
+  {
+    title: 'Syke',
+    series: [{ label: 'syke', color: '#c6e85a', value: (s) => s.infected ?? 0 }],
   },
   {
     title: 'Stammeandel (snitt avstamning)',
@@ -219,7 +224,7 @@ export class Charts {
         .selectAll('text')
         .data(def.series.length > 1 ? def.series : [])
         .join('text')
-        .attr('x', (_, i) => M.left + i * (def.series.length > 5 ? 36 : 48))
+        .attr('x', (_, i) => M.left + i * (def.series.length > 6 ? 31 : def.series.length > 5 ? 36 : 48))
         .attr('y', 25)
         .attr('fill', (s) => s.color)
         .text((s) => s.label);

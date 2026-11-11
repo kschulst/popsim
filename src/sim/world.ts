@@ -104,6 +104,8 @@ export const spawnSeed = (world: World, opts: NewActor): Actor => {
     court: null,
     pregnancy: null,
     caresFor: null,
+    infection: null,
+    immunity: {},
     lastHitBy: null,
     flash: 0,
     damageDealt: 0,
@@ -169,6 +171,7 @@ export const createWorld = (config: WorldConfig = DEFAULT_CONFIG): World => {
     rules: structuredClone(rules),
     surnameHues: {},
     tribes: structuredClone(tribes),
+    diseases: [],
   };
   const taken: string[] = [];
   tribes.forEach((t, ti) => {

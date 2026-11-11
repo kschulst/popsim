@@ -1,4 +1,5 @@
 import { clampGene, DOMINANCE_RANGE, GENE_LABELS } from '../sim/genome';
+import { infect, newDisease } from '../sim/disease';
 import { mainTribe } from '../sim/tribes';
 import { clamp } from '../sim/random';
 import { fullName, uniqueSurnames } from '../sim/names';
@@ -355,7 +356,8 @@ export class BranchEditor {
       ).join('')}
       <label><span>Energi</span><input type="number" step="1" data-field="energy" value="${a.energy.toFixed(0)}"></label>
       <label><span>Kjønn</span><select data-field="sex"><option value="F"${a.sex === 'F' ? ' selected' : ''}>hunn</option><option value="M"${a.sex === 'M' ? ' selected' : ''}>hann</option></select></label>
-      <div class="row"><button data-act="actor">Bruk</button><button data-act="remove">Fjern aktør</button></div>`;
+      <div class="row"><button data-act="actor">Bruk</button><button data-act="remove">Fjern aktør</button></div>
+      <div class="row"><button data-act="outbreak" title="Smitter aktøren med en ny, tilfeldig sykdom">Start sykdomsutbrudd her</button></div>`;
   }
 
   private renderChanges(): void {
@@ -442,6 +444,15 @@ export class BranchEditor {
         }
         if (diffs.length) this.log(`Aktør ${fullName(a)}: ${diffs.join(', ')}`);
         this.renderActor();
+        break;
+      }
+      case 'outbreak': {
+        const a = w.actors.find((x) => x.id === this.selectedId);
+        if (!a) return;
+        if (!w.diseases) w.diseases = [];
+        const d = newDisease(w, `startet i grenredigering hos ${fullName(a)}`);
+        infect(a, d);
+        this.log(`Sykdomsutbrudd: ${d.name} hos ${fullName(a)}`);
         break;
       }
       case 'remove': {

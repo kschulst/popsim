@@ -31,6 +31,11 @@ export const DEFAULT_RULES: Rules = {
   birthRisk: 0.005,
   infancyTicks: 100,
   infantHazard: 0.0015,
+  outbreakRate: 0.0004,
+  contagionRadius: 15,
+  diseaseMutation: 0.02,
+  sicknessCost: 0.04,
+  sicknessWeakness: 0.3,
   friction: 0.1,
   steerStrength: 0.25,
   directionNoise: 0.3,
@@ -135,6 +140,16 @@ export const RULE_FIELDS: { group: string; fields: RuleField[] }[] = [
       { key: 'mutationScale', label: 'Mutasjonsskala', min: 0, max: 5, step: 0.1, description: 'Global multiplikator på mutasjonsstyrken. Hver aktørs egen mutasjonsrate ganges med denne. 0 slår av mutasjon.' },
       { key: 'inheritanceNoise', label: 'Tilfeldighet i arv', min: 0, max: 1, step: 0.01, description: 'Hvor mye barnets blanding av foreldrene varierer. Uten støy får barnet en blanding vektet etter foreldrenes arvestyrke for hver egenskap. Med støy kan barnet noen ganger ligne mest på én av foreldrene. 0,15 betyr at vekten typisk avviker med ±0,15.' },
       { key: 'ancestrySegments', label: 'Avstamningssegmenter', min: 0, max: 256, step: 1, description: 'Avstamningen arves i så mange like store segmenter, hvert fra mor eller far tilfeldig. Barnets andel fra mor blir da tilfeldig rundt 50 %: med 16 segmenter typisk 50 ± 12 %. Søsken blir ulike, og blandede bestander beholder variasjon som partnervalg og bonus kan virke på. Færre segmenter gir større variasjon. 0 gir nøyaktig gjennomsnitt av foreldrene (som i v2), og da jevnes forskjellene ut for hver generasjon.' },
+    ],
+  },
+  {
+    group: 'Sykdom',
+    fields: [
+      { key: 'outbreakRate', label: 'Utbruddsrate', min: 0, max: 0.05, step: 0.0001, description: 'Sannsynlighet per tick for at en helt ny sykdom bryter ut i en tilfeldig aktør. 0,0004 gir et nytt utbrudd omtrent hvert 2500. tick. Hver sykdom får et navn og tilfeldige egenskaper: smittsomhet, dødelighet, varighet og immunitet.' },
+      { key: 'contagionRadius', label: 'Smitteavstand', min: 0, max: 100, step: 1, description: 'Avstand der en syk aktør kan smitte andre. Hver tick smittes hver mottakelig nabo innen avstanden med sykdommens smittsomhet. Tett befolkning gir derfor epidemier.' },
+      { key: 'diseaseMutation', label: 'Mutasjon ved smitte', min: 0, max: 1, step: 0.005, description: 'Sannsynlighet for at en smitte gir en ny variant med litt andre egenskaper (navngitt etter opphavet, f.eks. «Myrfeber B»). Immunitet mot en variant gir halv så lang beskyttelse mot opphavet.' },
+      { key: 'sicknessCost', label: 'Energikostnad ved sykdom', min: 0, max: 1, step: 0.005, description: 'Ekstra energi per tick mens aktøren er syk, ganget med størrelsen.' },
+      { key: 'sicknessWeakness', label: 'Svekkelse ved sykdom', min: 0, max: 1, step: 0.05, description: 'Hvor mye sykdom senker fart, syn, slagstyrke og fruktbarhet. Risikoen for å dø av sykdommen er sykdommens dødelighet × (1 + 2 × aldersvekkelse + skade + sult), så gamle, skadde og sultne dør oftere.' },
     ],
   },
   {

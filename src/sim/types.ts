@@ -45,6 +45,16 @@ export interface Rules {
   /** Infant mortality: risk per tick up to infantHazard, falling to 0 at age infancyTicks; lower near a parent. */
   infancyTicks: number;
   infantHazard: number;
+  /** Probability per tick of a brand-new disease breaking out in a random actor. */
+  outbreakRate: number;
+  /** Distance within which an ill actor can infect others. */
+  contagionRadius: number;
+  /** Probability that a transmission produces a new variant. */
+  diseaseMutation: number;
+  /** Extra energy cost per tick while ill, × size. */
+  sicknessCost: number;
+  /** Fraction by which illness lowers speed, vision, strength and fertility. */
+  sicknessWeakness: number;
   friction: number;
   steerStrength: number;
   directionNoise: number;
@@ -153,6 +163,10 @@ export interface Actor {
   pregnancy: Pregnancy | null;
   /** Pregnant mother this male guards and feeds, or null. */
   caresFor: number | null;
+  /** Current illness, or null. */
+  infection: { disease: number; left: number } | null;
+  /** Disease id → tick until which the actor is immune. */
+  immunity: Record<number, number>;
   lastHitBy: number | null;
   /** Ticks left of the hit flash in the renderer. */
   flash: number;
@@ -208,6 +222,27 @@ export interface Courtship {
   ttl: number;
 }
 
+export interface Disease {
+  id: number;
+  name: string;
+  color: string;
+  /** Probability per tick of infecting each susceptible neighbour within contagionRadius. */
+  contagion: number;
+  /** Base death risk per tick while ill (raised for the old, injured and hungry). */
+  lethality: number;
+  /** Ticks an infection lasts. */
+  duration: number;
+  /** Ticks of immunity after recovery. */
+  immunity: number;
+  /** Tick it appeared, the strain it mutated from, and a description of where it came from. */
+  tick: number;
+  parent: number | null;
+  origin: string;
+  cases: number;
+  deaths: number;
+  variants: number;
+}
+
 export interface Tribe {
   name: string;
   /** Hex colour, e.g. #d9534f. */
@@ -219,7 +254,7 @@ export interface Tribe {
   seeds: number;
 }
 
-export type DeathCause = 'starvation' | 'age' | 'killed' | 'childbirth' | 'infant' | 'removed';
+export type DeathCause = 'starvation' | 'age' | 'killed' | 'childbirth' | 'infant' | 'disease' | 'removed';
 
 export interface TickStats {
   tick: number;
@@ -236,6 +271,9 @@ export interface TickStats {
   deathsKilled: number;
   deathsChildbirth: number;
   deathsInfant: number;
+  deathsDisease: number;
+  /** Actors ill at the end of the tick. */
+  infected: number;
   /** Embryos lost because the mother died while pregnant. */
   pregnancyLosses: number;
   /** Females currently pregnant. */
@@ -268,6 +306,8 @@ export interface World {
   /** Hue (0–360) per surname, assigned to seeds. */
   surnameHues: Record<string, number>;
   tribes: Tribe[];
+  /** Every disease strain that has appeared, indexed by id. */
+  diseases: Disease[];
 }
 
 /** Events produced by one tick, consumed by the genealogy registry and stats. */
@@ -283,5 +323,7 @@ export interface TickDeath {
   cause: DeathCause;
   age: number;
   killer?: number;
+  /** Disease id for cause 'disease'. */
+  disease?: number;
   tally: Tally;
 }

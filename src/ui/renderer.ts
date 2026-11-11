@@ -318,6 +318,16 @@ export class Renderer {
         ctx.lineWidth = dpr;
       }
       ctx.stroke();
+      if (a.infection) {
+        const d = w.diseases?.[a.infection.disease];
+        ctx.beginPath();
+        ctx.arc(x, y, r + 2.5 * dpr, 0, Math.PI * 2);
+        ctx.setLineDash([2 * dpr, 2 * dpr]);
+        ctx.strokeStyle = d?.color ?? '#c6e85a';
+        ctx.lineWidth = 1.5 * dpr;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       if (a.pregnancy) {
         ctx.beginPath();
         ctx.arc(x, y, Math.max(1.5 * dpr, r * 0.35), 0, Math.PI * 2);

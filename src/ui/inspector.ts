@@ -23,6 +23,7 @@ export const CAUSE_LABELS: Record<DeathCause, string> = {
   killed: 'drept',
   childbirth: 'døde i fødsel',
   infant: 'spedbarnsdød',
+  disease: 'sykdom',
   removed: 'fjernet ved forgreining',
 };
 
@@ -118,7 +119,7 @@ export class Inspector {
         <p class="muted">Gjennomsnittlig andel fra hver stamme blant de ${w.actors.length} levende.</p>
         <div class="ancestry-overall">${ancestryBreakdown(w, 72)}</div>
         <p class="muted">Klikk på en aktør i verdenen for å se detaljer og slektskap.</p>
-        <p class="muted">● hunn &nbsp; ◆ hann. Gjennomsiktighet viser energinivå. Rød strek: angriper → mål. Gul kant: flykter. Hvitt blink: treff. Stiplet rosa strek: søker partner. Grønn: paret seg. Grå med kryss: avvist, krysset står ved den som sa nei. Hvit prikk: gravid. Blå prikket strek: far som passer på den gravide.</p>
+        <p class="muted">● hunn &nbsp; ◆ hann. Gjennomsiktighet viser energinivå. Rød strek: angriper → mål. Gul kant: flykter. Hvitt blink: treff. Stiplet rosa strek: søker partner. Grønn: paret seg. Grå med kryss: avvist, krysset står ved den som sa nei. Hvit prikk: gravid. Blå prikket strek: far som passer på den gravide. Farget stiplet ring: syk (fargen viser sykdommen).</p>
         <p class="muted">Rull for å zoome, dra for å flytte, dobbeltklikk for å vise hele verdenen. Fra ${DETAIL_ZOOM}× zoom vises avstamning som kakediagram og helse som en bar.</p>`;
       return;
     }
@@ -170,7 +171,7 @@ export class Inspector {
     const status = live
       ? `lever · alder ${live.age}${vigorOf(live, w.rules) < 0.995 ? ` (svekket ${Math.round((1 - vigorOf(live, w.rules)) * 100)} %)` : ''} · energi ${live.energy.toFixed(0)}/${capacityOf(live, w.rules).toFixed(0)} · helse ${Math.max(0, live.hp).toFixed(0)}/${maxHpOf(live, w.rules).toFixed(0)}`
       : death
-        ? `død tick ${death.tick} (${CAUSE_LABELS[death.cause]}${death.killer !== undefined ? ` av ${link(death.killer)}` : ''})`
+        ? `død tick ${death.tick} (${CAUSE_LABELS[death.cause]}${death.killer !== undefined ? ` av ${link(death.killer)}` : ''}${death.disease !== undefined && w.diseases?.[death.disease] ? `: ${esc(w.diseases[death.disease].name)}` : ''})`
         : 'ikke i live';
 
     const ancestry = live?.ancestry ?? rec.ancestry;
@@ -207,6 +208,16 @@ export class Inspector {
         conflict += `<dt>Gravid</dt><dd>${n === 1 ? 'ett barn' : n === 2 ? 'tvillinger' : n === 3 ? 'trillinger' : `${n} barn`} med ${link(p.father)} · termin tick ${p.due} · betalt ${p.motherPaid.toFixed(0)}/${p.motherNeed.toFixed(0)} energi</dd>`;
       }
       if (live.caresFor !== null) conflict += `<dt>Omsorg</dt><dd>passer på ${link(live.caresFor)} til fødselen</dd>`;
+      const dz = w.diseases ?? [];
+      if (live.infection && dz[live.infection.disease]) {
+        const d = dz[live.infection.disease];
+        conflict += `<dt>Syk</dt><dd><span style="color:${d.color}">${esc(d.name)}</span> · ${live.infection.left} ticks igjen</dd>`;
+      }
+      const immune = Object.entries(live.immunity ?? {})
+        .filter(([, until]) => until > w.tick)
+        .map(([id, until]) => (dz[Number(id)] ? `${esc(dz[Number(id)].name)} (til tick ${Math.round(until)})` : ''))
+        .filter(Boolean);
+      if (immune.length) conflict += `<dt>Immun mot</dt><dd>${immune.join(', ')}</dd>`;
     }
 
     this.root.innerHTML = `${backBtn}

@@ -18,6 +18,8 @@ export interface Death {
   cause: DeathCause;
   /** Id of the actor that dealt the killing blow (cause 'killed'). */
   killer?: number;
+  /** Disease id for cause 'disease'. */
+  disease?: number;
   /** Lifetime counters at death (absent for removals and old files). */
   tally?: Tally;
 }

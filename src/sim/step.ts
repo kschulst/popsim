@@ -3,6 +3,7 @@ import { inherit } from './genome';
 import { givenName } from './names';
 import { clamp, gaussian, rand, shuffle } from './random';
 import { SpatialHash } from './spatial';
+import { maybeOutbreak, progressInfection } from './disease';
 import { mixAncestry, overlap, purity } from './tribes';
 import type { Actor, Embryo, TickDeath, TickEvents, World } from './types';
 import { capacityOf, hpFactor, maxHpOf, radiusOf } from './world';
@@ -63,8 +64,12 @@ const readyToMate = (a: Actor, w: World): boolean =>
 const bioAge = (a: Actor) => a.age / (a.genome.longevity || 1);
 
 /** 1 until senescence starts, then falling linearly to 1 − senescenceStrength. */
-export const vigorOf = (a: Actor, r: World['rules']): number =>
+export const ageVigorOf = (a: Actor, r: World['rules']): number =>
   1 - r.senescenceStrength * clamp((bioAge(a) - r.senescenceOnset) / Math.max(1, r.senescenceSpan), 0, 1);
+
+/** Overall vigor: ageing × illness. Scales speed, vision, strength and fertility. */
+export const vigorOf = (a: Actor, r: World['rules']): number =>
+  ageVigorOf(a, r) * (a.infection ? 1 - r.sicknessWeakness : 1);
 
 /** Effective vision and top speed after injury and ageing. */
 const visionOf = (a: Actor, w: World) => a.genome.vision * hpFactor(a, w.rules) * vigorOf(a, w.rules);
@@ -176,7 +181,7 @@ class TickContext {
   /** Pregnancies lost this tick (mother died, or stillbirth). */
   losses = 0;
 
-  die(a: Actor, cause: TickDeath['cause'], killer?: Actor): void {
+  die(a: Actor, cause: TickDeath['cause'], killer?: Actor, disease?: number): void {
     if (this.dead.has(a.id)) return;
     this.dead.add(a.id);
     if (killer) killer.kills++;
@@ -185,6 +190,7 @@ class TickContext {
       cause,
       age: a.age,
       killer: killer?.id,
+      disease,
       tally: {
         kills: a.kills,
         damageDealt: a.damageDealt,
@@ -534,6 +540,8 @@ const deliver = (ctx: TickContext, mother: Actor): Actor[] => {
       court: null,
       pregnancy: null,
       caresFor: null,
+      infection: null,
+      immunity: {},
       lastHitBy: null,
       flash: 0,
       damageDealt: 0,
@@ -582,6 +590,8 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
   w.tick++;
   regrowFood(w);
 
+  if (!w.diseases) w.diseases = [];
+  maybeOutbreak(w);
   const ctx = new TickContext(w, parentsOf);
   const births: Actor[] = [];
 
@@ -595,6 +605,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     if (a.snub !== null && --a.snubTtl <= 0) a.snub = null;
     const cap = capacityOf(a, rules);
     const radius = radiusOf(a);
+    const illness = progressInfection(a, ctx.hash.near(a.x, a.y, rules.contagionRadius), w, (id) => ctx.dead.has(id));
     const vision = visionOf(a, w);
     const maxSpeed = speedOf(a, w);
 
@@ -707,7 +718,8 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     const sp2 = a.vx * a.vx + a.vy * a.vy;
     a.energy -=
       rules.baseCost * a.genome.size * (1 + (rules.agingFactor * bioAge(a)) / 1000) +
-      rules.moveCost * a.genome.size * sp2;
+      rules.moveCost * a.genome.size * sp2 +
+      (illness ? rules.sicknessCost * a.genome.size : 0);
     const maxHp = maxHpOf(a, rules);
     if (a.hp < maxHp && a.energy > cap / 2) {
       const h = Math.min(maxHp - a.hp, rules.healRate * maxHp);
@@ -767,7 +779,15 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
         });
         if (parentNear) infantRisk *= 0.3;
       }
+      const diseaseRisk = illness
+        ? illness.lethality *
+          (1 + 2 * (1 - ageVigorOf(a, rules)) + (1 - Math.max(0, a.hp) / maxHpOf(a, rules)) + (1 - Math.min(1, Math.max(0, share))))
+        : 0;
       if (a.energy <= 0) ctx.die(a, 'starvation');
+      else if (illness && Math.random() < diseaseRisk) {
+        illness.deaths++;
+        ctx.die(a, 'disease', undefined, illness.id);
+      }
       else if (a.age >= rules.maxAge || Math.random() < ageRisk) ctx.die(a, 'age');
       else if (Math.random() < frailRisk) ctx.die(a, 'starvation');
       else if (Math.random() < infantRisk) ctx.die(a, 'infant');

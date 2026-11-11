@@ -16,8 +16,8 @@ import { Leaderboards } from './leaderboards';
 import { Renderer } from './renderer';
 import { Timeline } from './timeline';
 
-/** Oldest export version this build can read (v2 added tribes, health and conflict). */
-const MIN_IMPORT_VERSION = 2;
+/** Oldest export version this build can read (v3 adds pregnancy, ageing and disease to actors). */
+const MIN_IMPORT_VERSION = 3;
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -248,7 +248,7 @@ const doImport = async (file: File) => {
   try {
     const data = await importGzip(file);
     if (data.version < MIN_IMPORT_VERSION) {
-      alert(`Filen er laget med v${data.version}. Aktørene i ${VERSION_LABEL} har stammer, helse og kamp, som filen mangler. Åpne filen i v${data.version} (versjonsvelgeren nederst til venstre på nettsiden).`);
+      alert(`Filen er laget med v${data.version}. Aktørene i ${VERSION_LABEL} har felt (som svangerskap, aldring og sykdom) som filen mangler. Åpne filen i v${data.version} (versjonsvelgeren nederst til venstre på nettsiden).`);
       return;
     }
     if (data.version !== VERSION && !confirm(`Filen er laget med v${data.version}, dette er ${VERSION_LABEL}. Reglene kan oppføre seg annerledes. Importere likevel?`)) return;

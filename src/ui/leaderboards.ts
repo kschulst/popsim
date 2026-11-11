@@ -309,6 +309,24 @@ const BOARDS: Board[] = [
     },
   },
   {
+    key: 'diseases',
+    group: 'Sykdommer',
+    title: 'Sykdommer',
+    description: 'Alle sykdommer som har dukket opp, sortert etter antall døde. Smitte er sannsynlighet per tick per nabo; dødelighet er grunnrisiko per tick.',
+    html: (c) => {
+      const list = [...(c.w.diseases ?? [])].sort((a, b) => b.deaths - a.deaths || b.cases - a.cases);
+      if (!list.length) return '<p class="muted">Ingen sykdommer ennå.</p>';
+      const ill = new Map<number, number>();
+      for (const a of c.live.values()) if (a.infection) ill.set(a.infection.disease, (ill.get(a.infection.disease) ?? 0) + 1);
+      const pct = (v: number) => `${(v * 100).toFixed(v < 0.01 ? 2 : 1).replace('.', ',')} %`;
+      return `<table class="matrix"><tr><th>Navn</th><th>Fra tick</th><th>Syke nå</th><th>Tilfeller</th><th>Døde</th><th>Smitte</th><th>Dødelighet</th><th>Varighet</th><th>Immunitet</th></tr>${list
+        .map(
+          (d) => `<tr title="${esc(d.origin)}"><th style="color:${d.color}">${esc(d.name)}</th><td class="num">${d.tick}</td><td class="num">${ill.get(d.id) ?? ''}</td><td class="num">${d.cases}</td><td class="num">${d.deaths}</td><td class="num">${pct(d.contagion)}</td><td class="num">${pct(d.lethality)}</td><td class="num">${d.duration}</td><td class="num">${d.immunity}</td></tr>`,
+        )
+        .join('')}</table>`;
+    },
+  },
+  {
     key: 'tribeKills',
     group: 'Grupper',
     title: 'Drap mellom stammer',
@@ -328,7 +346,7 @@ const BOARDS: Board[] = [
     title: 'Dødsårsaker per stamme',
     description: 'Antall døde per største stamme og dødsårsak. Fjernede aktører er ikke med.',
     html: (c) => {
-      const causes: DeathCause[] = ['starvation', 'age', 'killed', 'childbirth', 'infant'];
+      const causes: DeathCause[] = ['starvation', 'age', 'killed', 'disease', 'childbirth', 'infant'];
       const T = c.w.tribes;
       const m = T.map(() => causes.map(() => 0));
       for (const [id, d] of c.death) {
@@ -383,7 +401,7 @@ export class Leaderboards {
     this.dirty = false;
     const board = BOARDS.find((b) => b.key === this.board)!;
     this.root.querySelector('.lb-desc')!.textContent = board.description;
-    this.root.querySelector<HTMLElement>('.check')!.hidden = !board.livingFilter;
+    this.root.querySelector<HTMLElement>('.check')!.style.display = board.livingFilter ? '' : 'none';
 
     const ids = reg.allIds(tick);
     const rec = new Map<number, LifeRecord>();

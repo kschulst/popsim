@@ -26,7 +26,7 @@ export const mortality = (rows: TickStats[], from: number, to: number): Mortalit
   for (const r of rows) {
     if (r.tick <= from || r.tick > to) continue;
     const k = r.deathsKilled ?? 0;
-    const n = r.deathsStarvation + r.deathsAge + k + (r.deathsChildbirth ?? 0) + (r.deathsInfant ?? 0);
+    const n = r.deathsStarvation + r.deathsAge + k + (r.deathsChildbirth ?? 0) + (r.deathsInfant ?? 0) + (r.deathsDisease ?? 0);
     deaths += n;
     ageDeaths += r.deathsAge;
     killed += k;

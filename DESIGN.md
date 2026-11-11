@@ -80,6 +80,14 @@ I tillegg får kandidaten en bonus for avstamningen sin: `Σ tribeBonus[i] × ka
 | Besteforelder, barnebarn, tante/onkel, nevø/niese | 3 |
 | Fetter/kusine | 1 |
 
+### Sykdom
+
+- Et nytt utbrudd skjer med sannsynlighet `outbreakRate` per tick i en tilfeldig aktør. Sykdommen får et generert norsk navn (prefiks + ord, f.eks. «Myrfeber», eller adjektiv + ord, f.eks. «Grå pest») og tilfeldige egenskaper: smittsomhet (0,03–0,15 per nabo per tick), dødelighet (0,05–0,5 % per tick), varighet (60–300 ticks) og immunitet (200–2000 ticks).
+- En syk aktør smitter hver mottakelig nabo innen `contagionRadius` med sykdommens smittsomhet hver tick. Med sannsynlighet `diseaseMutation` blir smitten en variant med egenskaper endret ±20 %, navngitt med bokstav per familie («Myrfeber B»).
+- Syke bruker `sicknessCost × size` ekstra energi og svekkes med `sicknessWeakness` (fart, syn, slagstyrke, fruktbarhet). Risiko for å dø per tick: `dødelighet × (1 + 2 × aldersvekkelse + skade + sult)`.
+- Etter sykdommen er aktøren immun i sykdommens immunitetstid, og halvparten så lenge mot familiens opphav.
+- Sykdommene lagres i verden med antall tilfeller og døde. Utbrudd kan startes på valgt aktør i grenredigering.
+
 ### Svangerskap og omsorg
 
 - Ved paring dannes 1 barn, eller flere med sannsynlighet `multipleBirthRate` per ekstra barn (p, p², maks 4). Hvert foster arver for seg. Gener og avstamning bestemmes ved unnfangelsen.
