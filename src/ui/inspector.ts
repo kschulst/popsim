@@ -11,10 +11,12 @@ import {
 import { GENE_LABELS, normGene } from '../sim/genome';
 import { fullName } from '../sim/names';
 import { GENE_KEYS, type World } from '../sim/types';
-import { capacityOf } from '../sim/world';
+import { purity } from '../sim/tribes';
+import { capacityOf, maxHpOf } from '../sim/world';
 import { surnameColor } from './colors';
+import { DETAIL_ZOOM } from './renderer';
 
-const CAUSE_LABELS = { starvation: 'sult', age: 'alder', removed: 'fjernet ved forgreining' };
+const CAUSE_LABELS = { starvation: 'sult', age: 'alder', killed: 'drept', removed: 'fjernet ved forgreining' };
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -31,6 +33,26 @@ export const kinMap = (w: World, reg: Registry, id: number): Map<number, number>
   return out;
 };
 
+/** SVG path slices for a pie of radius 1 centred at the origin. */
+const pieSlices = (anc: number[], colors: string[]): string => {
+  const parts: string[] = [];
+  let a0 = -Math.PI / 2;
+  anc.forEach((v, i) => {
+    if (v <= 0.0005) return;
+    if (v >= 0.9995) {
+      parts.push(`<circle r="1" fill="${colors[i]}"/>`);
+      return;
+    }
+    const a1 = a0 + v * Math.PI * 2;
+    const large = v > 0.5 ? 1 : 0;
+    parts.push(
+      `<path d="M0,0 L${Math.cos(a0)},${Math.sin(a0)} A1,1 0 ${large} 1 ${Math.cos(a1)},${Math.sin(a1)} Z" fill="${colors[i]}"/>`,
+    );
+    a0 = a1;
+  });
+  return parts.join('');
+};
+
 export class Inspector {
   constructor(
     private readonly root: HTMLElement,
@@ -45,7 +67,8 @@ export class Inspector {
   render(w: World, reg: Registry, id: number | null): void {
     if (id === null) {
       this.root.innerHTML = `<p class="muted">Klikk på en aktør i verdenen for å se detaljer og slektskap.</p>
-        <p class="muted">● hunn &nbsp; ◆ hann. Gjennomsiktighet viser energinivå.</p>`;
+        <p class="muted">● hunn &nbsp; ◆ hann. Gjennomsiktighet viser energinivå. Rød strek: angriper → mål. Gul kant: flykter. Hvitt blink: treff.</p>
+        <p class="muted">Rull for å zoome, dra for å flytte, dobbeltklikk for å vise hele verdenen. Fra ${DETAIL_ZOOM}× zoom vises avstamning som kakediagram og helse som en bar.</p>`;
       return;
     }
     const rec = reg.get(id);
@@ -93,16 +116,41 @@ export class Inspector {
     const kinSummary = [...counts.entries()].map(([r, n]) => `${n} ${RELATION_LABELS[r]}`).join(', ');
 
     const status = live
-      ? `lever · alder ${live.age} · energi ${live.energy.toFixed(0)}/${capacityOf(live, w.rules).toFixed(0)}`
+      ? `lever · alder ${live.age} · energi ${live.energy.toFixed(0)}/${capacityOf(live, w.rules).toFixed(0)} · helse ${Math.max(0, live.hp).toFixed(0)}/${maxHpOf(live, w.rules).toFixed(0)}`
       : death
-        ? `død tick ${death.tick} (${CAUSE_LABELS[death.cause]})`
+        ? `død tick ${death.tick} (${CAUSE_LABELS[death.cause]}${death.killer !== undefined ? ` av ${link(death.killer)}` : ''})`
         : 'ikke i live';
+
+    const ancestry = live?.ancestry ?? rec.ancestry;
+    const ancRows = w.tribes
+      .map((t, i) => ({ t, v: ancestry[i] ?? 0 }))
+      .filter((x) => x.v > 0.0005)
+      .sort((a, b) => b.v - a.v)
+      .map(({ t, v }) => `<li><span class="swatch" style="background:${t.color}"></span>${esc(t.name)} ${(v * 100).toFixed(v < 0.1 ? 1 : 0)} %</li>`)
+      .join('');
+
+    let conflict = '';
+    if (live) {
+      const parts = [
+        `skade gitt ${live.damageDealt.toFixed(0)}`,
+        `tatt ${live.damageTaken.toFixed(0)}`,
+        `drap ${live.kills}`,
+      ];
+      if (live.target !== null) parts.unshift(`<strong>slåss med</strong> ${link(live.target)}`);
+      else if (live.fleeing > 0) parts.unshift(`<strong>flykter</strong>${live.fleeFrom !== null ? ` fra ${link(live.fleeFrom)}` : ''}`);
+      conflict = `<dt>Kamp</dt><dd>${parts.join(' · ')}</dd>`;
+    }
 
     this.root.innerHTML = `
       <h2 style="--c:${surnameColor(w, rec.surname)}"><span class="sex">${rec.sex === 'F' ? '♀' : '♂'}</span> ${esc(fullName(rec))}</h2>
       <p class="muted">Generasjon ${rec.generation} · født tick ${rec.born} · ${status}</p>
+      <div class="ancestry">
+        <svg viewBox="-1 -1 2 2" class="pie">${pieSlices(ancestry, w.tribes.map((t) => t.color))}</svg>
+        <div><strong>Avstamning</strong> <span class="muted">renhet ${(purity(ancestry) * 100).toFixed(0)} %</span><ul>${ancRows}</ul></div>
+      </div>
       <table class="genes">${genes}</table>
       <dl>
+        ${conflict}
         <dt>Foreldre</dt><dd>${rec.parents ? list(rec.parents) : '<span class="muted">seed</span>'}</dd>
         <dt>Helsøsken</dt><dd>${list(full)}</dd>
         <dt>Halvsøsken</dt><dd>${list(half)}</dd>

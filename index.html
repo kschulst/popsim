@@ -54,7 +54,12 @@
       <form method="dialog">
         <h3>Ny kjøring</h3>
         <p class="muted">Erstatter all historikk i denne fanen. Eksporter først hvis du vil beholde den.</p>
-        <label><span>Antall seeds</span><input id="seed-count" type="number" min="2" max="500" value="20" /></label>
+        <p class="muted">Stammene i starten. Hver seed får verdier rundt stammens verdier (±10 %). Arvelighet er arvestyrken for alle egenskaper. Paringsterskel og mutasjonsrate er like for alle stammer.</p>
+        <div id="tribe-table" class="tribe-table"></div>
+        <div class="row">
+          <button type="button" id="tribe-add">Legg til stamme</button>
+          <button type="button" id="tribe-reset">Standardstammer</button>
+        </div>
         <div class="row">
           <button value="ok" class="primary">Start</button>
           <button value="cancel">Avbryt</button>

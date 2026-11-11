@@ -1,4 +1,5 @@
-import { clampGene, DOMINANCE_RANGE, GENE_LABELS, randomGenome } from '../sim/genome';
+import { clampGene, DOMINANCE_RANGE, GENE_LABELS } from '../sim/genome';
+import { mainTribe } from '../sim/tribes';
 import { clamp } from '../sim/random';
 import { fullName, uniqueSurnames } from '../sim/names';
 import {
@@ -249,7 +250,8 @@ export class BranchEditor {
         </div>
         <div class="row">
           <input name="seedCount" type="number" min="1" max="200" value="5">
-          <button data-act="seeds">Legg til nye seeds</button>
+          <select name="seedTribe">${this.draft!.tribes.map((t, i) => `<option value="${i}">${t.name}</option>`).join('')}</select>
+          <button data-act="seeds">Legg til seeds</button>
         </div>
       </fieldset>
       <fieldset class="actor-edit"><legend>Valgt aktør</legend><div class="actor-body"></div></fieldset>
@@ -276,7 +278,10 @@ export class BranchEditor {
   private renderClans(): void {
     const sel = this.root.querySelector<HTMLSelectElement>('[name=popClan]')!;
     const clans = [...new Set(this.draft!.actors.map((a) => a.surname))].sort();
-    sel.innerHTML = `<option value="">alle klaner</option>` + clans.map((c) => `<option>${c}</option>`).join('');
+    sel.innerHTML =
+      `<option value="">alle</option>` +
+      this.draft!.tribes.map((t, i) => `<option value="tribe:${i}">stamme: ${t.name} (største andel)</option>`).join('') +
+      clans.map((c) => `<option value="${c}">klan: ${c}</option>`).join('');
   }
 
   private renderActor(): void {
@@ -323,26 +328,31 @@ export class BranchEditor {
         const v = Number(this.val('popValue'));
         const clan = this.val('popClan');
         if (!Number.isFinite(v)) return;
+        const tribeIdx = clan.startsWith('tribe:') ? Number(clan.slice(6)) : -1;
+        const matches = (a: World['actors'][number]) =>
+          !clan || (tribeIdx >= 0 ? mainTribe(a.ancestry) === tribeIdx : a.surname === clan);
+        const scope = !clan ? 'alle' : tribeIdx >= 0 ? `stamme ${w.tribes[tribeIdx].name}` : `klan ${clan}`;
         const applyOp = (cur: number) => (op === 'set' ? v : op === 'mul' ? cur * v : cur + v);
         let n = 0;
         for (const a of w.actors) {
-          if (clan && a.surname !== clan) continue;
+          if (!matches(a)) continue;
           if (isDom) a.dominance[gene] = clamp(applyOp(a.dominance[gene]), DOMINANCE_RANGE[0], DOMINANCE_RANGE[1]);
           else a.genome[gene] = clampGene(gene, applyOp(a.genome[gene]));
           n++;
         }
         const opText = op === 'set' ? 'satt til' : op === 'mul' ? 'ganget med' : 'lagt til';
         const label = isDom ? `Arvestyrke for ${GENE_LABELS[gene].toLowerCase()}` : GENE_LABELS[gene];
-        this.log(`Populasjon: ${label} ${opText} ${fmt(v)} (${clan || 'alle'}, ${n} aktører)`);
+        this.log(`Populasjon: ${label} ${opText} ${fmt(v)} (${scope}, ${n} aktører)`);
         this.renderActor();
         break;
       }
       case 'seeds': {
         const n = Math.max(1, Math.min(200, Number(this.val('seedCount')) || 0));
+        const tribe = Number(this.val('seedTribe'));
         const names = uniqueSurnames(n, Object.keys(w.surnameHues));
-        assignHues(w, names);
-        for (const surname of names) spawnSeed(w, { surname, genome: randomGenome() });
-        this.log(`La til ${n} nye seeds`);
+        assignHues(w, names, tribe);
+        for (const surname of names) spawnSeed(w, { surname, tribe });
+        this.log(`La til ${n} nye seeds fra stammen ${w.tribes[tribe].name}`);
         this.renderClans();
         break;
       }

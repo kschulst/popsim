@@ -68,7 +68,8 @@ export class History {
       else if (
         existing.sex !== a.sex ||
         JSON.stringify(existing.genome) !== JSON.stringify(a.genome) ||
-        JSON.stringify(existing.dominance) !== JSON.stringify(a.dominance)
+        JSON.stringify(existing.dominance) !== JSON.stringify(a.dominance) ||
+        JSON.stringify(existing.ancestry) !== JSON.stringify(a.ancestry)
       ) {
         registry.override({ ...recordOf(a), born: existing.born });
       }
@@ -131,7 +132,7 @@ export class History {
     const reg = b.registry;
     const ev = step(b.head, (aid) => reg.get(aid)?.parents);
     for (const c of ev.births) reg.add(recordOf(c));
-    for (const d of ev.deaths) reg.die(d.id, { tick: b.head.tick, cause: d.cause });
+    for (const d of ev.deaths) reg.die(d.id, { tick: b.head.tick, cause: d.cause, killer: d.killer });
     b.headTick = b.head.tick;
     b.stats.push(computeStats(b.head, ev));
     const copy = storedCopy(b.head);

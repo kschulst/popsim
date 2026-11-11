@@ -1,6 +1,6 @@
 export type Sex = 'F' | 'M';
 
-export const GENE_KEYS = ['size', 'maxSpeed', 'vision', 'reproThreshold', 'mutationRate'] as const;
+export const GENE_KEYS = ['size', 'maxSpeed', 'vision', 'aggression', 'reproThreshold', 'mutationRate'] as const;
 export type GeneKey = (typeof GENE_KEYS)[number];
 export type Genome = Record<GeneKey, number>;
 /** Per-gene inheritance strength (0.05–1): how strongly the gene value is passed on to children. */
@@ -37,7 +37,36 @@ export interface Rules {
   mateCooldown: number;
   mutationScale: number;
   inheritanceNoise: number;
-  incestDepth: number;
+  /** Partner choice: weight of shared tribe ancestry in the mate score. */
+  tribePreference: number;
+  /** Exponent on (purity a × purity b) in the tribe term. 0 ignores purity. */
+  purityWeight: number;
+  /** Score lost per vision length of distance to the candidate. */
+  mateDistanceWeight: number;
+  /** Lowest mate score both partners accept. */
+  minMateScore: number;
+  kinPenaltyClose: number;
+  kinPenaltyHalf: number;
+  kinPenaltySecond: number;
+  kinPenaltyCousin: number;
+  /** Conflict. */
+  attackThreshold: number;
+  hungerWeight: number;
+  foodCompetitionWeight: number;
+  rivalryWeight: number;
+  tribeLoyalty: number;
+  kinLoyalty: number;
+  joinThreshold: number;
+  hpPerSize: number;
+  damageScale: number;
+  attackCooldown: number;
+  attackReach: number;
+  attackCost: number;
+  fleeRate: number;
+  fleeDuration: number;
+  pursuitGiveUp: number;
+  healRate: number;
+  healCost: number;
   surnameRule: SurnameRule;
   kinWeights: KinWeights;
 }
@@ -51,6 +80,8 @@ export interface Actor {
   parents: [number, number] | null;
   genome: Genome;
   dominance: Dominance;
+  /** Share of ancestry from each starting tribe (index into World.tribes); sums to 1. */
+  ancestry: number[];
   x: number;
   y: number;
   vx: number;
@@ -60,9 +91,37 @@ export interface Actor {
   age: number;
   cooldown: number;
   born: number;
+  /** Health points; maximum is hpPerSize × size. 0 means dead. */
+  hp: number;
+  /** Actor being fought (attacked or chased), or null. */
+  target: number | null;
+  /** Ticks left of fleeing, and from whom. */
+  fleeing: number;
+  fleeFrom: number | null;
+  /** Ticks until the next attack is possible. */
+  attackCd: number;
+  /** Partner this actor is currently heading for (used to detect rivals). */
+  mateTarget: number | null;
+  lastHitBy: number | null;
+  /** Ticks left of the hit flash in the renderer. */
+  flash: number;
+  damageDealt: number;
+  damageTaken: number;
+  kills: number;
 }
 
-export type DeathCause = 'starvation' | 'age' | 'removed';
+export interface Tribe {
+  name: string;
+  /** Hex colour, e.g. #d9534f. */
+  color: string;
+  /** Starting genome; seeds vary ±10 % around it. */
+  genome: Genome;
+  /** Base inheritance strength (0.05–1) for all genes of the tribe's seeds. */
+  heritability: number;
+  seeds: number;
+}
+
+export type DeathCause = 'starvation' | 'age' | 'killed' | 'removed';
 
 export interface TickStats {
   tick: number;
@@ -76,7 +135,14 @@ export interface TickStats {
   births: number;
   deathsStarvation: number;
   deathsAge: number;
-  /** Sum of ages (ticks) of actors who died of starvation or age this tick. */
+  deathsKilled: number;
+  /** Successful attacks this tick. */
+  hits: number;
+  /** Mean ancestry share per tribe among the living. */
+  tribeShare: number[];
+  /** Mean purity (largest ancestry share) among the living. */
+  purityMean: number;
+  /** Sum of ages (ticks) of actors who died of starvation, age or were killed this tick. */
   deathAgeSum: number;
   surnames: number;
   food: number;
@@ -97,10 +163,19 @@ export interface World {
   rules: Rules;
   /** Hue (0–360) per surname, assigned to seeds. */
   surnameHues: Record<string, number>;
+  tribes: Tribe[];
 }
 
 /** Events produced by one tick, consumed by the genealogy registry and stats. */
 export interface TickEvents {
   births: Actor[];
-  deaths: { id: number; cause: DeathCause; age: number }[];
+  deaths: TickDeath[];
+  hits: number;
+}
+
+export interface TickDeath {
+  id: number;
+  cause: DeathCause;
+  age: number;
+  killer?: number;
 }

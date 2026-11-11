@@ -1,0 +1,40 @@
+import { describe, expect, it } from 'vitest';
+import { step } from '../src/sim/step';
+import { mixAncestry, overlap, purity } from '../src/sim/tribes';
+import { DEFAULT_CONFIG, createWorld, maxHpOf } from '../src/sim/world';
+
+describe('ancestry', () => {
+  it('mixes as the mean of the parents and measures overlap and purity', () => {
+    const child = mixAncestry([1, 0, 0], [0, 0.5, 0.5]);
+    expect(child).toEqual([0.5, 0.25, 0.25]);
+    expect(purity(child)).toBe(0.5);
+    expect(overlap([1, 0, 0], [1, 0, 0])).toBe(1);
+    expect(overlap([1, 0, 0], [0, 1, 0])).toBe(0);
+    expect(overlap(child, [1, 0, 0])).toBe(0.5);
+  });
+});
+
+describe('conflict', () => {
+  it('a hungry aggressive actor attacks a weaker one of another tribe and damages or kills it', () => {
+    const tribes = DEFAULT_CONFIG.tribes.slice(0, 2).map((t) => ({ ...t, seeds: 1 }));
+    let damaged = 0;
+    for (let trial = 0; trial < 20; trial++) {
+      const w = createWorld({ ...DEFAULT_CONFIG, tribes });
+      w.food.fill(0);
+      w.rules.foodSpontaneous = 0;
+      w.rules.foodSpreadRate = 0;
+      const [a, b] = w.actors;
+      Object.assign(a, { x: 400, y: 300, energy: 60, sex: 'M' });
+      Object.assign(b, { x: 410, y: 300, energy: 60, sex: 'M' });
+      a.genome.aggression = 1;
+      b.genome.aggression = 0;
+      // One food cell between them, closer to b, so a competes for it.
+      w.food[Math.floor(300 / w.cellSize) * w.cols + Math.floor(408 / w.cellSize)] = 1;
+      const bMax = maxHpOf(b, w.rules);
+      for (let t = 0; t < 60; t++) step(w, () => null);
+      const bNow = w.actors.find((x) => x.id === b.id);
+      if (!bNow || bNow.hp < bMax) damaged++;
+    }
+    expect(damaged).toBeGreaterThan(10);
+  });
+});

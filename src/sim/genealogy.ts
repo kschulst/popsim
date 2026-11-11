@@ -1,4 +1,4 @@
-import type { Actor, DeathCause, Dominance, Genome, KinWeights, Sex } from './types';
+import type { Actor, DeathCause, Dominance, Genome, KinWeights, Rules, Sex } from './types';
 
 export interface LifeRecord {
   id: number;
@@ -10,11 +10,14 @@ export interface LifeRecord {
   born: number;
   genome: Genome;
   dominance: Dominance;
+  ancestry: number[];
 }
 
 export interface Death {
   tick: number;
   cause: DeathCause;
+  /** Id of the actor that dealt the killing blow (cause 'killed'). */
+  killer?: number;
 }
 
 export const recordOf = (a: Actor): LifeRecord => ({
@@ -27,6 +30,7 @@ export const recordOf = (a: Actor): LifeRecord => ({
   born: a.born,
   genome: { ...a.genome },
   dominance: { ...a.dominance },
+  ancestry: [...a.ancestry],
 });
 
 /**
@@ -214,6 +218,27 @@ export const kinWeight = (rel: Relation, w: KinWeights): number => {
   }
 };
 
-/** True if a and b share an ancestor within `incestDepth` generations of both. */
-export const tooClose = (k: Kinship | undefined, incestDepth: number): boolean =>
-  !!k && Math.max(k.da, k.db) <= incestDepth;
+/** Generations searched for kinship in mate choice and conflict (reaches cousins). */
+export const KIN_DEPTH = 2;
+
+/** Mate score penalty for a relation. Unrelated (undefined) and distant kin cost nothing. */
+export const kinPenalty = (k: Kinship | undefined, r: Rules): number => {
+  switch (k?.relation) {
+    case 'self':
+    case 'parent':
+    case 'child':
+    case 'fullSibling':
+      return r.kinPenaltyClose;
+    case 'halfSibling':
+      return r.kinPenaltyHalf;
+    case 'grandparent':
+    case 'grandchild':
+    case 'auntUncle':
+    case 'nephewNiece':
+      return r.kinPenaltySecond;
+    case 'cousin':
+      return r.kinPenaltyCousin;
+    default:
+      return 0;
+  }
+};

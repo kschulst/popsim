@@ -27,6 +27,16 @@ export const computeStats = (w: World, ev: TickEvents): TickStats => {
     if (a.generation > genMax) genMax = a.generation;
     surnames.add(a.surname);
   }
+  const tribeShare = w.tribes.map(() => 0);
+  let puritySum = 0;
+  for (const a of w.actors) {
+    let max = 0;
+    for (let i = 0; i < tribeShare.length; i++) {
+      tribeShare[i] += a.ancestry[i] ?? 0;
+      if (a.ancestry[i] > max) max = a.ancestry[i];
+    }
+    puritySum += max;
+  }
   let food = 0;
   for (let i = 0; i < w.food.length; i++) food += w.food[i];
   return {
@@ -41,6 +51,10 @@ export const computeStats = (w: World, ev: TickEvents): TickStats => {
     births: ev.births.length,
     deathsStarvation: ev.deaths.filter((d) => d.cause === 'starvation').length,
     deathsAge: ev.deaths.filter((d) => d.cause === 'age').length,
+    deathsKilled: ev.deaths.filter((d) => d.cause === 'killed').length,
+    hits: ev.hits,
+    tribeShare: tribeShare.map((s) => (n ? s / n : 0)),
+    purityMean: n ? puritySum / n : 0,
     deathAgeSum: ev.deaths.reduce((sum, d) => (d.cause === 'removed' ? sum : sum + d.age), 0),
     surnames: surnames.size,
     food,

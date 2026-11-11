@@ -5,6 +5,7 @@ export const GENE_RANGES: Record<GeneKey, [number, number]> = {
   size: [0.5, 3],
   maxSpeed: [0.3, 3],
   vision: [10, 120],
+  aggression: [0, 1],
   reproThreshold: [0.4, 0.95],
   mutationRate: [0.01, 0.3],
 };
@@ -13,6 +14,7 @@ export const GENE_LABELS: Record<GeneKey, string> = {
   size: 'Størrelse',
   maxSpeed: 'Maks fart',
   vision: 'Syn',
+  aggression: 'Aggresjon',
   reproThreshold: 'Paringsterskel',
   mutationRate: 'Mutasjonsrate',
 };
@@ -29,6 +31,13 @@ export const randomGenome = (): Genome => {
     // Start seeds in the middle half of each range so evolution has room both ways.
     g[k] = rand(min + (max - min) * 0.25, max - (max - min) * 0.25);
   }
+  return g;
+};
+
+/** Seed genome around a tribe's values: each gene ±10 % (uniform), clamped to its range. */
+export const tribeGenome = (base: Genome): Genome => {
+  const g = {} as Genome;
+  for (const k of GENE_KEYS) g[k] = clampGene(k, base[k] * rand(0.9, 1.1));
   return g;
 };
 
@@ -49,11 +58,10 @@ export const DOMINANCE_RANGE: [number, number] = [0.05, 1];
 const clampDominance = (v: number) => clamp(v, DOMINANCE_RANGE[0], DOMINANCE_RANGE[1]);
 
 /**
- * Inheritance strength for a new seed. Each seed gets its own base level, so lineages differ in how
- * persistently their traits are passed on; genes vary a little around that level.
+ * Inheritance strength for a new seed. `base` is the tribe's heritability (random 0.15–0.85 if not
+ * given); genes vary a little around that level.
  */
-export const randomDominance = (): Dominance => {
-  const base = rand(0.15, 0.85);
+export const randomDominance = (base = rand(0.15, 0.85)): Dominance => {
   const d = {} as Dominance;
   for (const k of GENE_KEYS) d[k] = clampDominance(base + gaussian() * 0.1);
   return d;

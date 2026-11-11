@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { kinship, Registry, tooClose, type LifeRecord } from '../src/sim/genealogy';
+import { kinPenalty, kinship, Registry, type LifeRecord } from '../src/sim/genealogy';
+import { DEFAULT_RULES } from '../src/sim/rules';
 
 // Family: 1×2 → 3,4 (full siblings). 1×5 → 6 (half sibling of 3).
 // 3×7 → 8. 4×9 → 10. 8 and 10 are cousins; 4 is aunt/uncle of 8.
@@ -25,20 +26,22 @@ describe('kinship', () => {
     expect(rel(1, 2)).toBeUndefined();
   });
 
-  it('applies the incest depth', () => {
-    const k = (a: number, b: number) => kinship(a, b, parentsOf);
-    expect(tooClose(k(3, 4), 1)).toBe(true);
-    expect(tooClose(k(3, 1), 1)).toBe(true);
-    expect(tooClose(k(8, 10), 1)).toBe(false);
-    expect(tooClose(k(8, 10), 2)).toBe(true);
-    expect(tooClose(k(3, 4), 0)).toBe(false);
+  it('penalises close kin most in mate choice', () => {
+    const p = (a: number, b: number) => kinPenalty(kinship(a, b, parentsOf), DEFAULT_RULES);
+    expect(p(3, 4)).toBe(DEFAULT_RULES.kinPenaltyClose);
+    expect(p(3, 1)).toBe(DEFAULT_RULES.kinPenaltyClose);
+    expect(p(3, 6)).toBe(DEFAULT_RULES.kinPenaltyHalf);
+    expect(p(8, 4)).toBe(DEFAULT_RULES.kinPenaltySecond);
+    expect(p(8, 10)).toBe(DEFAULT_RULES.kinPenaltyCousin);
+    expect(p(1, 2)).toBe(0);
   });
 });
 
 const rec = (id: number, born: number, ps: [number, number] | null = null): LifeRecord => ({
   id, born, parents: ps, given: 'A', surname: 'B', sex: 'F', generation: 0,
-  genome: { size: 1, maxSpeed: 1, vision: 50, reproThreshold: 0.5, mutationRate: 0.1 },
-  dominance: { size: 0.5, maxSpeed: 0.5, vision: 0.5, reproThreshold: 0.5, mutationRate: 0.5 },
+  genome: { size: 1, maxSpeed: 1, vision: 50, aggression: 0.5, reproThreshold: 0.5, mutationRate: 0.1 },
+  dominance: { size: 0.5, maxSpeed: 0.5, vision: 0.5, aggression: 0.5, reproThreshold: 0.5, mutationRate: 0.5 },
+  ancestry: [1],
 });
 
 describe('Registry forks', () => {

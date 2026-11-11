@@ -1,6 +1,6 @@
 import * as d3 from 'd3';
 import { GENE_LABELS, GENE_RANGES } from '../sim/genome';
-import { GENE_KEYS, type TickStats } from '../sim/types';
+import { GENE_KEYS, type TickStats, type Tribe } from '../sim/types';
 
 interface Series {
   label: string;
@@ -21,7 +21,7 @@ interface ChartDef {
   rolling?: number;
 }
 
-const DEFS: ChartDef[] = [
+const buildDefs = (tribes: Tribe[]): ChartDef[] => [
   {
     title: 'Populasjon',
     series: [
@@ -44,6 +44,25 @@ const DEFS: ChartDef[] = [
       { label: 'fødsler', color: '#7ed69b', value: (s) => s.births },
       { label: 'sult', color: '#e0a35a', value: (s) => s.deathsStarvation },
       { label: 'alder', color: '#9aa0a8', value: (s) => s.deathsAge },
+      { label: 'drept', color: '#ff5a4f', value: (s) => s.deathsKilled ?? 0 },
+    ],
+  },
+  {
+    title: 'Stammeandel (snitt avstamning)',
+    domain: [0, 1],
+    series: tribes.map((t, i) => ({ label: t.name, color: t.color, value: (s: TickStats) => s.tribeShare?.[i] ?? 0 })),
+  },
+  {
+    title: 'Renhet (snitt største stammeandel)',
+    domain: [0, 1],
+    series: [{ label: 'renhet', color: '#f2c94c', value: (s) => s.purityMean ?? 0 }],
+  },
+  {
+    title: 'Kamp per 50 ticks',
+    rolling: 50,
+    series: [
+      { label: 'treff', color: '#e0a35a', value: (s) => s.hits ?? 0 },
+      { label: 'drap', color: '#ff5a4f', value: (s) => s.deathsKilled ?? 0 },
     ],
   },
   {
@@ -125,9 +144,18 @@ const rollingSum = (rows: TickStats[], f: (s: TickStats) => number, window: numb
 };
 
 export class Charts {
+  private defs: ChartDef[] = [];
+  private defsKey = '';
+
   constructor(private readonly root: HTMLElement) {}
 
-  render(rows: TickStats[], cursorTick: number, onSeek: (tick: number) => void): void {
+  render(rows: TickStats[], cursorTick: number, tribes: Tribe[], onSeek: (tick: number) => void): void {
+    const key = tribes.map((t) => t.name + t.color).join('|');
+    if (key !== this.defsKey) {
+      this.defs = buildDefs(tribes);
+      this.defsKey = key;
+    }
+    const DEFS = this.defs;
     const root = d3.select(this.root);
     const maxTick = Math.max(1, rows.length ? rows[rows.length - 1].tick : 1);
     const x = d3.scaleLinear([0, maxTick], [M.left, W - M.right]);

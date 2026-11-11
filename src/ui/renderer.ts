@@ -1,5 +1,5 @@
-import type { World } from '../sim/types';
-import { capacityOf, radiusOf } from '../sim/world';
+import type { Actor, World } from '../sim/types';
+import { capacityOf, maxHpOf, radiusOf } from '../sim/world';
 import { actorColor, type ColorMode } from './colors';
 
 export interface RenderOptions {
@@ -11,13 +11,25 @@ export interface RenderOptions {
   brush: { x: number; y: number; r: number } | null;
 }
 
-/** Canvas 2D renderer. World coordinates are scaled to fit the canvas, preserving aspect ratio. */
+/** Zoom level from which every actor is drawn as an ancestry pie with a health bar. */
+export const DETAIL_ZOOM = 3;
+const MAX_ZOOM = 16;
+
+/**
+ * Canvas 2D renderer. The world is fitted to the canvas (preserving aspect ratio) and then zoomed
+ * by `zoom` around the world point (cx, cy).
+ */
 export class Renderer {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly fieldCanvas = document.createElement('canvas');
   private scale = 1;
   private ox = 0;
   private oy = 0;
+  zoom = 1;
+  private cx: number | null = null;
+  private cy: number | null = null;
+  private worldW = 800;
+  private worldH = 600;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
@@ -34,6 +46,46 @@ export class Renderer {
   toWorld(px: number, py: number): { x: number; y: number } {
     const dpr = window.devicePixelRatio || 1;
     return { x: (px * dpr - this.ox) / this.scale, y: (py * dpr - this.oy) / this.scale };
+  }
+
+  /** Zooms by `factor` keeping the world point under (px, py) fixed. */
+  zoomAt(px: number, py: number, factor: number): void {
+    const before = this.toWorld(px, py);
+    this.zoom = Math.min(MAX_ZOOM, Math.max(1, this.zoom * factor));
+    this.updateTransform();
+    const after = this.toWorld(px, py);
+    this.cx = this.cx! + before.x - after.x;
+    this.cy = this.cy! + before.y - after.y;
+    this.updateTransform();
+  }
+
+  /** Pans by a screen distance in CSS px. */
+  panBy(dx: number, dy: number): void {
+    const dpr = window.devicePixelRatio || 1;
+    this.cx = this.cx! - (dx * dpr) / this.scale;
+    this.cy = this.cy! - (dy * dpr) / this.scale;
+    this.updateTransform();
+  }
+
+  resetView(): void {
+    this.zoom = 1;
+    this.cx = this.cy = null;
+    this.updateTransform();
+  }
+
+  private updateTransform(): void {
+    const { canvas, worldW, worldH } = this;
+    const fit = Math.min(canvas.width / worldW, canvas.height / worldH);
+    this.scale = fit * this.zoom;
+    // Keep the view inside the world: clamp the centre so no more than the fitted margin shows.
+    const halfW = canvas.width / 2 / this.scale;
+    const halfH = canvas.height / 2 / this.scale;
+    const clampC = (c: number | null, half: number, size: number) =>
+      half * 2 >= size ? size / 2 : Math.min(size - half, Math.max(half, c ?? size / 2));
+    this.cx = clampC(this.cx, halfW, worldW);
+    this.cy = clampC(this.cy, halfH, worldH);
+    this.ox = canvas.width / 2 - this.cx * this.scale;
+    this.oy = canvas.height / 2 - this.cy * this.scale;
   }
 
   private drawField(w: World, showFertility: boolean): void {
@@ -53,9 +105,9 @@ export class Renderer {
         img.data[o + 1] = w.food[i] ? 150 : 30 + 40 * fert;
         img.data[o + 2] = w.food[i] ? 90 : 60 + 120 * fert;
       } else if (w.food[i]) {
-        img.data[o] = 46;
-        img.data[o + 1] = 122;
-        img.data[o + 2] = 62;
+        img.data[o] = 38;
+        img.data[o + 1] = 92;
+        img.data[o + 2] = 52;
       } else {
         img.data[o] = 18;
         img.data[o + 1] = 22;
@@ -68,17 +120,68 @@ export class Renderer {
     this.ctx.drawImage(fc, this.ox, this.oy, w.width * this.scale, w.height * this.scale);
   }
 
+  /** Female circle or male diamond path, in screen coordinates. */
+  private shapePath(a: Actor, x: number, y: number, r: number): void {
+    const { ctx } = this;
+    ctx.beginPath();
+    if (a.sex === 'F') {
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+    } else {
+      const d = r * 1.15;
+      ctx.moveTo(x, y - d);
+      ctx.lineTo(x + d, y);
+      ctx.lineTo(x, y + d);
+      ctx.lineTo(x - d, y);
+      ctx.closePath();
+    }
+  }
+
+  /** Ancestry pie of radius r at (x, y). */
+  private pie(w: World, anc: number[], x: number, y: number, r: number): void {
+    const { ctx } = this;
+    let start = -Math.PI / 2;
+    for (let i = 0; i < w.tribes.length; i++) {
+      const share = anc[i] ?? 0;
+      if (share <= 0.001) continue;
+      const end = start + share * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.arc(x, y, r, start, end);
+      ctx.closePath();
+      ctx.fillStyle = w.tribes[i].color;
+      ctx.fill();
+      start = end;
+    }
+  }
+
+  private hpBar(a: Actor, w: World, x: number, y: number, r: number): void {
+    const { ctx } = this;
+    const share = Math.max(0, Math.min(1, a.hp / maxHpOf(a, w.rules)));
+    const bw = Math.max(10, r * 2.4);
+    const bh = Math.max(2, r * 0.3);
+    const by = y - r * 1.15 - bh - 3;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(x - bw / 2, by, bw, bh);
+    ctx.fillStyle = `hsl(${share * 120}, 70%, 50%)`;
+    ctx.fillRect(x - bw / 2, by, bw * share, bh);
+  }
+
   render(w: World, opt: RenderOptions): void {
     const { ctx, canvas } = this;
-    this.scale = Math.min(canvas.width / w.width, canvas.height / w.height);
-    this.ox = (canvas.width - w.width * this.scale) / 2;
-    this.oy = (canvas.height - w.height * this.scale) / 2;
+    this.worldW = w.width;
+    this.worldH = w.height;
+    this.updateTransform();
     ctx.fillStyle = '#0b0d10';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     this.drawField(w, opt.showFertility);
 
     const s = this.scale;
+    const dpr = window.devicePixelRatio || 1;
+    const detail = this.zoom >= DETAIL_ZOOM;
     const maxGen = w.actors.reduce((m, a) => Math.max(m, a.generation), 0);
+    const byId = new Map(w.actors.map((a) => [a.id, a]));
+    const sx = (a: { x: number }) => this.ox + a.x * s;
+    const sy = (a: { y: number }) => this.oy + a.y * s;
 
     // Kin rings below the actors.
     if (opt.kin.size) {
@@ -86,53 +189,92 @@ export class Renderer {
         const k = opt.kin.get(a.id);
         if (k === undefined) continue;
         ctx.beginPath();
-        ctx.arc(this.ox + a.x * s, this.oy + a.y * s, (radiusOf(a) + 4) * s, 0, Math.PI * 2);
+        ctx.arc(sx(a), sy(a), (radiusOf(a) + 4) * s, 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(255, 210, 90, ${0.25 + 0.75 * Math.min(1, k / 1.2)})`;
         ctx.lineWidth = 1.5 * s;
         ctx.stroke();
       }
     }
 
+    // Fight lines from attacker to target.
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.strokeStyle = 'rgba(255, 70, 60, 0.75)';
     for (const a of w.actors) {
-      const x = this.ox + a.x * s;
-      const y = this.oy + a.y * s;
+      const t = a.target === null ? undefined : byId.get(a.target);
+      if (!t) continue;
+      ctx.beginPath();
+      ctx.moveTo(sx(a), sy(a));
+      ctx.lineTo(sx(t), sy(t));
+      ctx.stroke();
+    }
+
+    for (const a of w.actors) {
+      const x = sx(a);
+      const y = sy(a);
       const r = radiusOf(a) * s;
       ctx.globalAlpha = 0.45 + 0.55 * Math.min(1, a.energy / capacityOf(a, w.rules));
-      ctx.fillStyle = actorColor(a, w, opt.colorMode, maxGen);
-      ctx.beginPath();
-      if (a.sex === 'F') {
-        ctx.arc(x, y, r, 0, Math.PI * 2);
+      if (detail) {
+        ctx.save();
+        this.shapePath(a, x, y, r);
+        ctx.clip();
+        this.pie(w, a.ancestry, x, y, r * 1.2);
+        ctx.restore();
       } else {
-        const d = r * 1.15;
-        ctx.moveTo(x, y - d);
-        ctx.lineTo(x + d, y);
-        ctx.lineTo(x, y + d);
-        ctx.lineTo(x - d, y);
-        ctx.closePath();
+        this.shapePath(a, x, y, r);
+        ctx.fillStyle = actorColor(a, w, opt.colorMode, maxGen);
+        ctx.fill();
       }
-      ctx.fill();
+      ctx.globalAlpha = 1;
+      this.shapePath(a, x, y, r);
+      if (a.flash > 0) {
+        ctx.strokeStyle = `rgba(255, 255, 255, ${a.flash / 6})`;
+        ctx.lineWidth = 2 * dpr;
+      } else {
+        ctx.strokeStyle = a.fleeing > 0 ? 'rgba(255, 220, 120, 0.8)' : 'rgba(0, 0, 0, 0.55)';
+        ctx.lineWidth = dpr;
+      }
+      ctx.stroke();
+      if (detail) this.hpBar(a, w, x, y, r);
     }
-    ctx.globalAlpha = 1;
 
-    const sel = opt.selectedId === null ? undefined : w.actors.find((a) => a.id === opt.selectedId);
+    const sel = opt.selectedId === null ? undefined : byId.get(opt.selectedId);
     if (sel) {
+      const x = sx(sel);
+      const y = sy(sel);
+      const r = radiusOf(sel) * s;
       ctx.beginPath();
-      ctx.arc(this.ox + sel.x * s, this.oy + sel.y * s, (radiusOf(sel) + 6) * s, 0, Math.PI * 2);
+      ctx.arc(x, y, (radiusOf(sel) + 6) * s, 0, Math.PI * 2);
       ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2 * s;
+      ctx.lineWidth = 2 * dpr;
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(this.ox + sel.x * s, this.oy + sel.y * s, sel.genome.vision * s, 0, Math.PI * 2);
+      ctx.arc(x, y, sel.genome.vision * s, 0, Math.PI * 2);
       ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = dpr;
+      ctx.setLineDash([4 * dpr, 4 * dpr]);
       ctx.stroke();
       ctx.setLineDash([]);
+      if (!detail) this.hpBar(sel, w, x, y, r);
+      // Ancestry badge next to the selected actor, readable at any zoom.
+      const br = 14 * dpr;
+      const bx = Math.min(canvas.width - br - 4, x + r + br + 8 * dpr);
+      const by = Math.max(br + 4, y - r - br);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(bx, by);
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.lineWidth = dpr;
+      ctx.stroke();
+      this.pie(w, sel.ancestry, bx, by, br);
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.strokeStyle = '#fff';
+      ctx.stroke();
     }
 
     if (opt.brush) {
       ctx.beginPath();
-      ctx.arc(this.ox + opt.brush.x * s, this.oy + opt.brush.y * s, opt.brush.r * s, 0, Math.PI * 2);
+      ctx.arc(sx(opt.brush), sy(opt.brush), opt.brush.r * s, 0, Math.PI * 2);
       ctx.strokeStyle = 'rgba(255,255,255,0.6)';
       ctx.lineWidth = 1;
       ctx.stroke();

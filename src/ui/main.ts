@@ -1,7 +1,9 @@
 import './style.css';
 import { DEFAULT_HISTORY_CONFIG, History } from '../history/history';
 import { exportGzip, fromExport, importGzip } from '../history/serialize';
-import type { Rules, TickStats, World } from '../sim/types';
+import type { Rules, TickStats, Tribe, World } from '../sim/types';
+import { DEFAULT_TRIBES } from '../sim/tribes';
+import { TribeTable } from './tribe-table';
 import { cloneWorld, createWorld, DEFAULT_CONFIG, radiusOf } from '../sim/world';
 import { NAME_SOURCE } from '../sim/names';
 import { APP_NAME, VERSION } from '../version';
@@ -12,6 +14,9 @@ import { BranchEditor, RulesPanel } from './editor';
 import { Inspector, kinMap } from './inspector';
 import { Renderer } from './renderer';
 import { Timeline } from './timeline';
+
+/** Oldest export version this build can read (v2 added tribes, health and conflict). */
+const MIN_IMPORT_VERSION = 2;
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -28,7 +33,7 @@ const sliderToTps = (v: number) => Math.round(10 ** ((v / 100) * Math.log10(MAX_
 let ticksPerSecond = sliderToTps(30);
 let tickBudget = 0;
 let lastFrame = 0;
-let colorMode: ColorMode = 'lineage';
+let colorMode: ColorMode = 'tribe';
 let selectedId: number | null = null;
 let showFertility = false;
 let brushPos: { x: number; y: number } | null = null;
@@ -45,7 +50,7 @@ const RECENT_TICKS = 500;
 const pct = (v: number) => (Number.isFinite(v) ? `${Math.round(v * 100)} %` : '–');
 const ticks = (v: number) => (Number.isFinite(v) ? `${Math.round(v)} ticks` : '–');
 const mortalityText = (m: Mortality) =>
-  `<b>${m.deaths}</b> døde · alderdom <b>${pct(m.ageShare)}</b> · snitt dødsalder <b>${ticks(m.meanAge)}</b>`;
+  `<b>${m.deaths}</b> døde · alderdom <b>${pct(m.ageShare)}</b> · drept <b>${pct(m.killedShare)}</b> · snitt dødsalder <b>${ticks(m.meanAge)}</b>`;
 
 /** Mortality figures up to the displayed tick: whole lineage and the last RECENT_TICKS ticks. */
 const renderVitals = (rows: TickStats[], at: number) => {
@@ -147,11 +152,11 @@ const changeRule = (apply: (r: Rules) => void, description: string) => {
   touch();
 };
 
-const newRun = (seeds: number) => {
+const newRun = (tribes: Tribe[]) => {
   editor.stop();
   $('tab-editor').hidden = true;
   history = new History(DEFAULT_HISTORY_CONFIG);
-  branchId = history.createRoot(createWorld({ ...DEFAULT_CONFIG, seeds })).id;
+  branchId = history.createRoot(createWorld({ ...DEFAULT_CONFIG, tribes })).id;
   tick = 0;
   selectedId = null;
   playing = false;
@@ -171,6 +176,10 @@ const doExport = async () => {
 const doImport = async (file: File) => {
   try {
     const data = await importGzip(file);
+    if (data.version < MIN_IMPORT_VERSION) {
+      alert(`Filen er laget med v${data.version}. Aktørene i v${VERSION} har stammer, helse og kamp, som filen mangler. Åpne filen i v${data.version} (versjonsvelgeren nederst til venstre på nettsiden).`);
+      return;
+    }
     if (data.version !== VERSION && !confirm(`Filen er laget med v${data.version}, dette er v${VERSION}. Reglene kan oppføre seg annerledes. Importere likevel?`)) return;
     const res = fromExport(data);
     editor.stop();
@@ -234,13 +243,23 @@ colorSelect.innerHTML = Object.entries(COLOR_MODE_LABELS)
   .join('');
 colorSelect.onchange = () => (colorMode = colorSelect.value as ColorMode);
 
+const tribeTable = new TribeTable($('tribe-table'), DEFAULT_TRIBES);
+$('tribe-add').onclick = () => tribeTable.add();
+$('tribe-reset').onclick = () => tribeTable.set(DEFAULT_TRIBES);
 $('btn-new').onclick = () => {
   playing = false;
+  tribeTable.set(history.get(branchId).head.tribes);
   $<HTMLDialogElement>('new-dialog').showModal();
 };
 $<HTMLDialogElement>('new-dialog').addEventListener('close', () => {
   const d = $<HTMLDialogElement>('new-dialog');
-  if (d.returnValue === 'ok') newRun(Math.max(2, Math.min(500, Number($<HTMLInputElement>('seed-count').value) || 20)));
+  if (d.returnValue !== 'ok') return;
+  const tribes = tribeTable.read();
+  if (tribes.reduce((n, t) => n + t.seeds, 0) < 2) {
+    alert('Det trengs minst 2 seeds til sammen.');
+    return;
+  }
+  newRun(tribes);
 });
 $('btn-export').onclick = () => void doExport();
 $('btn-import').onclick = () => $('import-file').click();
@@ -259,43 +278,75 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowRight') $('btn-fwd').click();
 });
 
-// Canvas: select actors, or paint with the environment brush while editing.
+// Canvas: click selects an actor, drag pans, wheel zooms, double-click resets the view.
+// While editing with the brush on, dragging paints instead.
 const canvas = renderer.canvas;
-const worldPoint = (e: PointerEvent) => {
+const cssPoint = (e: { clientX: number; clientY: number }) => {
   const r = canvas.getBoundingClientRect();
-  return renderer.toWorld(e.clientX - r.left, e.clientY - r.top);
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
 };
-canvas.addEventListener('pointerdown', (e) => {
-  const p = worldPoint(e);
-  if (editor.active && editor.brushOn) {
-    painting = true;
-    canvas.setPointerCapture(e.pointerId);
-    editor.paint(p.x, p.y);
-    return;
-  }
+const worldPoint = (e: PointerEvent) => {
+  const p = cssPoint(e);
+  return renderer.toWorld(p.x, p.y);
+};
+const selectAt = (p: { x: number; y: number }) => {
   const w = shownWorld();
   let best: number | null = null;
   let bestD = Infinity;
   for (const a of w.actors) {
     const d = Math.hypot(a.x - p.x, a.y - p.y);
-    if (d < radiusOf(a) + 6 && d < bestD) {
+    if (d < radiusOf(a) + 6 / renderer.zoom + 2 && d < bestD) {
       best = a.id;
       bestD = d;
     }
   }
   select(best);
+};
+/** Pointer drag state: start point and whether it has moved far enough to count as a pan. */
+let drag: { x: number; y: number; lastX: number; lastY: number; moved: boolean } | null = null;
+canvas.addEventListener('pointerdown', (e) => {
+  canvas.setPointerCapture(e.pointerId);
+  if (editor.active && editor.brushOn) {
+    painting = true;
+    const p = worldPoint(e);
+    editor.paint(p.x, p.y);
+    return;
+  }
+  drag = { x: e.clientX, y: e.clientY, lastX: e.clientX, lastY: e.clientY, moved: false };
 });
 canvas.addEventListener('pointermove', (e) => {
   brushPos = editor.active && editor.brushOn ? worldPoint(e) : null;
   if (painting && brushPos) editor.paint(brushPos.x, brushPos.y);
+  if (drag) {
+    if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 4) drag.moved = true;
+    if (drag.moved) {
+      renderer.panBy(e.clientX - drag.lastX, e.clientY - drag.lastY);
+      canvas.classList.add('panning');
+    }
+    drag.lastX = e.clientX;
+    drag.lastY = e.clientY;
+  }
 });
-const endPaint = () => {
+const endPointer = (e: PointerEvent) => {
   if (painting) editor.endStroke();
   painting = false;
+  if (drag && !drag.moved && e.type === 'pointerup') selectAt(worldPoint(e));
+  drag = null;
+  canvas.classList.remove('panning');
 };
-canvas.addEventListener('pointerup', endPaint);
-canvas.addEventListener('pointercancel', endPaint);
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
 canvas.addEventListener('pointerleave', () => (brushPos = null));
+canvas.addEventListener(
+  'wheel',
+  (e) => {
+    e.preventDefault();
+    const p = cssPoint(e);
+    renderer.zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015));
+  },
+  { passive: false },
+);
+canvas.addEventListener('dblclick', () => renderer.resetView());
 
 new ResizeObserver(() => {
   renderer.resize();
@@ -354,7 +405,7 @@ const frame = (now: number) => {
     });
     const statsRows = history.statsPath(branchId);
     renderVitals(statsRows, w.tick);
-    charts.render(statsRows, w.tick, (t) => {
+    charts.render(statsRows, w.tick, w.tribes, (t) => {
       // Seek within the lineage: pick the branch on the path that covers t.
       playing = false;
       const path = history.lineage(branchId);
@@ -370,3 +421,8 @@ const frame = (now: number) => {
 
 renderer.resize();
 requestAnimationFrame(frame);
+
+// Development hook for browser tests; stripped from production builds.
+if (import.meta.env.DEV) {
+  (window as unknown as Record<string, unknown>).__popsim = { shownWorld, renderer, select };
+}
