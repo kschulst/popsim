@@ -262,6 +262,9 @@ canvas#world.aiming { cursor: crosshair; }
 .map-legend .ln.dot { border-top-style: dotted; }
 .map-legend .g { display: inline-block; width: 22px; text-align: center; margin-right: 6px; font-weight: 700; }
 
-.scrub-row { flex: 1 1 100%; order: 3; }
-#scrub { flex: 1; min-width: 200px; accent-color: var(--gold); }
-#scrub-label { min-width: 110px; margin-left: 0; }
+.world { display: flex; flex-direction: column; }
+.canvas-wrap { position: relative; flex: 1; min-height: 0; }
+.scrub-row { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-top: 1px solid var(--line); background: var(--panel); }
+#scrub { flex: 1; min-width: 120px; accent-color: var(--gold); }
+#scrub-label { min-width: 110px; margin-left: 0; text-align: right; }
+details.timeline-wrap > summary { cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 0; }

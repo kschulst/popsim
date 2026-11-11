@@ -20,10 +20,6 @@
         <label class="speed" title="Ticks per sekund">Fart <input id="speed" type="range" min="0" max="100" value="30" /> <span id="speed-label"></span></label>
         <span id="status" class="status"></span>
       </div>
-      <div class="controls scrub-row">
-        <input id="scrub" type="range" min="0" max="0" value="0" step="1" title="Dra for å gå til et tidspunkt langs denne grenens historikk" />
-        <span id="scrub-label" class="status"></span>
-      </div>
       <div class="controls">
         <button id="btn-branch" title="Lag en ny gren fra tidspunktet som vises">Forgrein herfra</button>
         <select id="color-mode" title="Fargekoding"></select>
@@ -37,6 +33,7 @@
     </header>
     <main>
       <section class="world">
+        <div class="canvas-wrap">
         <canvas id="world"></canvas>
         <div id="banner" class="banner" hidden></div>
         <div id="map-legend" class="map-legend" hidden></div>
@@ -46,6 +43,11 @@
           <button id="zoom-out" title="Zoom ut">−</button>
           <button id="zoom-in" title="Zoom inn">+</button>
           <button id="zoom-reset" title="Vis hele verden (dobbeltklikk på kartet gjør det samme)">Hele verden</button>
+        </div>
+        </div>
+        <div class="scrub-row">
+          <input id="scrub" type="range" min="0" max="0" value="0" step="1" title="Dra for å gå til et tidspunkt langs denne grenens historikk" />
+          <span id="scrub-label" class="status"></span>
         </div>
       </section>
       <aside>
@@ -61,10 +63,10 @@
         <div class="tab" id="editor" hidden></div>
       </aside>
     </main>
-    <section class="timeline-wrap">
-      <h3>Historikk</h3>
+    <details class="timeline-wrap" id="timeline-details">
+      <summary>Historikk og grener <span id="branch-count" class="muted"></span></summary>
       <div id="timeline"></div>
-    </section>
+    </details>
     <section id="vitals" class="vitals"></section>
     <section id="charts" class="charts"></section>
     <footer id="footer"></footer>

@@ -65,6 +65,21 @@ const renderVitals = (rows: TickStats[], at: number, w: World) => {
     `<span title="De siste ${RECENT_TICKS} ticks før tick som vises.">Siste ${RECENT_TICKS} ticks: ${mortalityText(recent)}</span>`;
 };
 const timeline = new Timeline($('timeline'));
+// The branch timeline is folded away by default; its open state is remembered per browser.
+const timelineDetails = $('timeline-details') as HTMLDetailsElement;
+try {
+  timelineDetails.open = localStorage.getItem('popsim.timelineOpen') === '1';
+} catch {
+  /* storage unavailable */
+}
+timelineDetails.addEventListener('toggle', () => {
+  try {
+    localStorage.setItem('popsim.timelineOpen', timelineDetails.open ? '1' : '0');
+  } catch {
+    /* ignore */
+  }
+  touch();
+});
 const inspector = new Inspector($('inspector'), {
   select: (id) => navigateTo(id),
   back: () => goBack(),
@@ -638,7 +653,9 @@ const frame = (now: number) => {
       lastBoards = now;
       leaderboards.render(w, reg, w.tick);
     }
-    timeline.render(history, branchId, w.tick, (bid, t) => {
+    const nBranches = history.branches.size;
+    $('branch-count').textContent = nBranches > 1 ? `(${nBranches} grener)` : '(én gren)';
+    if ((timelineDetails as HTMLDetailsElement).open) timeline.render(history, branchId, w.tick, (bid, t) => {
       playing = false;
       seek(bid, t);
     });

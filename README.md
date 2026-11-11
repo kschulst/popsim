@@ -53,13 +53,13 @@ npm run build    # typesjekk + produksjonsbygg i dist/
 
 ## Bruk
 
-- Mellomrom: spill/pause. Piltaster: ett steg frem/tilbake, med Shift: 10 steg. Glidebryteren under knappene viser hvor i tiden du er og kan dras.
+- Mellomrom: spill/pause. Piltaster: ett steg frem/tilbake, med Shift: 10 steg. Glidebryteren under kartet viser hvor i tiden du er og kan dras.
 - Klikk på en aktør for å se avstamning, genom, helse, kamp, foreldre, søsken, barn og stamtre. Levende slektninger får en gul ring.
 - Rull for å zoome, dra for å flytte, dobbeltklikk for å se hele verdenen.
 - Klikk på et navn i inspektøren eller i Topplister for å gå til aktøren. «Spol til levetiden» spoler til et tidspunkt der den lever, og «← Tilbake» går til forrige aktør.
 - «Forgrein herfra» åpner redigering av regler, populasjon, valgt aktør og miljø (pensel). «Start gren» lager en ny gren i historikken.
 - Endring av en regel i Regler-fanen utenfor redigering lager en ny gren automatisk.
-- Klikk i tidslinjen eller i en graf for å hoppe i tid.
+- Klikk i en graf for å hoppe i tid. «Historikk og grener» under kartet (foldet sammen) viser alle grenene; klikk på en gren for å gå dit.
 - Eksporter lagrer hele historikken som `.json.gz`. Importer laster den inn igjen.
 
 ## Navn
