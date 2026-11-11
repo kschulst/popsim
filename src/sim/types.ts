@@ -76,6 +76,10 @@ export interface Rules {
   rejectionCooldown: number;
   /** Ticks from conception to birth. */
   gestationTicks: number;
+  /** Ticks after birth during which the child nurses and the mother cannot conceive. */
+  nursingTicks: number;
+  /** Energy per tick a nursing child draws from its mother (20 % lost). */
+  nursingRate: number;
   /** Probability of each additional child: twins p, triplets p², … (at most 4). */
   multipleBirthRate: number;
   /** Probability that the father stays to guard and feed the pregnant mother. */
@@ -153,6 +157,8 @@ export interface Actor {
   hp: number;
   /** Actor being fought (attacked or chased), or null. */
   target: number | null;
+  /** Why this actor is fighting its target (for display). */
+  targetReason: AttackReason | null;
   /** Ticks left of fleeing, and from whom. */
   fleeing: number;
   fleeFrom: number | null;
@@ -278,6 +284,12 @@ export interface Disease {
   deaths: number;
   variants: number;
 }
+
+/**
+ * Why an actor attacks: hunger (competition for food), rival (same partner), protect (a pregnant
+ * relative or partner), join (took a side in someone else's fight), defend (fought back).
+ */
+export type AttackReason = 'food' | 'rival' | 'protect' | 'join' | 'defend';
 
 export interface Tribe {
   name: string;

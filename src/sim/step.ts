@@ -6,7 +6,7 @@ import { SpatialHash } from './spatial';
 import { maybeOutbreak, progressInfection } from './disease';
 import { activeEles, applyEles, createEle, eleEffects, pickEle, type EleEffects } from './ele';
 import { mixAncestry, overlap, purity } from './tribes';
-import type { Actor, Embryo, TickDeath, TickEvents, World } from './types';
+import type { Actor, AttackReason, Embryo, TickDeath, TickEvents, World } from './types';
 import { capacityOf, hpFactor, maxHpOf, radiusOf } from './world';
 
 export type ParentsOf = (id: number) => [number, number] | null | undefined;
@@ -288,6 +288,28 @@ const findMate = (ctx: TickContext, a: Actor, vision: number): Actor | null => {
 };
 
 /**
+ * When no partner is ready: the best-scoring opposite-sex adult in sight that would be acceptable
+ * (score ≥ minMateScore, so not close kin), ready or not. Heading there finds partners in small,
+ * closely related groups instead of wandering at random.
+ */
+const findProspect = (ctx: TickContext, a: Actor, vision: number): Actor | null => {
+  const { w } = ctx;
+  let best: Actor | null = null;
+  let bestScore = w.rules.minMateScore;
+  for (const b of ctx.hash.near(a.x, a.y, vision)) {
+    if (b.sex === a.sex || b.id === a.snub || ctx.dead.has(b.id) || b.pregnancy || b.age < w.rules.mateCooldown) continue;
+    const d = Math.hypot(b.x - a.x, b.y - a.y);
+    if (d > vision || d < 10) continue;
+    const sc = mateScore(ctx, a, b, d);
+    if (sc > bestScore) {
+      best = b;
+      bestScore = sc;
+    }
+  }
+  return best;
+};
+
+/**
  * Strength on each side if `a` attacks `b`: own strength plus nearby actors that lean towards
  * one side by shared ancestry, weighted by their aggression (how likely they are to join).
  */
@@ -336,6 +358,7 @@ const considerJoining = (ctx: TickContext, a: Actor, vision: number): boolean =>
     for (const x of ctx.hash.near(a.x, a.y, vision)) {
       if (x.target === a.caresFor && x !== a && !ctx.dead.has(x.id)) {
         a.target = x.id;
+        a.targetReason = 'protect';
         return true;
       }
     }
@@ -354,10 +377,12 @@ const considerJoining = (ctx: TickContext, a: Actor, vision: number): boolean =>
     const d2 = ctx.fx.rage ? diff * 0.5 : diff;
     if (aggr * d2 > r.joinThreshold) {
       a.target = y.id;
+      a.targetReason = prot && prot.p === x ? 'protect' : 'join';
       return true;
     }
     if (aggr * -d2 > r.joinThreshold) {
       a.target = x.id;
+      a.targetReason = prot && prot.p === y ? 'protect' : 'join';
       return true;
     }
     if (++seen >= JOIN_CANDIDATES) break;
@@ -386,6 +411,7 @@ const considerAttack = (ctx: TickContext, a: Actor, vision: number, food: { x: n
   const prot = ctx.protectee(a, vision);
   const protHunger = prot ? 1 - Math.min(1, prot.p.energy / capacityOf(prot.p, r)) : 0;
   let best: Actor | null = null;
+  let bestReason: AttackReason = 'food';
   let bestDesire = r.attackThreshold;
   for (const [b] of near.slice(0, ATTACK_CANDIDATES)) {
     const rival = a.mateTarget !== null && b.sex === a.sex && b.mateTarget === a.mateTarget ? 1 : 0;
@@ -407,9 +433,19 @@ const considerAttack = (ctx: TickContext, a: Actor, vision: number, food: { x: n
     if (desire > bestDesire) {
       best = b;
       bestDesire = desire;
+      // The largest motive term names the reason.
+      const terms: [AttackReason, number][] = [
+        ['food', r.hungerWeight * hunger + r.foodCompetitionWeight * foodComp],
+        ['rival', r.rivalryWeight * rival],
+        ['protect', nearProtectee * r.hungerWeight * protHunger * (prot?.weight ?? 0)],
+      ];
+      bestReason = terms.reduce((m, t) => (t[1] > m[1] ? t : m))[0];
     }
   }
-  if (best) a.target = best.id;
+  if (best) {
+    a.target = best.id;
+    a.targetReason = bestReason;
+  }
 };
 
 /** One attack from a on t. Applies damage, the defender's reaction and a possible kill. */
@@ -440,7 +476,10 @@ const strike = (ctx: TickContext, a: Actor, t: Actor): void => {
     const hpShare = t.hp / maxHpOf(t, r);
     const pFlee = 0.5 * (1 - t.genome.aggression) + 0.5 * (1 - hpShare);
     if (Math.random() < pFlee) startFleeing(t, a, w);
-    else t.target = a.id;
+    else {
+      t.target = a.id;
+      t.targetReason = 'defend';
+    }
   }
 };
 
@@ -520,6 +559,8 @@ const deliver = (ctx: TickContext, mother: Actor): Actor[] => {
   const motherRisk = r.birthRisk * n * (1 + 2 * (1 - motherShare));
   const childRisk = r.birthRisk * n * (1 + 2 * (1 - paidShare));
   const born = p.embryos.filter(() => Math.random() >= childRisk);
+  // Lactational infertility: no new pregnancy until the nursing period is over.
+  mother.cooldown = Math.max(mother.cooldown, r.nursingTicks ?? 0);
   ctx.losses += n - born.length;
   if (Math.random() < motherRisk) ctx.die(mother, 'childbirth');
   return born.map((e) => {
@@ -545,6 +586,7 @@ const deliver = (ctx: TickContext, mother: Actor): Actor[] => {
       born: w.tick,
       hp: 0,
       target: null,
+      targetReason: null,
       fleeing: 0,
       fleeFrom: null,
       attackCd: 0,
@@ -650,6 +692,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       if (d > vision * 1.5 || (target.fleeing > 0 && Math.random() < rules.pursuitGiveUp)) target = undefined;
     }
     a.target = target?.id ?? null;
+    if (a.target === null) a.targetReason = null;
     if (a.fleeing > 0 && --a.fleeing === 0) a.fleeFrom = null;
     if (target && a.fleeing <= 0) {
       const hpShare = a.hp / maxHpOf(a, rules);
@@ -668,7 +711,10 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       care = undefined;
     }
 
-    // 2. Choose what to do: flee > fight > join a fight > attack > guard > mate > eat > wander.
+    // A nursing child stays with its mother.
+    const nursingMother = a.age < (rules.nursingTicks ?? 0) && a.parents ? ctx.alive(a.parents[0]) : undefined;
+
+    // 2. Choose what to do: flee > fight > join a fight > attack > guard > nurse > mate > eat > wander.
     const food = a.fleeing > 0 ? null : seekFood(a, w, vision);
     if (!target && a.fleeing <= 0) {
       if (considerJoining(ctx, a, vision) || (considerAttack(ctx, a, vision, food), a.target !== null)) {
@@ -700,12 +746,16 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     } else if (care && Math.hypot(care.x - a.x, care.y - a.y) > rules.guardDistance) {
       goal = care;
       speed = maxSpeed;
+    } else if (nursingMother && Math.hypot(nursingMother.x - a.x, nursingMother.y - a.y) > 15) {
+      goal = nursingMother;
+      speed = maxSpeed;
     } else {
       const ready = readyToMate(a, w);
       if (ready) mate = findMate(ctx, a, vision);
       a.mateTarget = mate?.id ?? null;
-      // Ready but no partner in sight: explore instead of staying on food.
-      goal = mate ?? (ready ? null : food);
+      // Ready but no partner ready in sight: approach an acceptable prospect, else explore.
+      const prospect = ready && !mate ? findProspect(ctx, a, vision) : null;
+      goal = mate ?? prospect ?? (ready ? null : food);
       if (!goal) {
         a.wander += gaussian() * Math.max(0.2, rules.directionNoise);
         dx = Math.cos(a.wander);
@@ -717,7 +767,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       dx = goal.x - a.x;
       dy = goal.y - a.y;
       const dist = Math.hypot(dx, dy);
-      if (!target && goal !== care) speed = maxSpeed * Math.min(1, dist / w.cellSize);
+      if (!target && goal !== care && goal !== nursingMother) speed = maxSpeed * Math.min(1, dist / w.cellSize);
       const angle = Math.atan2(dy, dx) + gaussian() * rules.directionNoise;
       dx = Math.cos(angle);
       dy = Math.sin(angle);
@@ -767,6 +817,16 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       w.food[ci] = 0;
       a.foodEaten++;
       a.energy = Math.min(cap, a.energy + rules.foodEnergy);
+    }
+
+    // Nursing: the child draws energy from its mother when close, not full, and she can spare it.
+    if (nursingMother && Math.hypot(nursingMother.x - a.x, nursingMother.y - a.y) <= 30) {
+      const mCap = capacityOf(nursingMother, rules);
+      const take = Math.min(rules.nursingRate, cap - a.energy, nursingMother.energy - 0.2 * mCap);
+      if (take > 0) {
+        nursingMother.energy -= take;
+        a.energy += take * 0.8;
+      }
     }
 
     // Pregnancy: the mother pays her share evenly over the remaining ticks, then gives birth.

@@ -95,6 +95,7 @@ export const spawnSeed = (world: World, opts: NewActor): Actor => {
     born: world.tick,
     hp: 0,
     target: null,
+    targetReason: null,
     fleeing: 0,
     fleeFrom: null,
     attackCd: 0,

@@ -255,3 +255,9 @@ canvas#world.aiming { cursor: crosshair; }
 .map-zoom { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 4px; align-items: center; z-index: 5; }
 .map-zoom button { min-width: 30px; padding: 3px 8px; background: rgba(29, 34, 42, 0.9); }
 .map-zoom .zoom-level { color: var(--muted); font-size: 12px; min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+
+.map-legend { position: absolute; left: 10px; bottom: 10px; z-index: 5; background: rgba(14, 16, 20, 0.92); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 12px; line-height: 1.6; max-width: 300px; }
+.map-legend .ln { display: inline-block; width: 22px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 6px; }
+.map-legend .ln.dash { border-top-style: dashed; }
+.map-legend .ln.dot { border-top-style: dotted; }
+.map-legend .g { display: inline-block; width: 22px; text-align: center; margin-right: 6px; font-weight: 700; }

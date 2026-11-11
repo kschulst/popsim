@@ -1,5 +1,5 @@
 import { activeEles, ELE_DEFS, eleEffects, iceCover } from '../sim/ele';
-import type { Actor, World } from '../sim/types';
+import type { Actor, AttackReason, World } from '../sim/types';
 import { capacityOf, maxHpOf, radiusOf } from '../sim/world';
 import { actorColor, type ColorMode } from './colors';
 
@@ -22,6 +22,23 @@ const MAX_ZOOM = 16;
  * Canvas 2D renderer. The world is fitted to the canvas (preserving aspect ratio) and then zoomed
  * by `zoom` around the world point (cx, cy).
  */
+/** Line colour per attack reason; also used by the map legend. */
+export const ATTACK_COLORS: Record<AttackReason, string> = {
+  food: '#ff4b3a',
+  rival: '#ff5fd2',
+  protect: '#4fa3ff',
+  join: '#b77bff',
+  defend: '#ffb23a',
+};
+
+export const ATTACK_LABELS: Record<AttackReason, string> = {
+  food: 'angrep om mat',
+  rival: 'rivaler om partner',
+  protect: 'forsvarer gravid/partner',
+  join: 'blander seg inn i kamp',
+  defend: 'slår tilbake',
+};
+
 export class Renderer {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly fieldCanvas = document.createElement('canvas');
@@ -313,28 +330,31 @@ export class Renderer {
       const alpha = Math.min(1, c.ttl / 12);
       const ok = c.selfAccepted && c.otherAccepted;
       ctx.strokeStyle = ok ? `rgba(110, 230, 140, ${alpha})` : `rgba(170, 170, 180, ${alpha * 0.8})`;
-      ctx.lineWidth = (ok ? 2.5 : 1.5) * dpr;
+      ctx.lineWidth = (ok ? 3 : 2) * dpr;
       ctx.beginPath();
       ctx.moveTo(sx(a), sy(a));
       ctx.lineTo(sx(b), sy(b));
       ctx.stroke();
-      // Cross near whoever rejected: at a's end if a said no, at b's end if b said no.
-      const cross = (from: Actor, to: Actor) => {
-        const t = 0.25;
-        const x = sx(from) + (sx(to) - sx(from)) * t;
-        const y = sy(from) + (sy(to) - sy(from)) * t;
-        const r = 3.5 * dpr;
-        ctx.strokeStyle = `rgba(255, 110, 90, ${alpha})`;
-        ctx.lineWidth = 1.5 * dpr;
-        ctx.beginPath();
-        ctx.moveTo(x - r, y - r);
-        ctx.lineTo(x + r, y + r);
-        ctx.moveTo(x + r, y - r);
-        ctx.lineTo(x - r, y + r);
-        ctx.stroke();
+      const mx = (sx(a) + sx(b)) / 2;
+      const my = (sy(a) + sy(b)) / 2;
+      const mark = (glyph: string, color: string, x: number, y: number) => {
+        ctx.font = `bold ${Math.round(16 * dpr)}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = `rgba(0, 0, 0, ${0.7 * alpha})`;
+        ctx.fillText(glyph, x + dpr, y + dpr);
+        ctx.fillStyle = color;
+        ctx.fillText(glyph, x, y);
+        ctx.textAlign = 'start';
       };
-      if (!c.selfAccepted) cross(a, b);
-      if (!c.otherAccepted) cross(b, a);
+      if (ok) {
+        mark('♥', `rgba(110, 230, 140, ${alpha})`, mx, my - 10 * dpr);
+      } else {
+        // Big cross near whoever said no (both ends if both did).
+        const at = (from: Actor, to: Actor) => [sx(from) + (sx(to) - sx(from)) * 0.3, sy(from) + (sy(to) - sy(from)) * 0.3] as const;
+        if (!c.selfAccepted) mark('✕', `rgba(255, 90, 70, ${alpha})`, ...at(a, b));
+        if (!c.otherAccepted) mark('✕', `rgba(255, 90, 70, ${alpha})`, ...at(b, a));
+      }
     }
   }
 
@@ -372,12 +392,14 @@ export class Renderer {
     if (opt.showCourtship) this.drawCourtship(w, byId, sx, sy, dpr);
 
     // Fight lines with an arrowhead at the target's edge: the arrow points the way the attack goes.
+    // Colour by reason (see ATTACK_COLORS).
     ctx.lineWidth = 1.5 * dpr;
-    ctx.strokeStyle = 'rgba(255, 70, 60, 0.8)';
-    ctx.fillStyle = 'rgba(255, 70, 60, 0.95)';
     for (const a of w.actors) {
       const t = a.target === null ? undefined : byId.get(a.target);
       if (!t) continue;
+      const color = ATTACK_COLORS[a.targetReason ?? 'food'];
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
       const x0 = sx(a);
       const y0 = sy(a);
       const x1 = sx(t);

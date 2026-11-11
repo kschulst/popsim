@@ -111,7 +111,8 @@ Fruktbarhetskartet endres ikke (det deles mellom lagrede tilstander); romlige ef
 
 - Ved paring dannes 1 barn, eller flere med sannsynlighet `multipleBirthRate` per ekstra barn (p, p², maks 4). Hvert foster arver for seg. Gener og avstamning bestemmes ved unnfangelsen.
 - Faren betaler sin del (`1 − parentalCostSplit`) av startenergien straks; har han ikke nok, blir det færre fostre. Moren betaler sin del jevnt over `gestationTicks`. Ved termin fødes barna ved siden av moren med den innbetalte energien. Dør moren, går fostrene tapt.
-- Hunnens nedkjøling regnes fra paringen og omfatter svangerskapet (`max(gestationTicks, mateCooldown)`).
+- Hunnens nedkjøling regnes fra paringen og omfatter svangerskapet (`max(gestationTicks, mateCooldown)`). Etter fødselen kommer en ammeperiode (`nursingTicks`, standard 30, svangerskap 30): moren kan ikke bli gravid, barnet går mot moren når det er over 15 enheter unna, og innen 30 enheter trekker det `nursingRate` energi per tick fra henne (20 % tap) så lenge hun har over 20 % av kapasiteten. Med 40 + 50 ticks døde 4 av 6 testkjøringer ut.
+- Partnersøk: ser en klar aktør ingen klar partner, går den mot den beste kandidaten av motsatt kjønn innen syn som har partnerpoeng over `minMateScore` (altså ikke nær slekt), klar eller ikke. Uten dette stanset formeringen i små stammer der nesten alle rundt er søsken.
 - Med sannsynlighet `paternalCare` passer faren på moren til fødselen: han holder seg innen `guardDistance`, parer seg ikke med andre og angriper den som angriper henne.
 - Hjelpevekt: faren som passer på har vekt 1, slektninger `kinCare × slektsvekt`. Hver aktør hjelper den gravide med størst vekt innen synsvidde. Hjelpere innen `guardDistance` gir henne `provisionRate × vekt` energi per tick (10 % tap) når de har over halve kapasiteten og hun under 80 %. I kamper der hun er part, øker lojaliteten til henne med `2 × vekt`. Andre innen `guardDistance` av henne gir et tillegg `hungerWeight × hennes sult × vekt` i angrepsviljen.
 
@@ -179,7 +180,7 @@ Slektsvekter brukes i lojalitet (v2) og i samarbeid (v3). De er naturlover (regl
 
 - Verden: Canvas 2D. Matruter tegnes som skarpe kvadrater (mat/ikke mat). Prikkstørrelse etter `size`. Fargen kan vises etter stamme (største andel, metning etter renhet, standard), klan (etternavn), generasjon, genom eller aggresjon.
 - Zoom med musehjulet, panorering ved å dra, dobbeltklikk viser hele verdenen. Fra 3× zoom tegnes alle aktører som kakediagram over avstamningen, med helsebar. Valgt aktør får alltid et kakediagram ved siden av seg.
-- Kamp: rød strek fra angriper til mål, hvitt blink ved treff, gul kant på aktører som flykter.
+- Kamp: strek med pil fra angriper til mål, farget etter årsak (mat, rival, forsvar av gravid/partner, blander seg inn, slår tilbake); hvitt blink ved treff, gul kant på aktører som flykter. Symboler over aktører fra 2× zoom. Knappen «Forklaring» viser alle streker og symboler.
 - Grafer og tidslinje: D3 med SVG.
 - Inspektør: klikk på en aktør for å se navn, genom, foreldre, barn, søsken og et lite stamtre. Levende slektninger markeres med ring på lerretet.
 
