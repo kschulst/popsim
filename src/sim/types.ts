@@ -55,6 +55,12 @@ export interface Rules {
   sicknessCost: number;
   /** Fraction by which illness lowers speed, vision, strength and fertility. */
   sicknessWeakness: number;
+  /** Probability per tick of a random extinction level event. */
+  eleRate: number;
+  /** Scales ELE durations, radii and strength (1 = normal). */
+  eleSeverity: number;
+  /** Relative likelihood of each ELE when one happens (0 = never). */
+  eleWeights: Record<EleKey, number>;
   friction: number;
   steerStrength: number;
   directionNoise: number;
@@ -222,6 +228,36 @@ export interface Courtship {
   ttl: number;
 }
 
+export type EleKey = 'meteor' | 'volcano' | 'plague' | 'iceAge' | 'locusts' | 'drought' | 'infertility' | 'radiation' | 'rage';
+
+/** One extinction level event, kept in the world for display, effects and statistics. */
+export interface EleEvent {
+  id: number;
+  key: EleKey;
+  name: string;
+  /** First tick of the effects, and the tick they end. */
+  tick: number;
+  end: number;
+  manual: boolean;
+  severity: number;
+  /** False until the immediate effects have run (at the start of `tick`). */
+  applied: boolean;
+  popBefore: number;
+  popAfter: number | null;
+  /** Deaths of any cause while the event was active. */
+  deaths: number;
+  /** Meteor impact point / locust swarm position and velocity. */
+  x?: number;
+  y?: number;
+  radius?: number;
+  vx?: number;
+  vy?: number;
+  /** Ice age: the edge the ice comes from. */
+  edge?: 'N' | 'S' | 'E' | 'W';
+  /** Pandemic: the disease id. */
+  disease?: number;
+}
+
 export interface Disease {
   id: number;
   name: string;
@@ -254,7 +290,7 @@ export interface Tribe {
   seeds: number;
 }
 
-export type DeathCause = 'starvation' | 'age' | 'killed' | 'childbirth' | 'infant' | 'disease' | 'removed';
+export type DeathCause = 'starvation' | 'age' | 'killed' | 'childbirth' | 'infant' | 'disease' | 'catastrophe' | 'removed';
 
 export interface TickStats {
   tick: number;
@@ -272,6 +308,7 @@ export interface TickStats {
   deathsChildbirth: number;
   deathsInfant: number;
   deathsDisease: number;
+  deathsCatastrophe: number;
   /** Actors ill at the end of the tick. */
   infected: number;
   /** Embryos lost because the mother died while pregnant. */
@@ -308,6 +345,8 @@ export interface World {
   tribes: Tribe[];
   /** Every disease strain that has appeared, indexed by id. */
   diseases: Disease[];
+  /** Every extinction level event so far. */
+  events: EleEvent[];
 }
 
 /** Events produced by one tick, consumed by the genealogy registry and stats. */

@@ -1,5 +1,6 @@
 import { clampGene, DOMINANCE_RANGE, GENE_LABELS } from '../sim/genome';
 import { infect, newDisease } from '../sim/disease';
+import { ELE_DEFS, ELE_KEYS } from '../sim/ele';
 import { mainTribe } from '../sim/tribes';
 import { clamp } from '../sim/random';
 import { fullName, uniqueSurnames } from '../sim/names';
@@ -11,7 +12,7 @@ import {
   SURNAME_RULE_LABELS,
   TRIBE_BONUS_DESCRIPTION,
 } from '../sim/rules';
-import { GENE_KEYS, type GeneKey, type KinWeights, type Rules, type Tribe, type World } from '../sim/types';
+import { GENE_KEYS, type EleKey, type GeneKey, type KinWeights, type Rules, type Tribe, type World } from '../sim/types';
 import { assignHues, spawnSeed } from '../sim/world';
 
 const fmt = (v: number) => String(Number(v.toFixed(4)));
@@ -21,6 +22,8 @@ const escAttr = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)}
 // Rules form
 
 export type RuleChange = (apply: (r: Rules) => void, description: string) => void;
+/** Release a catastrophe by hand. */
+export type EleTrigger = (key: EleKey) => void;
 
 export class RulesPanel {
   private current: Rules | null = null;
@@ -35,6 +38,7 @@ export class RulesPanel {
   constructor(
     private readonly root: HTMLElement,
     private readonly onChange: RuleChange,
+    private readonly onEle: EleTrigger = () => {},
   ) {
     // Each field: label, a "?" toggle and the input on one row; the description below, hidden
     // until toggled. The description is also the row's hover tooltip.
@@ -80,10 +84,26 @@ export class RulesPanel {
       </fieldset>
       ${groups}
       <fieldset><legend>Arv</legend>${surname}</fieldset>
-      <fieldset><legend>Slektsvekter (tas i bruk i v3)</legend>
+      <fieldset class="ele-panel"><legend>Katastrofer: slipp løs og vekter</legend>
+        <div class="row">
+          <select class="ele-select">${ELE_KEYS.map((k) => `<option value="${k}">${ELE_DEFS[k].icon} ${ELE_DEFS[k].name}</option>`).join('')}</select>
+          <button type="button" class="ele-go primary">Slipp løs</button>
+        </div>
+        <p class="help ele-desc"></p>
+        <p class="help">Vektene bestemmer hvor sannsynlig hver katastrofe er når en tilfeldig katastrofe inntreffer (se Katastroferate). 0 betyr aldri. Meteoren treffer stedet du klikker på i verden etter at du har trykket «Slipp løs».</p>
+        ${ELE_KEYS.map((k) => `<div class="field-row"><span>${ELE_DEFS[k].icon} ${ELE_DEFS[k].name}</span><input type="number" aria-label="Vekt ${ELE_DEFS[k].name}" step="0.1" min="0" max="10" data-ele="${k}"></div>`).join('')}
+      </fieldset>
+      <fieldset><legend>Slektsvekter</legend>
         <p class="help">${KIN_WEIGHTS_DESCRIPTION}</p>
         ${kin}
       </fieldset>`;
+
+    const eleSelect = root.querySelector<HTMLSelectElement>('.ele-select')!;
+    const eleDesc = root.querySelector<HTMLElement>('.ele-desc')!;
+    const showEleDesc = () => (eleDesc.textContent = ELE_DEFS[eleSelect.value as EleKey].description);
+    eleSelect.addEventListener('change', showEleDesc);
+    showEleDesc();
+    root.querySelector<HTMLButtonElement>('.ele-go')!.addEventListener('click', () => this.onEle(eleSelect.value as EleKey));
 
     const branchBox = root.querySelector<HTMLInputElement>('.branch-on-change')!;
     try {
@@ -138,6 +158,14 @@ export class RulesPanel {
           next[i] = v;
           r.tribeBonus = next;
         }, `Attraktivitet: ${name} ${old} → ${fmt(v)}`);
+      } else if (el.dataset.ele) {
+        const key = el.dataset.ele as EleKey;
+        const v = Number(el.value);
+        if (!Number.isFinite(v)) return;
+        const old = fmt(this.current?.eleWeights?.[key] ?? 1);
+        this.onChange((r) => {
+          r.eleWeights = { ...(r.eleWeights ?? {}), [key]: v } as Rules['eleWeights'];
+        }, `Katastrofevekt: ${ELE_DEFS[key].name} ${old} → ${fmt(v)}`);
       } else if (el.dataset.kin) {
         const key = el.dataset.kin as keyof KinWeights;
         const v = Number(el.value);
@@ -163,6 +191,11 @@ export class RulesPanel {
         .join('');
     }
     const focused = document.activeElement;
+    for (const el of this.root.querySelectorAll<HTMLInputElement>('[data-ele]')) {
+      if (el === focused) continue;
+      const s = fmt(rules.eleWeights?.[el.dataset.ele as EleKey] ?? 1);
+      if (el.value !== s) el.value = s;
+    }
     for (const el of this.root.querySelectorAll<HTMLInputElement>('[data-bonus]')) {
       if (el === focused) continue;
       const s = fmt(rules.tribeBonus?.[Number(el.dataset.bonus)] ?? 0);

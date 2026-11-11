@@ -242,3 +242,9 @@ table.matrix th { font-weight: 500; text-align: left; }
 
 .lb-body { overflow-x: auto; }
 table.matrix td.num { white-space: nowrap; }
+
+section.world { position: relative; }
+.banner { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(20, 8, 8, 0.85); color: #ffd7c2; border: 1px solid #ff6a4f; border-radius: 6px; padding: 8px 14px; font-size: 15px; font-weight: 600; pointer-events: none; max-width: calc(100% - 32px); text-align: center; }
+canvas#world.aiming { cursor: crosshair; }
+.ele-panel .help { display: block; }
+#timeline .ele-mark { fill: #ff4b3a; stroke: #1a0a08; stroke-width: 1; }

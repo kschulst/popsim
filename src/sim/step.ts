@@ -4,6 +4,7 @@ import { givenName } from './names';
 import { clamp, gaussian, rand, shuffle } from './random';
 import { SpatialHash } from './spatial';
 import { maybeOutbreak, progressInfection } from './disease';
+import { activeEles, applyEles, createEle, eleEffects, pickEle, type EleEffects } from './ele';
 import { mixAncestry, overlap, purity } from './tribes';
 import type { Actor, Embryo, TickDeath, TickEvents, World } from './types';
 import { capacityOf, hpFactor, maxHpOf, radiusOf } from './world';
@@ -24,13 +25,18 @@ const COURT_TICKS = 25;
  * Empty cells get food with probability fertility × (spontaneous + spread × food neighbours).
  * Neighbour counts use the state at the start of the tick.
  */
-const regrowFood = (w: World): void => {
-  const { foodSpreadRate, foodSpontaneous } = w.rules;
+const regrowFood = (w: World, fx: EleEffects): void => {
+  const foodSpreadRate = w.rules.foodSpreadRate * fx.spread * fx.growth;
+  const foodSpontaneous = w.rules.foodSpontaneous * fx.spontaneous * fx.growth;
+  const cf = fx.cellFactor;
   const { cols, rows, fertility } = w;
   const prev = w.food.slice();
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const i = r * cols + c;
+      const factor = cf ? cf((c + 0.5) * w.cellSize, (r + 0.5) * w.cellSize) : 1;
+      // Cells under ice or in a fresh crater lose their food.
+      if (factor < 0.05) w.food[i] = 0;
       if (prev[i]) continue;
       let n = 0;
       for (let dr = -1; dr <= 1; dr++) {
@@ -41,7 +47,7 @@ const regrowFood = (w: World): void => {
           if ((dr || dc) && cc >= 0 && cc < cols) n += prev[rr * cols + cc];
         }
       }
-      if (Math.random() < fertility[i] * (foodSpontaneous + foodSpreadRate * n)) w.food[i] = 1;
+      if (Math.random() < fertility[i] * factor * (foodSpontaneous + foodSpreadRate * n)) w.food[i] = 1;
     }
   }
 };
@@ -119,12 +125,15 @@ class TickContext {
   readonly deaths: TickDeath[] = [];
   readonly hash: SpatialHash;
   hits = 0;
+  /** Effects of active extinction level events this tick. */
+  fx: EleEffects;
   private readonly ancestorCache = new Map<number, Map<number, number>>();
 
   constructor(
     readonly w: World,
     readonly parentsOf: ParentsOf,
   ) {
+    this.fx = eleEffects(w);
     this.hash = new SpatialHash(40, w.width);
     for (const a of w.actors) {
       this.hash.insert(a);
@@ -341,11 +350,13 @@ const considerJoining = (ctx: TickContext, a: Actor, vision: number): boolean =>
     const prot = ctx.protectee(a, vision);
     const extra = (p: Actor) => (prot && prot.p === p ? 2 * prot.weight : 0);
     const diff = ctx.loyalty(a, x) + extra(x) - ctx.loyalty(a, y) - extra(y);
-    if (a.genome.aggression * diff > r.joinThreshold) {
+    const aggr = ctx.fx.rage ? 1 : a.genome.aggression;
+    const d2 = ctx.fx.rage ? diff * 0.5 : diff;
+    if (aggr * d2 > r.joinThreshold) {
       a.target = y.id;
       return true;
     }
-    if (a.genome.aggression * -diff > r.joinThreshold) {
+    if (aggr * -d2 > r.joinThreshold) {
       a.target = x.id;
       return true;
     }
@@ -358,7 +369,9 @@ const considerJoining = (ctx: TickContext, a: Actor, vision: number): boolean =>
 const considerAttack = (ctx: TickContext, a: Actor, vision: number, food: { x: number; y: number } | null): void => {
   const { w } = ctx;
   const r = w.rules;
-  const aggr = a.genome.aggression;
+  // Rage (ELE): everyone acts with full aggression and half the usual restraint.
+  const aggr = ctx.fx.rage ? 1 : a.genome.aggression;
+  const restraintFactor = ctx.fx.rage ? 0.5 : 1;
   if (aggr <= 0) return;
   const hunger = 1 - Math.min(1, a.energy / capacityOf(a, r));
   const near: [Actor, number][] = [];
@@ -387,7 +400,8 @@ const considerAttack = (ctx: TickContext, a: Actor, vision: number, food: { x: n
     // Upper bound with odds = 1, before loyalty: skip the costly part when it cannot pass.
     if (aggr * motive * 2 <= bestDesire) continue;
     const k = ctx.kin(a, b);
-    const restraint = r.tribeLoyalty * overlap(a.ancestry, b.ancestry) + (k ? r.kinLoyalty * kinWeight(k.relation, r.kinWeights) : 0);
+    const restraint =
+      restraintFactor * (r.tribeLoyalty * overlap(a.ancestry, b.ancestry) + (k ? r.kinLoyalty * kinWeight(k.relation, r.kinWeights) : 0));
     if (aggr * motive * 2 - restraint <= bestDesire) continue;
     const desire = aggr * motive * 2 * odds(ctx, a, b) - restraint;
     if (desire > bestDesire) {
@@ -435,12 +449,12 @@ const strike = (ctx: TickContext, a: Actor, t: Actor): void => {
  * the children's starting energy now (fewer embryos if he cannot afford them all); the mother pays
  * hers over the pregnancy. Returns false if not even one embryo is affordable.
  */
-const conceive = (a: Actor, b: Actor, w: World): boolean => {
+const conceive = (a: Actor, b: Actor, w: World, fx: EleEffects): boolean => {
   const r = w.rules;
   const mother = a.sex === 'F' ? a : b;
   const father = a.sex === 'F' ? b : a;
   // Ageing lowers fertility: conception fails with probability 1 − vigor(mother) × vigor(father).
-  if (Math.random() > vigorOf(mother, r) * vigorOf(father, r)) {
+  if (Math.random() > vigorOf(mother, r) * vigorOf(father, r) * fx.conception) {
     mother.cooldown = Math.max(mother.cooldown, r.rejectionCooldown);
     father.cooldown = Math.max(father.cooldown, r.rejectionCooldown);
     return false;
@@ -458,7 +472,7 @@ const conceive = (a: Actor, b: Actor, w: World): boolean => {
 
   const embryos: Embryo[] = [];
   for (let i = 0; i < n; i++) {
-    const { genome, dominance } = inherit(mother, father, r.inheritanceNoise, r.mutationScale);
+    const { genome, dominance } = inherit(mother, father, r.inheritanceNoise, r.mutationScale * fx.mutation);
     embryos.push({
       genome,
       dominance,
@@ -588,11 +602,31 @@ const separate = (ctx: TickContext, a: Actor, radius: number): void => {
 export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
   const rules = w.rules;
   w.tick++;
-  regrowFood(w);
 
   if (!w.diseases) w.diseases = [];
+  if (!w.events) w.events = [];
   maybeOutbreak(w);
+  if (Math.random() < (rules.eleRate ?? 0)) {
+    const key = pickEle(rules.eleWeights ?? {});
+    if (key) createEle(w, key, false);
+  }
   const ctx = new TickContext(w, parentsOf);
+  applyEles(
+    w,
+    (id) => {
+      const a = ctx.byId.get(id);
+      if (a) ctx.die(a, 'catastrophe');
+    },
+    (id, dmg) => {
+      const a = ctx.byId.get(id);
+      if (!a || ctx.dead.has(a.id)) return;
+      a.hp -= dmg;
+      a.flash = FLASH_TICKS;
+      if (a.hp <= 0) ctx.die(a, 'catastrophe');
+    },
+  );
+  ctx.fx = eleEffects(w);
+  regrowFood(w, ctx.fx);
   const births: Actor[] = [];
 
   for (const a of shuffle([...w.actors])) {
@@ -717,7 +751,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     // 4. Energy cost and healing.
     const sp2 = a.vx * a.vx + a.vy * a.vy;
     a.energy -=
-      rules.baseCost * a.genome.size * (1 + (rules.agingFactor * bioAge(a)) / 1000) +
+      rules.baseCost * a.genome.size * (1 + (rules.agingFactor * bioAge(a)) / 1000) * ctx.fx.costFactor(a.x, a.y) +
       rules.moveCost * a.genome.size * sp2 +
       (illness ? rules.sicknessCost * a.genome.size : 0);
     const maxHp = maxHpOf(a, rules);
@@ -761,7 +795,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     if (target && !ctx.dead.has(target.id) && a.attackCd <= 0 && Math.hypot(target.x - a.x, target.y - a.y) <= radius + radiusOf(target) + rules.attackReach) {
       strike(ctx, a, target);
     } else if (mate && Math.hypot(mate.x - a.x, mate.y - a.y) <= radius + radiusOf(mate) + 1 && readyToMate(a, w) && readyToMate(mate, w)) {
-      if (courtship(ctx, a, mate)) conceive(a, mate, w);
+      if (courtship(ctx, a, mate)) conceive(a, mate, w, ctx.fx);
     }
 
     // 7. Death: starvation, ageing (rising risk), frailty from low energy, infancy.
@@ -794,6 +828,9 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     }
   }
 
+  // Deaths while a catastrophe is active count towards it.
+  const counted = ctx.deaths.filter((d) => d.cause !== 'removed').length;
+  if (counted) for (const e of activeEles(w)) e.deaths += counted;
   let pregnancyLosses = ctx.losses;
   if (ctx.dead.size) {
     for (const a of w.actors) if (ctx.dead.has(a.id) && a.pregnancy) pregnancyLosses += a.pregnancy.embryos.length;

@@ -24,6 +24,7 @@ export const CAUSE_LABELS: Record<DeathCause, string> = {
   childbirth: 'døde i fødsel',
   infant: 'spedbarnsdød',
   disease: 'sykdom',
+  catastrophe: 'katastrofe',
   removed: 'fjernet ved forgreining',
 };
 

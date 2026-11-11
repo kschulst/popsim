@@ -172,6 +172,7 @@ export const createWorld = (config: WorldConfig = DEFAULT_CONFIG): World => {
     surnameHues: {},
     tribes: structuredClone(tribes),
     diseases: [],
+    events: [],
   };
   const taken: string[] = [];
   tribes.forEach((t, ti) => {

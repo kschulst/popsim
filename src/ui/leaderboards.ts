@@ -1,5 +1,6 @@
 import { kinship, type Death, type LifeRecord, type Registry } from '../sim/genealogy';
 import { fullName } from '../sim/names';
+import { ELE_DEFS } from '../sim/ele';
 import { mainTribe, purity } from '../sim/tribes';
 import type { Actor, DeathCause, GeneKey, Tally, World } from '../sim/types';
 import { surnameColor } from './colors';
@@ -309,6 +310,23 @@ const BOARDS: Board[] = [
     },
   },
   {
+    key: 'eles',
+    group: 'Katastrofer',
+    title: 'Katastrofer',
+    description: 'Alle katastrofer (ELE) så langt, med antall døde mens de varte og bestanden før og etter.',
+    html: (c) => {
+      const evs = (c.w.events ?? []).filter((e) => e.applied);
+      if (!evs.length) return '<p class="muted">Ingen katastrofer ennå.</p>';
+      return `<table class="matrix"><tr><th>Katastrofe</th><th>Tick</th><th>Varighet</th><th>Døde</th><th>Før</th><th>Etter</th><th></th></tr>${[...evs]
+        .reverse()
+        .map(
+          (e) =>
+            `<tr><th>${ELE_DEFS[e.key].icon} ${esc(e.name)}</th><td class="num">${e.tick}</td><td class="num">${e.end - e.tick}</td><td class="num">${e.deaths}</td><td class="num">${e.popBefore}</td><td class="num">${e.popAfter ?? (c.tick < e.end ? 'pågår' : '')}</td><td>${e.manual ? 'sluppet løs' : 'tilfeldig'}</td></tr>`,
+        )
+        .join('')}</table>`;
+    },
+  },
+  {
     key: 'diseases',
     group: 'Sykdommer',
     title: 'Sykdommer',
@@ -346,7 +364,7 @@ const BOARDS: Board[] = [
     title: 'Dødsårsaker per stamme',
     description: 'Antall døde per største stamme og dødsårsak. Fjernede aktører er ikke med.',
     html: (c) => {
-      const causes: DeathCause[] = ['starvation', 'age', 'killed', 'disease', 'childbirth', 'infant'];
+      const causes: DeathCause[] = ['starvation', 'age', 'killed', 'disease', 'catastrophe', 'childbirth', 'infant'];
       const T = c.w.tribes;
       const m = T.map(() => causes.map(() => 0));
       for (const [id, d] of c.death) {

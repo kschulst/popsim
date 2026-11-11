@@ -36,6 +36,9 @@ export const DEFAULT_RULES: Rules = {
   diseaseMutation: 0.02,
   sicknessCost: 0.04,
   sicknessWeakness: 0.3,
+  eleRate: 0.00002,
+  eleSeverity: 1,
+  eleWeights: { meteor: 1, volcano: 1, plague: 1, iceAge: 1, locusts: 1, drought: 1, infertility: 1, radiation: 1, rage: 1 },
   friction: 0.1,
   steerStrength: 0.25,
   directionNoise: 0.3,
@@ -84,7 +87,7 @@ export const DEFAULT_RULES: Rules = {
   kinWeights: { ...DEFAULT_KIN_WEIGHTS },
 };
 
-type NumericRuleKey = Exclude<keyof Rules, 'surnameRule' | 'kinWeights' | 'tribeBonus'>;
+type NumericRuleKey = Exclude<keyof Rules, 'surnameRule' | 'kinWeights' | 'tribeBonus' | 'eleWeights'>;
 
 export interface RuleField {
   key: NumericRuleKey;
@@ -140,6 +143,13 @@ export const RULE_FIELDS: { group: string; fields: RuleField[] }[] = [
       { key: 'mutationScale', label: 'Mutasjonsskala', min: 0, max: 5, step: 0.1, description: 'Global multiplikator på mutasjonsstyrken. Hver aktørs egen mutasjonsrate ganges med denne. 0 slår av mutasjon.' },
       { key: 'inheritanceNoise', label: 'Tilfeldighet i arv', min: 0, max: 1, step: 0.01, description: 'Hvor mye barnets blanding av foreldrene varierer. Uten støy får barnet en blanding vektet etter foreldrenes arvestyrke for hver egenskap. Med støy kan barnet noen ganger ligne mest på én av foreldrene. 0,15 betyr at vekten typisk avviker med ±0,15.' },
       { key: 'ancestrySegments', label: 'Avstamningssegmenter', min: 0, max: 256, step: 1, description: 'Avstamningen arves i så mange like store segmenter, hvert fra mor eller far tilfeldig. Barnets andel fra mor blir da tilfeldig rundt 50 %: med 16 segmenter typisk 50 ± 12 %. Søsken blir ulike, og blandede bestander beholder variasjon som partnervalg og bonus kan virke på. Færre segmenter gir større variasjon. 0 gir nøyaktig gjennomsnitt av foreldrene (som i v2), og da jevnes forskjellene ut for hver generasjon.' },
+    ],
+  },
+  {
+    group: 'Katastrofer (ELE)',
+    fields: [
+      { key: 'eleRate', label: 'Katastroferate', min: 0, max: 0.01, step: 0.00001, description: 'Sannsynlighet per tick for en tilfeldig katastrofe (extinction level event). 0,00002 gir i snitt én per 50 000 ticks. Hvilken det blir, avgjøres av vektene under. 0 slår av tilfeldige katastrofer; du kan fortsatt slippe dem løs selv.' },
+      { key: 'eleSeverity', label: 'Alvorlighet', min: 0.1, max: 5, step: 0.1, description: 'Skalerer katastrofenes styrke, radius og varighet (varighet med kvadratroten). 1 er normal.' },
     ],
   },
   {

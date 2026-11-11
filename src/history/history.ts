@@ -131,6 +131,19 @@ export class History {
     b.ruleLog.push({ tick: b.headTick, text });
   }
 
+  /**
+   * Changes the head state of a branch in place (e.g. starting a catastrophe). The stored copies
+   * of the head tick are replaced so the change shows immediately.
+   */
+  amendHead(id: number, apply: (w: World) => void): void {
+    const b = this.get(id);
+    apply(b.head);
+    const copy = storedCopy(b.head);
+    const last = b.ring[b.ring.length - 1];
+    if (last?.tick === b.headTick) b.ring[b.ring.length - 1] = copy;
+    if (b.snapshots.has(b.headTick)) b.snapshots.set(b.headTick, copy);
+  }
+
   /** Inserts a fully built branch (used by import). */
   restore(b: Branch): void {
     this.branches.set(b.id, b);

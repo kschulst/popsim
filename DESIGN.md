@@ -80,6 +80,24 @@ I tillegg får kandidaten en bonus for avstamningen sin: `Σ tribeBonus[i] × ka
 | Besteforelder, barnebarn, tante/onkel, nevø/niese | 3 |
 | Fetter/kusine | 1 |
 
+### Katastrofer (ELE)
+
+Svært sjeldne hendelser (`eleRate`, standard 0,00002 per tick ≈ én per 50 000 ticks). Hvilken det blir, trekkes etter `eleWeights`. `eleSeverity` skalerer styrke og radius, og varighet med kvadratroten. En katastrofe kan også slippes løs i Regler-fanen: ved enden av grenen skjer den i grenen, på et tidligere tidspunkt lages en ny gren, og i grenredigering legges den i utkastet. Umiddelbare effekter kjøres i neste tick, så dødsfall registreres som vanlig (årsak «katastrofe»). Hendelsene lagres i verden med antall døde mens de varte og bestanden før og etter.
+
+| ELE | Effekt |
+|---|---|
+| Meteornedslag | Alle innen krateret (radius 45) dør, skade ut til 2,5 × radius; krateret er goldt og gror igjen; støvvinter: matvekst −70 % som hentes inn |
+| Supervulkan | Matvekst −90 %, hentes inn over 1000–2000 ticks |
+| Den store pesten | Navngitt pandemi (smitte 25 %, dødelighet 2 % per tick, immunitet 5000) i 5 aktører |
+| Istid | Isen dekker opptil 60 % fra én kant; under isen fruktbarhet × 0,02 og tredobbel grunnkostnad |
+| Gresshoppesverm | Sverm (radius 50) vandrer og spiser all mat under seg |
+| Megatørke | Ingen spredning fra naboer, spontan vekst halvert |
+| Ufruktbarhetsplage | Unnfangelse −95 % |
+| Strålingsstorm | Mutasjonsstyrke × 10 |
+| Raseri | Alle har maks aggresjon, halv lojalitet |
+
+Fruktbarhetskartet endres ikke (det deles mellom lagrede tilstander); romlige effekter er en multiplikator som regnes ut fra aktive hendelser.
+
 ### Sykdom
 
 - Et nytt utbrudd skjer med sannsynlighet `outbreakRate` per tick i en tilfeldig aktør. Sykdommen får et generert norsk navn (prefiks + ord, f.eks. «Myrfeber», eller adjektiv + ord, f.eks. «Grå pest») og tilfeldige egenskaper: smittsomhet (0,03–0,15 per nabo per tick), dødelighet (0,05–0,5 % per tick), varighet (60–300 ticks) og immunitet (200–2000 ticks).

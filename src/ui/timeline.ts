@@ -62,6 +62,7 @@ export class Timeline {
         g.append('text').attr('class', 'label').attr('text-anchor', 'end');
         g.append('title');
         g.append('g').attr('class', 'rule-marks');
+        g.append('g').attr('class', 'ele-marks');
         return g;
       })
       .attr('class', (b) => `lane${b.id === activeId ? ' active' : ''}${lineage.has(b.id) ? ' lineage' : ''}`);
@@ -107,6 +108,23 @@ export class Timeline {
         })
         .attr('transform', (r) => `translate(${x(r.tick)},${y(b)})`)
         .call((g) => g.select('title').text((r) => `Tick ${r.tick}: ${r.text}`));
+    });
+
+    // Catastrophes on each branch since it started: red diamond with the name as tooltip.
+    lanes.each(function (b) {
+      const evs = (b.head.events ?? []).filter((e) => e.tick > b.startTick && e.tick <= b.headTick);
+      d3.select(this)
+        .select('g.ele-marks')
+        .selectAll<SVGGElement, (typeof evs)[number]>('g')
+        .data(evs)
+        .join((e) => {
+          const g = e.append('g');
+          g.append('path').attr('class', 'ele-mark').attr('d', 'M0,-6 L4,0 L0,6 L-4,0 Z');
+          g.append('title');
+          return g;
+        })
+        .attr('transform', (e) => `translate(${x(e.tick)},${y(b)})`)
+        .call((g) => g.select('title').text((e) => `Tick ${e.tick}: ${e.name}${e.manual ? ' (sluppet løs)' : ' (tilfeldig)'}`));
     });
 
     lanes.on('click', function (event: MouseEvent, b) {

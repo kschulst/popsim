@@ -66,7 +66,8 @@
       "Navigasjon: klikk på en aktør i inspektøren eller en toppliste for å velge den. Lever den, sentreres kartet på den med en markering. «Spol til levetiden» pauser og spoler til et tidspunkt der aktøren lever, og «← Tilbake» går til forrige aktør.",
       "Navn vises med levetid: (f født – d død), eller (f født) for levende.",
       "Sykdom: navngitte sykdommer (f.eks. «Myrfeber», «Grå pest») bryter ut av og til, smitter til naboer, svekker og kan drepe, særlig gamle, skadde og sultne. Den som blir frisk, blir immun en periode. Smitte kan gi varianter («Myrfeber B»). Egen graf for syke, dødsårsak «sykdom», tabell over alle sykdommer i Topplister, og utbrudd kan startes i grenredigering.",
-      "Eksportfiler fra v2 kan ikke importeres i dev; de åpnes i v2."
+      "Eksportfiler fra v2 kan ikke importeres i dev; de åpnes i v2.",
+      "Katastrofer (ELE): meteornedslag, supervulkan, den store pesten, istid, gresshoppesverm, megatørke, ufruktbarhetsplage, strålingsstorm og raseri. De skjer svært sjelden av seg selv (regler for rate, alvorlighet og vekt per katastrofe) og kan slippes løs i Regler-fanen; meteoren treffer der du klikker. Banner, effekter på kartet, røde markeringer på tidslinjen, dødsårsak «katastrofe» og egen toppliste."
     ]
   }
 }

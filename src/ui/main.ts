@@ -1,7 +1,7 @@
 import './style.css';
 import { DEFAULT_HISTORY_CONFIG, History } from '../history/history';
 import { exportGzip, fromExport, importGzip } from '../history/serialize';
-import type { Rules, TickStats, Tribe, World } from '../sim/types';
+import type { EleKey, Rules, TickStats, Tribe, World } from '../sim/types';
 import { DEFAULT_TRIBES } from '../sim/tribes';
 import { TribeTable } from './tribe-table';
 import { cloneWorld, createWorld, DEFAULT_CONFIG, radiusOf } from '../sim/world';
@@ -13,6 +13,7 @@ import { COLOR_MODE_LABELS, type ColorMode } from './colors';
 import { BranchEditor, RulesPanel } from './editor';
 import { ancestryBreakdown, Inspector, kinMap } from './inspector';
 import { Leaderboards } from './leaderboards';
+import { createEle, ELE_DEFS } from '../sim/ele';
 import { Renderer } from './renderer';
 import { Timeline } from './timeline';
 
@@ -81,7 +82,11 @@ const editor = new BranchEditor($('editor'), {
   },
   changed: () => touch(),
 });
-const rules = new RulesPanel($('rules'), (apply, description) => changeRule(apply, description));
+const rules = new RulesPanel(
+  $('rules'),
+  (apply, description) => changeRule(apply, description),
+  (key) => requestEle(key),
+);
 
 /** The world currently displayed: the edit draft, or the stored state at the cursor. */
 const shownWorld = (): World => editor.draft ?? history.stateAt(branchId, tick);
@@ -223,6 +228,69 @@ const changeRule = (apply: (r: Rules) => void, description: string) => {
   touch();
 };
 
+/** Meteor waiting for the user to click its impact point on the map. */
+let pendingMeteor = false;
+
+/** Releases a catastrophe: a meteor first asks for an impact point. */
+const requestEle = (key: EleKey) => {
+  if (key === 'meteor') {
+    pendingMeteor = true;
+    renderer.canvas.classList.add('aiming');
+    showBanner('☄ Klikk i verden for å velge nedslagssted (Esc avbryter)', 0);
+    return;
+  }
+  triggerEle(key);
+};
+
+/**
+ * Starts a catastrophe: in the branch draft while editing, in place at the head of the branch, or
+ * as a new branch from an earlier tick (like rule changes).
+ */
+const triggerEle = (key: EleKey, at?: { x: number; y: number }) => {
+  const label = `Katastrofe: ${ELE_DEFS[key].name}${at ? ` ved (${Math.round(at.x)}, ${Math.round(at.y)})` : ''}`;
+  if (editor.draft) {
+    createEle(editor.draft, key, true, at);
+    editor.log(label);
+    touch();
+    return;
+  }
+  const b0 = history.get(branchId);
+  if (!rules.branchOnChange && tick === b0.headTick) {
+    history.amendHead(branchId, (w) => createEle(w, key, true, at));
+    touch();
+    return;
+  }
+  const draft = cloneWorld(history.stateAt(branchId, tick));
+  createEle(draft, key, true, at);
+  const b = history.fork(branchId, draft.tick, draft, [label]);
+  branchId = b.id;
+  history.trimRings(b.id);
+  tick = b.startTick;
+  touch();
+};
+
+let bannerTimer = 0;
+/** Shows a banner over the world; `ms` 0 keeps it until replaced or hidden. */
+const showBanner = (text: string, ms = 4000) => {
+  const el = $('banner');
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(bannerTimer);
+  if (ms > 0) bannerTimer = window.setTimeout(() => (el.hidden = true), ms);
+};
+
+/** Last event id announced, so each catastrophe gets one banner when it starts on screen. */
+let announced = -1;
+const announceEvents = (w: World) => {
+  const evs = w.events ?? [];
+  const fresh = evs.filter((e) => e.applied && e.id > announced && w.tick - e.tick < 50);
+  if (fresh.length) {
+    const e = fresh[fresh.length - 1];
+    showBanner(`${ELE_DEFS[e.key].icon} ${e.name} ved tick ${e.tick}${e.manual ? '' : ' (tilfeldig)'}`);
+  }
+  announced = Math.max(announced, ...evs.filter((e) => e.applied).map((e) => e.id), -1);
+};
+
 const newRun = (tribes: Tribe[]) => {
   editor.stop();
   $('tab-editor').hidden = true;
@@ -348,7 +416,11 @@ $<HTMLInputElement>('import-file').onchange = (e) => {
 
 document.addEventListener('keydown', (e) => {
   if ((e.target as HTMLElement).closest('input, select, textarea')) return;
-  if (e.key === ' ') {
+  if (e.key === 'Escape' && pendingMeteor) {
+    pendingMeteor = false;
+    renderer.canvas.classList.remove('aiming');
+    $('banner').hidden = true;
+  } else if (e.key === ' ') {
     e.preventDefault();
     $('btn-play').click();
   } else if (e.key === 'ArrowLeft') stepBack();
@@ -407,7 +479,14 @@ canvas.addEventListener('pointermove', (e) => {
 const endPointer = (e: PointerEvent) => {
   if (painting) editor.endStroke();
   painting = false;
-  if (drag && !drag.moved && e.type === 'pointerup') selectAt(worldPoint(e));
+  if (drag && !drag.moved && e.type === 'pointerup') {
+    if (pendingMeteor) {
+      pendingMeteor = false;
+      canvas.classList.remove('aiming');
+      $('banner').hidden = true;
+      triggerEle('meteor', worldPoint(e));
+    } else selectAt(worldPoint(e));
+  }
   drag = null;
   canvas.classList.remove('panning');
 };
@@ -458,6 +537,7 @@ const frame = (now: number) => {
     kinKey = key;
     kin = selectedId === null ? new Map() : kinMap(w, reg, selectedId);
   }
+  if (!editor.active) announceEvents(w);
   renderer.render(w, {
     colorMode,
     selectedId,

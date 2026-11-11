@@ -1,3 +1,4 @@
+import { activeEles, ELE_DEFS, eleEffects, iceCover } from '../sim/ele';
 import type { Actor, World } from '../sim/types';
 import { capacityOf, maxHpOf, radiusOf } from '../sim/world';
 import { actorColor, type ColorMode } from './colors';
@@ -180,6 +181,95 @@ export class Renderer {
     ctx.fillRect(x - bw / 2, by, bw * share, bh);
   }
 
+  /** Map overlays for active catastrophes, plus a label listing them with ticks left. */
+  private drawEles(w: World): void {
+    const active = activeEles(w);
+    if (!active.length) return;
+    const { ctx } = this;
+    const s = this.scale;
+    const dpr = window.devicePixelRatio || 1;
+    const X = (x: number) => this.ox + x * s;
+    const Y = (y: number) => this.oy + y * s;
+    const fx = eleEffects(w);
+    // Ash and dust: grey veil over the world, stronger the less food grows.
+    if (fx.growth < 0.95) {
+      ctx.fillStyle = `rgba(120, 115, 110, ${0.45 * (1 - fx.growth)})`;
+      ctx.fillRect(X(0), Y(0), w.width * s, w.height * s);
+    }
+    for (const e of active) {
+      const p = Math.min(1, (w.tick - e.tick) / Math.max(1, e.end - e.tick));
+      switch (e.key) {
+        case 'meteor': {
+          const r = e.radius! * s;
+          ctx.beginPath();
+          ctx.arc(X(e.x!), Y(e.y!), r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(30, 18, 12, ${0.7 * (1 - p)})`;
+          ctx.fill();
+          ctx.strokeStyle = `rgba(255, 120, 40, ${0.9 * (1 - p)})`;
+          ctx.lineWidth = 3 * dpr;
+          ctx.stroke();
+          if (w.tick - e.tick < 30) {
+            ctx.beginPath();
+            ctx.arc(X(e.x!), Y(e.y!), r * (1 + (w.tick - e.tick) / 12), 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255, 200, 120, ${1 - (w.tick - e.tick) / 30})`;
+            ctx.stroke();
+          }
+          break;
+        }
+        case 'iceAge': {
+          const c = iceCover(w, e);
+          ctx.fillStyle = 'rgba(210, 235, 255, 0.45)';
+          if (e.edge === 'N') ctx.fillRect(X(0), Y(0), w.width * s, c * w.height * s);
+          else if (e.edge === 'S') ctx.fillRect(X(0), Y((1 - c) * w.height), w.width * s, c * w.height * s);
+          else if (e.edge === 'W') ctx.fillRect(X(0), Y(0), c * w.width * s, w.height * s);
+          else ctx.fillRect(X((1 - c) * w.width), Y(0), c * w.width * s, w.height * s);
+          break;
+        }
+        case 'locusts': {
+          const r = e.radius! * s;
+          ctx.beginPath();
+          ctx.arc(X(e.x!), Y(e.y!), r, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(140, 110, 40, 0.3)';
+          ctx.fill();
+          ctx.fillStyle = 'rgba(90, 70, 20, 0.9)';
+          for (let i = 0; i < 40; i++) {
+            const a = (i * 2.399 + w.tick * 0.07) % (Math.PI * 2);
+            const d = r * Math.sqrt(((i * 0.618 + w.tick * 0.013) % 1));
+            ctx.fillRect(X(e.x!) + Math.cos(a) * d, Y(e.y!) + Math.sin(a) * d, 2 * dpr, 2 * dpr);
+          }
+          break;
+        }
+        case 'drought':
+          ctx.fillStyle = 'rgba(230, 180, 60, 0.12)';
+          ctx.fillRect(X(0), Y(0), w.width * s, w.height * s);
+          break;
+        case 'radiation':
+          ctx.fillStyle = 'rgba(120, 255, 120, 0.08)';
+          ctx.fillRect(X(0), Y(0), w.width * s, w.height * s);
+          break;
+        case 'rage':
+          ctx.strokeStyle = 'rgba(255, 40, 30, 0.6)';
+          ctx.lineWidth = 8 * dpr;
+          ctx.strokeRect(X(0), Y(0), w.width * s, w.height * s);
+          break;
+        default:
+          break;
+      }
+    }
+    // Label in the top-left corner.
+    ctx.font = `${12 * dpr}px system-ui, sans-serif`;
+    ctx.textBaseline = 'top';
+    active.forEach((e, i) => {
+      const text = `${ELE_DEFS[e.key].icon} ${e.name} · ${e.end - w.tick} ticks igjen`;
+      const y = 8 * dpr + i * 18 * dpr;
+      const tw = ctx.measureText(text).width;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(6 * dpr, y - 2 * dpr, tw + 10 * dpr, 17 * dpr);
+      ctx.fillStyle = '#ffd7c2';
+      ctx.fillText(text, 11 * dpr, y);
+    });
+  }
+
   /**
    * Partner search: dashed pink line to the partner an actor is heading for. Courtship outcome,
    * fading over its ttl: green when both accepted (mated), grey with a cross at the end of the
@@ -256,6 +346,7 @@ export class Renderer {
     ctx.fillStyle = '#0b0d10';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     this.drawField(w, opt.showFertility);
+    this.drawEles(w);
 
     const s = this.scale;
     const dpr = window.devicePixelRatio || 1;
