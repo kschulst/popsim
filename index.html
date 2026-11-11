@@ -25,6 +25,7 @@
         <select id="color-mode" title="Fargekoding"></select>
         <label class="check"><input type="checkbox" id="show-fertility" /> Fruktbarhet</label>
         <label class="check" title="Vis streker for partnersøk, paring og avvisning"><input type="checkbox" id="show-courtship" checked /> Partnerstreker</label>
+        <button id="btn-add" title="Legg til nye aktører fra en stamme der du klikker på kartet">＋ Aktører</button>
         <button id="btn-new" title="Ny kjøring">Ny</button>
         <button id="btn-export">Eksporter</button>
         <button id="btn-import">Importer</button>
@@ -80,6 +81,18 @@
     <section id="vitals" class="vitals"></section>
     <section id="charts" class="charts"></section>
     <footer id="footer"></footer>
+    <dialog id="add-dialog">
+      <form method="dialog">
+        <h3>Legg til aktører</h3>
+        <p class="muted">Etter «Velg sted» klikker du på kartet der de skal komme. De får verdier ±10 % rundt stammens og hvert sitt etternavn.</p>
+        <label><span>Stamme</span><select id="add-tribe"></select></label>
+        <label><span>Antall</span><input id="add-count" type="number" min="1" max="100" value="5" /></label>
+        <div class="row">
+          <button value="ok" class="primary">Velg sted</button>
+          <button value="cancel">Avbryt</button>
+        </div>
+      </form>
+    </dialog>
     <dialog id="new-dialog">
       <form method="dialog">
         <h3>Ny kjøring</h3>

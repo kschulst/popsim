@@ -58,7 +58,8 @@ npm run build    # typesjekk + produksjonsbygg i dist/
 - Rull for å zoome, dra for å flytte, dobbeltklikk for å se hele verdenen. Hold musepekeren stille over en aktør i ett sekund for å se hva den gjør.
 - Klikk på et navn i inspektøren eller i Topplister for å gå til aktøren. «Spol til levetiden» spoler til et tidspunkt der den lever, og «← Tilbake» går til forrige aktør.
 - «Forgrein herfra» åpner redigering av regler, populasjon, valgt aktør og miljø (pensel). «Start gren» lager en ny gren i historikken.
-- Endring av en regel i Regler-fanen utenfor redigering lager en ny gren automatisk.
+- Endring av en regel i Regler-fanen gjelder fra tidspunktet som vises (ny gren hvis du ser på et tidligere tidspunkt).
+- «＋ Aktører» legger til nye aktører fra en stamme der du klikker på kartet. «Ny kjøring» kan også plassere stammene der du klikker.
 - Klikk i en graf for å hoppe i tid. «Historikk og grener» under kartet (foldet sammen) viser alle grenene; klikk på en gren for å gå dit.
 - Eksporter lagrer hele historikken som `.json.gz`. Importer laster den inn igjen.
 

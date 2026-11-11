@@ -4,7 +4,9 @@ import { exportGzip, fromExport, importGzip } from '../history/serialize';
 import type { EleKey, Rules, TickStats, Tribe, World } from '../sim/types';
 import { DEFAULT_TRIBES } from '../sim/tribes';
 import { TribeTable } from './tribe-table';
-import { cloneWorld, createEmptyWorld, createWorld, DEFAULT_CONFIG, populateWorld, radiusOf } from '../sim/world';
+import { assignHues, cloneWorld, createEmptyWorld, createWorld, DEFAULT_CONFIG, populateWorld, radiusOf, spawnSeed } from '../sim/world';
+import { uniqueSurnames } from '../sim/names';
+import { gaussian as gaussianRand } from '../sim/random';
 import { NAME_SOURCE } from '../sim/names';
 import { APP_NAME, IS_DEV, VERSION, VERSION_LABEL } from '../version';
 import { mortality, type Mortality } from '../sim/mortality';
@@ -242,6 +244,49 @@ const changeRule = (apply: (r: Rules) => void, description: string) => {
   const draft = cloneWorld(history.stateAt(branchId, tick));
   apply(draft.rules);
   const b = history.fork(branchId, draft.tick, draft, [description]);
+  branchId = b.id;
+  history.trimRings(b.id);
+  tick = b.startTick;
+  touch();
+};
+
+/** New actors waiting for the user to click where they should appear. */
+let pendingAdd: { tribe: number; count: number } | null = null;
+
+/**
+ * Adds `count` new seeds of a tribe around a point: into the branch draft while editing, in place
+ * at the head of the branch, or as a new branch from an earlier tick (like rule changes).
+ */
+const addActors = (tribe: number, count: number, at: { x: number; y: number }) => {
+  const apply = (w: World) => {
+    const names = uniqueSurnames(count, Object.keys(w.surnameHues));
+    assignHues(w, names, tribe);
+    for (const surname of names) {
+      spawnSeed(w, {
+        surname,
+        tribe,
+        x: Math.min(w.width - 5, Math.max(5, at.x + gaussianRand() * 25)),
+        y: Math.min(w.height - 5, Math.max(5, at.y + gaussianRand() * 25)),
+      });
+    }
+  };
+  const name = shownWorld().tribes[tribe]?.name ?? 'stamme';
+  const text = `La til ${count} ${name} ved (${Math.round(at.x)}, ${Math.round(at.y)})`;
+  if (editor.draft) {
+    apply(editor.draft);
+    editor.log(text);
+    touch();
+    return;
+  }
+  const b0 = history.get(branchId);
+  if (!rules.branchOnChange && tick === b0.headTick) {
+    history.amendHead(branchId, apply, text);
+    touch();
+    return;
+  }
+  const draft = cloneWorld(history.stateAt(branchId, tick));
+  apply(draft);
+  const b = history.fork(branchId, draft.tick, draft, [text]);
   branchId = b.id;
   history.trimRings(b.id);
   tick = b.startTick;
@@ -512,6 +557,20 @@ colorSelect.onchange = () => (colorMode = colorSelect.value as ColorMode);
 const tribeTable = new TribeTable($('tribe-table'), DEFAULT_TRIBES);
 $('tribe-add').onclick = () => tribeTable.add();
 $('tribe-reset').onclick = () => tribeTable.set(DEFAULT_TRIBES);
+$('btn-add').onclick = () => {
+  playing = false;
+  const w = shownWorld();
+  $('add-tribe').innerHTML = w.tribes.map((t, i) => `<option value="${i}">${t.name}</option>`).join('');
+  $<HTMLDialogElement>('add-dialog').showModal();
+};
+$<HTMLDialogElement>('add-dialog').addEventListener('close', () => {
+  if ($<HTMLDialogElement>('add-dialog').returnValue !== 'ok') return;
+  const tribe = Number($<HTMLSelectElement>('add-tribe').value);
+  const count = Math.max(1, Math.min(100, Math.round(Number($<HTMLInputElement>('add-count').value) || 1)));
+  pendingAdd = { tribe, count };
+  renderer.canvas.classList.add('aiming');
+  showBanner(`Klikk der ${count} ${shownWorld().tribes[tribe]?.name ?? ''} skal komme · Esc avbryter`, 0);
+});
 $('btn-new').onclick = () => {
   playing = false;
   tribeTable.set(history.get(branchId).head.tribes);
@@ -549,7 +608,11 @@ $<HTMLInputElement>('import-file').onchange = (e) => {
 
 document.addEventListener('keydown', (e) => {
   if ((e.target as HTMLElement).closest('input, select, textarea')) return;
-  if (e.key === 'Escape' && placing) {
+  if (e.key === 'Escape' && pendingAdd) {
+    pendingAdd = null;
+    renderer.canvas.classList.remove('aiming');
+    $('banner').hidden = true;
+  } else if (e.key === 'Escape' && placing) {
     placing = null;
     renderer.canvas.classList.remove('aiming');
     $('banner').hidden = true;
@@ -671,6 +734,12 @@ const endPointer = (e: PointerEvent) => {
       placing.homes.push(worldPoint(e));
       touch();
       nextPlacement();
+    } else if (pendingAdd) {
+      const p = pendingAdd;
+      pendingAdd = null;
+      canvas.classList.remove('aiming');
+      $('banner').hidden = true;
+      addActors(p.tribe, p.count, worldPoint(e));
     } else if (pendingMeteor) {
       pendingMeteor = false;
       canvas.classList.remove('aiming');

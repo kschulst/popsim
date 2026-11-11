@@ -135,9 +135,12 @@ export class History {
    * Changes the head state of a branch in place (e.g. starting a catastrophe). The stored copies
    * of the head tick are replaced so the change shows immediately.
    */
-  amendHead(id: number, apply: (w: World) => void): void {
+  amendHead(id: number, apply: (w: World) => void, text?: string): void {
     const b = this.get(id);
     apply(b.head);
+    // Actors added by the change (e.g. new seeds) join the family register.
+    for (const a of b.head.actors) if (!b.registry.get(a.id)) b.registry.add(recordOf(a));
+    if (text) b.ruleLog.push({ tick: b.headTick, text });
     const copy = storedCopy(b.head);
     const last = b.ring[b.ring.length - 1];
     if (last?.tick === b.headTick) b.ring[b.ring.length - 1] = copy;
