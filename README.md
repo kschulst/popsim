@@ -10,6 +10,15 @@ Designbeslutninger og versjonsplan: [DESIGN.md](DESIGN.md).
 
 Hver versjon er frosset og kan fortsatt kjøres. Fullstendige endringslister står i [versions.json](versions.json).
 
+### [v3: Liv, død og katastrofer](https://kschulst.github.io/popsim/v3/)
+
+- Svangerskap med sjeldne tvillinger og trillinger. Moren trenger mer mat, og partneren og slekten (mindre jo fjernere slektskap) passer på henne, deler mat og forsvarer henne.
+- Partnervalg med kresenhet, egen nedkjøling for hanner og bonus på attraktivitet per stamme. Avstamning arves i tilfeldige segmenter, så søsken blir ulike.
+- Gradvis aldring med arvelig levealder og svekkelse, og nye dødsårsaker: fødsel, spedbarnsdød, sultsvekkelse og sykdom.
+- Navngitte sykdommer som smitter, muterer til varianter og gir immunitet.
+- Ni svært sjeldne katastrofer (meteor, supervulkan, pest, istid, gresshopper, tørke, ufruktbarhet, stråling, raseri) som også kan slippes løs.
+- Topplister, navigasjon mellom aktører med «Spol til levetiden» og «Tilbake», partnerstreker, gjennomsnittlig avstamning, regelendringer uten ny gren og «dev» i versjonsvelgeren.
+
 ### [v2: Stammer, partnervalg og kamp](https://kschulst.github.io/popsim/v2/)
 
 - Fire stammer (Røde, Blå, Gule, Grønne) med egne verdier for størrelse, fart, syn, aggresjon og arvelighet. De starter i hvert sitt hjemområde og kan endres i «Ny kjøring».
