@@ -12,6 +12,7 @@ import { Charts } from './charts';
 import { COLOR_MODE_LABELS, type ColorMode } from './colors';
 import { BranchEditor, RulesPanel } from './editor';
 import { ancestryBreakdown, Inspector, kinMap } from './inspector';
+import { Leaderboards } from './leaderboards';
 import { Renderer } from './renderer';
 import { Timeline } from './timeline';
 
@@ -63,7 +64,13 @@ const renderVitals = (rows: TickStats[], at: number, w: World) => {
     `<span title="De siste ${RECENT_TICKS} ticks før tick som vises.">Siste ${RECENT_TICKS} ticks: ${mortalityText(recent)}</span>`;
 };
 const timeline = new Timeline($('timeline'));
-const inspector = new Inspector($('inspector'), (id) => select(id));
+const inspector = new Inspector($('inspector'), {
+  select: (id) => navigateTo(id),
+  back: () => goBack(),
+  goToLife: (id) => goToLife(id),
+});
+const leaderboards = new Leaderboards($('leaderboards'), (id) => navigateTo(id));
+let lastBoards = 0;
 const editor = new BranchEditor($('editor'), {
   commit: (name) => commitBranch(name),
   cancel: () => {
@@ -84,11 +91,66 @@ const touch = () => revision++;
 // ---------------------------------------------------------------------------------------------
 // Actions
 
-const select = (id: number | null) => {
+/** Previously shown actors, for the inspector's back button. */
+const navStack: number[] = [];
+
+/**
+ * Selects an actor. `push` remembers the current one for "Tilbake"; `center` moves the view to
+ * the actor if it is alive at the displayed tick.
+ */
+const select = (id: number | null, opts: { push?: boolean; center?: boolean } = {}) => {
+  if (opts.push && selectedId !== null && id !== selectedId) {
+    navStack.push(selectedId);
+    if (navStack.length > 100) navStack.shift();
+  }
   selectedId = id;
   editor.setSelected(id);
   if (id !== null && !editor.active) showTab('inspector');
+  if (opts.center && id !== null) {
+    const a = shownWorld().actors.find((x) => x.id === id);
+    if (a) renderer.centerOn(a.x, a.y);
+  }
   touch();
+};
+
+/** Navigates to an actor from a link: remember where we came from and centre on it. */
+const navigateTo = (id: number) => select(id, { push: true, center: true });
+
+const goBack = () => {
+  const prev = navStack.pop();
+  if (prev !== undefined) select(prev, { center: true });
+};
+
+/** Seeks to tick t on the branch of the current lineage that covers it. */
+const seekLineage = (t: number) => {
+  const path = history.lineage(branchId);
+  const target = path.find((_, i) => {
+    const next = path[i + 1];
+    return next === undefined || t <= history.get(next).startTick;
+  })!;
+  seek(target, t);
+};
+
+/**
+ * Pauses and seeks to a stored tick where the actor is alive: just before its death, or else the
+ * first snapshot after its birth.
+ */
+const goToLife = (id: number) => {
+  if (editor.active) return;
+  playing = false;
+  const reg = history.get(branchId).registry;
+  const rec = reg.get(id);
+  if (!rec) return;
+  const death = reg.death(id);
+  const end = death ? death.tick - 1 : history.get(branchId).headTick;
+  const interval = history.config.snapshotInterval;
+  const candidates = [end, Math.ceil(rec.born / interval) * interval, rec.born];
+  for (const t of candidates) {
+    if (t < rec.born || t > end) continue;
+    seekLineage(t);
+    if (shownWorld().actors.some((a) => a.id === id)) break;
+  }
+  select(id, { center: true });
 };
 
 const seek = (bid: number, t: number) => {
@@ -208,6 +270,8 @@ const doImport = async (file: File) => {
 // UI wiring
 
 const showTab = (name: string) => {
+  if (name === 'leaderboards') leaderboards.dirty = true;
+  touch();
   for (const b of document.querySelectorAll<HTMLElement>('.tabs button')) b.classList.toggle('on', b.dataset.tab === name);
   for (const t of document.querySelectorAll<HTMLElement>('.tab')) t.hidden = t.id !== name;
 };
@@ -313,7 +377,7 @@ const selectAt = (p: { x: number; y: number }) => {
       bestD = d;
     }
   }
-  select(best);
+  select(best, { push: best !== null });
 };
 /** Pointer drag state: start point and whether it has moved far enough to count as a pan. */
 let drag: { x: number; y: number; lastX: number; lastY: number; moved: boolean } | null = null;
@@ -412,7 +476,12 @@ const frame = (now: number) => {
     const exact = history.has(branchId, w.tick) ? '' : ' (nærmeste snapshot)';
     $('status').textContent = `Tick ${w.tick}${exact} / ${b.headTick} · ${b.name} · ${w.actors.length ? `${w.actors.length} aktører` : 'bestanden er utdødd'}`;
     rules.show(w.rules, w.tribes);
-    inspector.render(w, reg, selectedId);
+    inspector.render(w, reg, selectedId, navStack.length > 0);
+    // Leaderboards are heavier: only while their tab is open, at most once per second.
+    if (!$('leaderboards').hidden && (leaderboards.dirty || !playing || now - lastBoards > 1000)) {
+      lastBoards = now;
+      leaderboards.render(w, reg, w.tick);
+    }
     timeline.render(history, branchId, w.tick, (bid, t) => {
       playing = false;
       seek(bid, t);
@@ -420,14 +489,8 @@ const frame = (now: number) => {
     const statsRows = history.statsPath(branchId);
     renderVitals(statsRows, w.tick, w);
     charts.render(statsRows, w.tick, w.tribes, (t) => {
-      // Seek within the lineage: pick the branch on the path that covers t.
       playing = false;
-      const path = history.lineage(branchId);
-      const target = path.find((_, i) => {
-        const next = path[i + 1];
-        return next === undefined || t <= history.get(next).startTick;
-      })!;
-      seek(target, t);
+      seekLineage(t);
     });
   }
   requestAnimationFrame(frame);

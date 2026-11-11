@@ -69,6 +69,18 @@ export class Renderer {
     this.updateTransform();
   }
 
+  /** Time (ms) of the last navigation to an actor; drives a short highlight pulse. */
+  private pulseAt = 0;
+
+  /** Centres the view on a world point, zooming in to at least `minZoom`, and pulses the selection. */
+  centerOn(x: number, y: number, minZoom = 2): void {
+    this.zoom = Math.max(this.zoom, minZoom);
+    this.cx = x;
+    this.cy = y;
+    this.updateTransform();
+    this.pulseAt = performance.now();
+  }
+
   resetView(): void {
     this.zoom = 1;
     this.cx = this.cy = null;
@@ -333,6 +345,15 @@ export class Renderer {
       ctx.stroke();
       ctx.setLineDash([]);
       if (!detail) this.hpBar(sel, w, x, y, r);
+      // Navigation pulse: expanding ring for one second.
+      const age = (performance.now() - this.pulseAt) / 1000;
+      if (age < 1) {
+        ctx.beginPath();
+        ctx.arc(x, y, r + (8 + 40 * age) * dpr, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(242, 201, 76, ${1 - age})`;
+        ctx.lineWidth = 3 * dpr;
+        ctx.stroke();
+      }
       // Ancestry badge next to the selected actor, readable at any zoom.
       const br = 14 * dpr;
       const bx = Math.min(canvas.width - br - 4, x + r + br + 8 * dpr);

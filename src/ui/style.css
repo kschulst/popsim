@@ -227,3 +227,15 @@ canvas#world.panning { cursor: grabbing; }
 .anc-item { white-space: nowrap; }
 .ancestry-overall { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 6px 0 14px; font-size: 13px; }
 .ancestry-overall svg { flex: none; margin-right: 6px; }
+
+.nav-back { margin-bottom: 8px; }
+.life { color: var(--muted); font-weight: 400; font-size: 0.85em; white-space: nowrap; }
+.lb-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+.lb-select { max-width: 100%; }
+table.lb { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.lb td { padding: 3px 4px; border-bottom: 1px solid var(--line); }
+table.lb td.rank { color: var(--muted); width: 22px; }
+table.lb a { cursor: pointer; color: var(--c, inherit); }
+table.matrix { border-collapse: collapse; font-size: 12px; }
+table.matrix th, table.matrix td { padding: 3px 6px; border: 1px solid var(--line); }
+table.matrix th { font-weight: 500; text-align: left; }

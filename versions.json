@@ -61,7 +61,10 @@
       "Gradvis aldring i stedet for fast dødsalder: risikoen for å dø av alderdom dobles hvert 100. tick. Nytt arvelig gen «levealder» gjør at noen slekter lever lenger.",
       "Svekkelse med alderen: fart, syn, slagstyrke og fruktbarhet går ned, så gamle oftere sulter eller blir drept.",
       "Nye dødsårsaker: død i fødsel (mor), dødfødsel, spedbarnsdød (lavere med en forelder i nærheten) og økt risiko ved lav energi.",
-      "Kresenhet er satt ned til 0,5 som standard, fordi paring mellom stammer ble for sjelden."
+      "Kresenhet er satt ned til 0,5 som standard, fordi paring mellom stammer ble for sjelden.",
+      "Topplister i egen fane: 30 lister over individer (drap, levetid, barn, etterkommere, skade, mat, distanse, hevnere …), egenskaper og grupper (klaner, utdødde klaner, drap mellom stammer, dødsårsaker per stamme). «Bare levende» der det passer.",
+      "Navigasjon: klikk på en aktør i inspektøren eller en toppliste for å velge den. Lever den, sentreres kartet på den med en markering. «Spol til levetiden» pauser og spoler til et tidspunkt der aktøren lever, og «← Tilbake» går til forrige aktør.",
+      "Navn vises med levetid: (f født – d død), eller (f født) for levende."
     ]
   }
 }

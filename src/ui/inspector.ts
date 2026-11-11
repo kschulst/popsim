@@ -79,20 +79,42 @@ export const pieSlices = (anc: number[], colors: string[]): string => {
   return parts.join('');
 };
 
+/** "(f 120 – d 980)", or "(f 120)" while alive at `atTick`. */
+export const lifeSpanText = (reg: Registry, id: number, atTick: number): string => {
+  const r = reg.get(id);
+  if (!r) return '';
+  const d = reg.death(id, atTick);
+  return d ? `(f ${r.born} – d ${d.tick})` : `(f ${r.born})`;
+};
+
+export interface InspectorHooks {
+  /** Navigate to another actor (from a link). */
+  select: (id: number) => void;
+  /** Back to the previously shown actor. */
+  back: () => void;
+  /** Pause and seek to a tick where the actor is alive. */
+  goToLife: (id: number) => void;
+}
+
 export class Inspector {
   constructor(
     private readonly root: HTMLElement,
-    private readonly onSelect: (id: number) => void,
+    private readonly hooks: InspectorHooks,
   ) {
     root.addEventListener('click', (e) => {
-      const el = (e.target as HTMLElement).closest<HTMLElement>('[data-id]');
-      if (el) this.onSelect(Number(el.dataset.id));
+      const t = e.target as HTMLElement;
+      const act = t.closest<HTMLElement>('[data-act]');
+      if (act?.dataset.act === 'back') return this.hooks.back();
+      if (act?.dataset.act === 'life') return this.hooks.goToLife(Number(act.dataset.target));
+      const el = t.closest<HTMLElement>('[data-id]');
+      if (el) this.hooks.select(Number(el.dataset.id));
     });
   }
 
-  render(w: World, reg: Registry, id: number | null): void {
+  render(w: World, reg: Registry, id: number | null, canGoBack = false): void {
+    const backBtn = canGoBack ? `<button data-act="back" class="nav-back" title="Tilbake til forrige aktør">← Tilbake</button>` : '';
     if (id === null) {
-      this.root.innerHTML = `<h3>Avstamning i bestanden</h3>
+      this.root.innerHTML = `${backBtn}<h3>Avstamning i bestanden</h3>
         <p class="muted">Gjennomsnittlig andel fra hver stamme blant de ${w.actors.length} levende.</p>
         <div class="ancestry-overall">${ancestryBreakdown(w, 72)}</div>
         <p class="muted">Klikk på en aktør i verdenen for å se detaljer og slektskap.</p>
@@ -102,7 +124,8 @@ export class Inspector {
     }
     const rec = reg.get(id);
     if (!rec || rec.born > w.tick) {
-      this.root.innerHTML = `<p class="muted">Aktør #${id} finnes ikke på dette tidspunktet.</p>`;
+      this.root.innerHTML = `${backBtn}<p class="muted">${rec ? `${esc(fullName(rec))} ${lifeSpanText(reg, id, Infinity)} er ikke født på tick ${w.tick}.` : `Aktør #${id} finnes ikke i denne grenen.`}</p>
+        ${rec ? `<button data-act="life" data-target="${id}" class="primary">Spol til levetiden</button>` : ''}`;
       return;
     }
     const live = w.actors.find((a) => a.id === id);
@@ -111,7 +134,7 @@ export class Inspector {
       const r = reg.get(x);
       if (!r) return `#${x}`;
       const dead = !w.actors.some((a) => a.id === x);
-      return `<a data-id="${x}" class="${dead ? 'dead' : ''}" style="--c:${surnameColor(w, r.surname)}">${esc(fullName(r))}</a>`;
+      return `<a data-id="${x}" class="${dead ? 'dead' : ''}" style="--c:${surnameColor(w, r.surname)}">${esc(fullName(r))} <span class="life">${lifeSpanText(reg, x, w.tick)}</span></a>`;
     };
     const list = (ids: number[]) => (ids.length ? ids.map(link).join(' ') : '<span class="muted">ingen</span>');
 
@@ -186,8 +209,9 @@ export class Inspector {
       if (live.caresFor !== null) conflict += `<dt>Omsorg</dt><dd>passer på ${link(live.caresFor)} til fødselen</dd>`;
     }
 
-    this.root.innerHTML = `
-      <h2 style="--c:${surnameColor(w, rec.surname)}"><span class="sex">${rec.sex === 'F' ? '♀' : '♂'}</span> ${esc(fullName(rec))}</h2>
+    this.root.innerHTML = `${backBtn}
+      <h2 style="--c:${surnameColor(w, rec.surname)}"><span class="sex">${rec.sex === 'F' ? '♀' : '♂'}</span> ${esc(fullName(rec))} <span class="life">${lifeSpanText(reg, id, w.tick)}</span></h2>
+      ${live ? '' : `<button data-act="life" data-target="${id}" class="primary" title="Pause og spol tilbake til et tidspunkt der aktøren lever">Spol til levetiden</button>`}
       <p class="muted">Generasjon ${rec.generation} · født tick ${rec.born} · ${status}</p>
       <div class="ancestry">
         <svg viewBox="-1 -1 2 2" class="pie">${pieSlices(ancestry, w.tribes.map((t) => t.color))}</svg>

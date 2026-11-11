@@ -95,6 +95,16 @@ export class Registry {
     return inherited.length ? inherited.concat(own) : own;
   }
 
+  /** Ids of every actor born at or before `atTick` that this branch can see. */
+  allIds(atTick = Infinity): number[] {
+    const out = new Set<number>();
+    if (this.parent) {
+      for (const id of this.parent.allIds(Math.min(atTick, this.forkTick))) if (id < this.forkNextId) out.add(id);
+    }
+    for (const r of this.records.values()) if (r.born <= atTick) out.add(r.id);
+    return [...out];
+  }
+
   siblingsOf(id: number, atTick = Infinity): number[] {
     const r = this.get(id);
     if (!r?.parents) return [];
