@@ -434,6 +434,18 @@ export class Renderer {
       this.ctx.fillStyle = `rgba(170, 200, 255, ${Math.min(0.25, 0.3 * (1 - season))})`;
       this.ctx.fillRect(this.ox, this.oy, w.width * this.scale, w.height * this.scale);
     }
+    // Caves: dark rings with a brown floor.
+    for (const sh of w.shelters ?? []) {
+      const x = this.ox + sh.x * this.scale;
+      const y = this.oy + sh.y * this.scale;
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, sh.r * this.scale, 0, Math.PI * 2);
+      this.ctx.fillStyle = 'rgba(70, 50, 35, 0.55)';
+      this.ctx.fill();
+      this.ctx.strokeStyle = 'rgba(160, 120, 80, 0.8)';
+      this.ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
+      this.ctx.stroke();
+    }
     this.drawEles(w);
     this.drawCarcasses(w);
 

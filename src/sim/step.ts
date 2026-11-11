@@ -155,6 +155,24 @@ const waterBetween = (w: World, a: { x: number; y: number }, b: { x: number; y: 
   return false;
 };
 
+/** The shelter an actor is in, or undefined. */
+export const shelterAt = (w: World, x: number, y: number) =>
+  (w.shelters ?? []).find((s) => (s.x - x) ** 2 + (s.y - y) ** 2 <= s.r * s.r);
+
+/** Nearest shelter within `range`, or null. */
+const seekShelter = (a: Actor, w: World, range: number): { x: number; y: number } | null => {
+  let best = range * range;
+  let out: { x: number; y: number } | null = null;
+  for (const s of w.shelters ?? []) {
+    const d = (s.x - a.x) ** 2 + (s.y - a.y) ** 2;
+    if (d < best) {
+      best = d;
+      out = s;
+    }
+  }
+  return out;
+};
+
 /** Hydration below which an actor goes looking for water before anything but fighting. */
 const THIRSTY = 0.35;
 
@@ -222,6 +240,8 @@ class TickContext {
   fx: EleEffects;
   /** Whether the map has any water (thirst only applies if it does). */
   hasWater: boolean;
+  /** Season growth factor this tick (1 = no seasons, below 1 = winter). */
+  season: number;
   private readonly ancestorCache = new Map<number, Map<number, number>>();
 
   constructor(
@@ -230,6 +250,7 @@ class TickContext {
   ) {
     this.fx = eleEffects(w);
     this.hasWater = w.fertility.some((f) => f < 0);
+    this.season = seasonFactor(w);
     this.hash = new SpatialHash(40, w.width);
     for (const a of w.actors) {
       this.hash.insert(a);
@@ -325,11 +346,15 @@ const mateScore = (ctx: TickContext, a: Actor, b: Actor, dist: number): number =
 };
 
 /** Probability that an actor accepts a partner it scores `score` (see the Kresenhet rule). */
-export const acceptance = (score: number, r: World['rules']): number => {
-  if (score < r.minMateScore) return 0;
+export const acceptance = (score: number, r: World['rules'], min = r.minMateScore): number => {
+  if (score < min) return 0;
   if (r.choosiness <= 0) return 1;
-  return 1 - Math.exp(-(score - r.minMateScore) / r.choosiness);
+  return 1 - Math.exp(-(score - min) / r.choosiness);
 };
+
+/** An actor's lowest acceptable partner score: minMateScore lowered by how long it has waited. */
+export const minScoreOf = (a: Actor, r: World['rules']): number =>
+  r.minMateScore - Math.min(4, ((r.desperation ?? 0) * (a.lonely ?? 0)) / 300);
 
 /**
  * Both sides decide on contact. A rejected actor waits `rejectionCooldown` ticks; the one who
@@ -339,8 +364,8 @@ const courtship = (ctx: TickContext, a: Actor, b: Actor): boolean => {
   const r = ctx.w.rules;
   const bonus = r.tribeBonus ?? [];
   const base = mateScore(ctx, a, b, Math.hypot(b.x - a.x, b.y - a.y));
-  const aAccepts = Math.random() < acceptance(base + tribeBonusOf(b, bonus), r);
-  const bAccepts = Math.random() < acceptance(base + tribeBonusOf(a, bonus), r);
+  const aAccepts = Math.random() < acceptance(base + tribeBonusOf(b, bonus), r, minScoreOf(a, r));
+  const bAccepts = Math.random() < acceptance(base + tribeBonusOf(a, bonus), r, minScoreOf(b, r));
   if (!aAccepts) {
     a.snub = b.id;
     a.snubTtl = 4 * r.rejectionCooldown;
@@ -383,7 +408,7 @@ const findPartner = (ctx: TickContext, a: Actor, vision: number): { mate: Actor 
   const { w } = ctx;
   const r = w.rules;
   const bonus = r.tribeBonus ?? [];
-  const min = r.minMateScore;
+  const min = minScoreOf(a, r);
   const bonusA = tribeBonusOf(a, bonus);
   let mate: Actor | null = null;
   let mateScoreBest = -Infinity;
@@ -406,7 +431,7 @@ const findPartner = (ctx: TickContext, a: Actor, vision: number): { mate: Actor 
     const base = mateScore(ctx, a, b, d);
     if (ready) {
       const score = base + tribeBonusOf(b, bonus);
-      if (score >= min && base + bonusA >= min && score > mateScoreBest) {
+      if (score >= min && base + bonusA >= minScoreOf(b, r) && score > mateScoreBest) {
         mate = b;
         mateScoreBest = score;
       }
@@ -636,6 +661,7 @@ const conceive = (a: Actor, b: Actor, w: World, fx: EleEffects): boolean => {
 
   const total = embryos.reduce((s, e) => s + e.energy, 0);
   father.energy -= fatherShare(embryos);
+  mother.lonely = father.lonely = 0;
   mother.pregnancy = {
     father: father.id,
     due: w.tick + r.gestationTicks,
@@ -716,6 +742,7 @@ const deliver = (ctx: TickContext, mother: Actor): Actor[] => {
       foodEaten: 0,
       distance: 0,
       hydration: 1,
+      lonely: 0,
       courtships: 0,
       acceptedBy: 0,
     };
@@ -846,6 +873,11 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     // Thirst: drink when next to water; go looking for water when running low.
     if (a.hydration === undefined) a.hydration = 1;
     const thirstGoal = ctx.hasWater && a.hydration < THIRSTY && !nursingMother ? seekWater(a, w, vision) : null;
+    // Shelter: in harsh cold (deep winter or ice nearby) weak actors head for the nearest cave they know of (2 × vision).
+    const inShelter = shelterAt(w, a.x, a.y) !== undefined;
+    const harsh = ctx.season < 0.75 || ctx.fx.costFactor(a.x, a.y) > 1;
+    const shelterGoal =
+      !thirstGoal && !inShelter && harsh && !nursingMother && a.energy < 0.6 * cap ? seekShelter(a, w, vision * 2) : null;
     if (!target && a.fleeing <= 0) {
       if (considerJoining(ctx, a, vision) || (considerAttack(ctx, a, vision, food), a.target !== null)) {
         target = ctx.alive(a.target);
@@ -876,6 +908,9 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     } else if (thirstGoal) {
       goal = thirstGoal;
       speed = maxSpeed;
+    } else if (shelterGoal) {
+      goal = shelterGoal;
+      speed = maxSpeed;
     } else if (care && Math.hypot(care.x - a.x, care.y - a.y) > rules.guardDistance) {
       goal = care;
       speed = maxSpeed;
@@ -888,6 +923,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       const ready = readyToMate(a, w);
       const found = ready ? findPartner(ctx, a, vision) : { mate: null, prospect: null };
       mate = found.mate;
+      a.lonely = ready && !mate ? (a.lonely ?? 0) + 1 : ready ? (a.lonely ?? 0) : 0;
       // Ready but no partner ready in sight: approach an acceptable prospect, else explore.
       // Both count as courting (shown as the dashed partner line, and used to detect rivals).
       a.mateTarget = (mate ?? found.prospect)?.id ?? null;
@@ -963,7 +999,11 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     // 4. Energy cost and healing.
     const sp2 = a.vx * a.vx + a.vy * a.vy;
     a.energy -=
-      rules.baseCost * a.genome.size * (1 + (rules.agingFactor * bioAge(a)) / 1000) * ctx.fx.costFactor(a.x, a.y) +
+      rules.baseCost *
+        a.genome.size *
+        (1 + (rules.agingFactor * bioAge(a)) / 1000) *
+        // Cold (ice, winter) costs extra outside shelter.
+        (shelterAt(w, a.x, a.y) ? 1 : ctx.fx.costFactor(a.x, a.y) * (1 + (rules.coldCost ?? 0) * Math.max(0, 1 - ctx.season))) +
       rules.moveCost * a.genome.size * sp2 +
       (illness ? rules.sicknessCost * a.genome.size : 0);
     const maxHp = maxHpOf(a, rules);
@@ -1049,7 +1089,8 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
         if (parentNear) infantRisk *= 0.3;
       }
       const diseaseRisk = illness
-        ? illness.lethality *
+        ? (shelterAt(w, a.x, a.y) ? 0.5 : 1) *
+          illness.lethality *
           (1 + 2 * (1 - ageVigorOf(a, rules)) + (1 - Math.max(0, a.hp) / maxHpOf(a, rules)) + (1 - Math.min(1, Math.max(0, share))))
         : 0;
       if (a.energy <= 0) ctx.die(a, 'starvation');

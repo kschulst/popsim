@@ -12,7 +12,7 @@ import { GENE_LABELS, normGene } from '../sim/genome';
 import { fullName } from '../sim/names';
 import { GENE_KEYS, type Actor, type DeathCause, type World } from '../sim/types';
 import { attractiveness } from '../sim/attractiveness';
-import { vigorOf } from '../sim/step';
+import { shelterAt, vigorOf } from '../sim/step';
 import { purity } from '../sim/tribes';
 import { capacityOf, maxHpOf } from '../sim/world';
 import { surnameColor } from './colors';
@@ -139,6 +139,7 @@ export const describeActor = (w: World, reg: Registry, a: Actor): string[] => {
   const cap = capacityOf(a, w.rules);
   const hpShare = Math.max(0, a.hp) / maxHpOf(a, w.rules);
   if (!lines.length) lines.push(a.energy < cap * 0.95 ? 'Leter etter mat' : 'Vandrer');
+  if (shelterAt(w, a.x, a.y)) lines.push('I ly i en hule');
   if (a.energy < cap * 0.25) lines.push('Sulten');
   if ((a.hydration ?? 1) < 0.35) lines.push(`Tørst (${Math.round((a.hydration ?? 1) * 100)} % vann)`);
   if (hpShare < 0.5) lines.push(`Skadet (${Math.round(hpShare * 100)} % helse)`);

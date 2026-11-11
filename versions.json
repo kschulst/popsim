@@ -102,7 +102,10 @@
       "Tørst: aktørene drikker ved vann og leter etter vann når de er tørste. Barn som ammes, får væske fra moren. Tørst er egen dødsårsak.",
       "Simuleringen fortsetter etter at du har sluppet løs en katastrofe eller lagt til aktører.",
       "To typer mat: gress (grønt, overalt) og bær (lilla, sjeldne, mye energi, bare på fruktbar jord). Nytt gen «kosthold» avgjør hvor mye aktøren får ut av hver; et kosthold midt imellom får full verdi av begge.",
-      "Årstider: matveksten er høyest om sommeren og lavest om vinteren (regler for årets lengde og variasjon). Vinteren gir et blått slør over kartet, og årstiden står i nøkkeltallene."
+      "Årstider: matveksten er høyest om sommeren og lavest om vinteren (regler for årets lengde og variasjon). Vinteren gir et blått slør over kartet, og årstiden står i nøkkeltallene.",
+      "Huler (brune ringer): ly mot kulde om vinteren, istid og sykdom (halv dødelighet). Svake aktører søker ly i harde perioder. Utenfor ly koster vinteren ekstra energi.",
+      "Senkede krav: jo lenger en aktør har ventet uten partner, jo lavere krav stiller den, så isolerte grupper kan pare seg med fettere og halvsøsken etter hvert (aldri helsøsken, foreldre eller barn).",
+      "Standardstammene har 7 seeds hver (før 5). Med vann, årstider og flere dødsårsaker døde for mange små startbestander ut."
     ]
   }
 }

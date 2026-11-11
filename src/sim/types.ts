@@ -107,6 +107,11 @@ export interface Rules {
   /** Seasons: ticks per year (0 = no seasons) and how much growth swings between summer and winter. */
   seasonLength: number;
   seasonStrength: number;
+  /** Caves on new maps (applies to new runs), and their radius. */
+  shelterCount: number;
+  shelterRadius: number;
+  /** Extra living cost outside shelter in winter: base cost × (1 + coldCost × (1 − season growth)). */
+  coldCost: number;
   /** Lakes and rivers on new maps (applies to new runs). */
   waterLakes: number;
   waterRivers: number;
@@ -122,6 +127,8 @@ export interface Rules {
   carrionBite: number;
   /** Lowest mate score both partners accept. */
   minMateScore: number;
+  /** How far standards drop per 300 ticks of waiting for a partner (at most 4 points). */
+  desperation: number;
   /**
    * Extra attractiveness per tribe (index into World.tribes). A candidate's bonus is the sum of
    * bonus × its ancestry share from each tribe. Missing entries count as 0.
@@ -211,6 +218,8 @@ export interface Actor {
   foodEaten: number;
   /** Distance moved (world units). */
   distance: number;
+  /** Ticks spent ready to mate without finding a partner (lowers standards; reset at conception). */
+  lonely: number;
   /** Water in the body, 0–1; 0 means death by thirst. */
   hydration: number;
   /** Courtship meetings, and how many times the other said yes. */
@@ -411,6 +420,8 @@ export interface World {
   diseases: Disease[];
   /** Every extinction level event so far. */
   events: EleEvent[];
+  /** Caves: places that shelter from cold, ice and disease. */
+  shelters: { x: number; y: number; r: number }[];
   /** Bodies of the dead that can be eaten until they rot away. */
   carcasses: Carcass[];
   /** Machines from a machine awakening, and the last machine id used. */

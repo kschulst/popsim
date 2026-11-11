@@ -26,6 +26,8 @@ Hver versjon er en git-tag (`v1`, `v2` …) og publiseres frosset under `/vN/` p
 - **Tørst** (v5): `hydration` 0–1 synker med `thirstRate` per tick, øker 0,1 per tick ved vann, og er full for barn som ammes. Under 0,35 går aktøren mot nærmeste vann innen syn. 0 = død av tørst.
 - **Mattyper** (v5): rute = 0 tom, 1 gress, 2 bær. Bær dukker opp på fruktbar jord (fruktbarhet over 0,6) med `berrySpontaneous` og sprer seg fra bærnaboer med `berrySpread`; ellers gror gress som før. Energi: gress `foodEnergy × (1,15 − 0,3 × diet)`, bær `berryEnergy × (0,6 + 0,8 × diet)`, der genet `diet` er 0–1. Aktører går mot ruten med best energi per avstand.
 - **Årstider** (v5): all matvekst ganges med `1 + seasonStrength × sin(2π · tick / seasonLength)`.
+- **Huler** (v5): `shelterCount` huler med radius `shelterRadius` legges på land ved oppstart. I hule: ingen ekstra kostnad fra kulde eller is, og halv dødelighet av sykdom. Utenfor ganges grunnkostnaden med `1 + coldCost × (1 − årstidsvekst)` om vinteren. Når årstidsveksten er under 0,75 eller det er is, går aktører med under 60 % energi mot nærmeste hule innen 2 × syn.
+- **Senkede krav** (v5): `lonely` teller ticks en aktør har vært klar uten partner. Minste partnerpoeng for aktøren blir `minMateScore − min(4, desperation × lonely / 300)`. Nullstilles ved unnfangelse.
 - **Åtsel** (v5): ved død legges `carrionPerSize × size` energi igjen der aktøren døde. Åtselet mister `carrionDecay` per tick. Aktører regner åtsel som mat når de leter, og spiser inntil `carrionBite` per tick innen rekkevidde.
 - **Regelbeskrivelser**: hver regel har en beskrivelse i UI-et (hover eller ?-knapp).
 - **Energi**: kapasitet = `energyPerSize × size`. Kostnad per tick = `baseCost × size × (1 + agingFactor × biologisk alder/1000) + moveCost × size × fart²`.
@@ -57,7 +59,7 @@ Hver versjon er en git-tag (`v1`, `v2` …) og publiseres frosset under `/vN/` p
 
 ### Stammer og avstamning (v2)
 
-- En kjøring starter med stammer. Hver stamme har navn, farge, antall seeds og verdier for størrelse, fart, syn og aggresjon, pluss arvelighet (grunnivå for arvestyrke). Paringsterskel og mutasjonsrate er like for alle. Standard er fire stammer med 5 seeds hver:
+- En kjøring starter med stammer. Hver stamme har navn, farge, antall seeds og verdier for størrelse, fart, syn og aggresjon, pluss arvelighet (grunnivå for arvestyrke). Paringsterskel og mutasjonsrate er like for alle. Standard er fire stammer med 7 seeds hver (5 til og med v4):
 
 | Stamme | Størrelse | Fart | Syn | Aggresjon | Arvelighet |
 |---|---|---|---|---|---|

@@ -174,6 +174,7 @@ export const spawnSeed = (world: World, opts: NewActor): Actor => {
     foodEaten: 0,
     distance: 0,
     hydration: 1,
+    lonely: 0,
     courtships: 0,
     acceptedBy: 0,
   };
@@ -219,6 +220,15 @@ export const createEmptyWorld = (config: WorldConfig = DEFAULT_CONFIG): World =>
   const { width, height, cols, rows, rules, tribes } = config;
   const fertility = fertilityMap(cols, rows);
   carveWater(fertility, cols, rows, rules.waterLakes ?? 0, rules.waterRivers ?? 0, rules.riverbankBonus ?? 0);
+  // Caves on land, away from the edges.
+  const shelters: { x: number; y: number; r: number }[] = [];
+  for (let i = 0, tries = 0; i < (rules.shelterCount ?? 0) && tries < 200; tries++) {
+    const x = rand(0.08, 0.92) * width;
+    const y = rand(0.08, 0.92) * height;
+    if (isWater({ fertility, cols, rows, cellSize: width / cols }, x, y)) continue;
+    shelters.push({ x, y, r: rules.shelterRadius ?? 22 });
+    i++;
+  }
   const food = new Uint8Array(cols * rows);
   for (let i = 0; i < food.length; i++) food[i] = fertility[i] > 0 && Math.random() < fertility[i] * 0.6 ? 1 : 0;
   return {
@@ -238,6 +248,7 @@ export const createEmptyWorld = (config: WorldConfig = DEFAULT_CONFIG): World =>
     diseases: [],
     events: [],
     carcasses: [],
+    shelters,
     machines: [],
   };
 };
