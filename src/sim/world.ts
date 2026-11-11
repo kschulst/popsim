@@ -175,6 +175,7 @@ export const createEmptyWorld = (config: WorldConfig = DEFAULT_CONFIG): World =>
     tribes: structuredClone(tribes),
     diseases: [],
     events: [],
+    carcasses: [],
     machines: [],
   };
 };

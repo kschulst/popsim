@@ -214,6 +214,27 @@ export class Renderer {
     ctx.fillRect(x - bw / 2, by, bw * share, bh);
   }
 
+  /** Carcasses: small dark-red crosses, fading as they rot. */
+  private drawCarcasses(w: World): void {
+    if (!w.carcasses?.length) return;
+    const { ctx } = this;
+    const s = this.scale;
+    const dpr = window.devicePixelRatio || 1;
+    const r = Math.max(2 * dpr, 2.5 * s);
+    ctx.lineWidth = Math.max(1.2 * dpr, 0.8 * s);
+    for (const c of w.carcasses) {
+      const x = this.ox + c.x * s;
+      const y = this.oy + c.y * s;
+      ctx.strokeStyle = `rgba(150, 40, 35, ${Math.min(0.9, 0.3 + c.energy / 60)})`;
+      ctx.beginPath();
+      ctx.moveTo(x - r, y - r);
+      ctx.lineTo(x + r, y + r);
+      ctx.moveTo(x + r, y - r);
+      ctx.lineTo(x - r, y + r);
+      ctx.stroke();
+    }
+  }
+
   /** Map overlays for active catastrophes, plus a label listing them with ticks left. */
   private drawEles(w: World): void {
     const active = activeEles(w);
@@ -399,6 +420,7 @@ export class Renderer {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     this.drawField(w, opt.showFertility);
     this.drawEles(w);
+    this.drawCarcasses(w);
 
     const s = this.scale;
     const dpr = window.devicePixelRatio || 1;

@@ -113,6 +113,16 @@ const seekFood = (a: Actor, w: World, vision: number): { x: number; y: number } 
       }
     }
   }
+  // Carcasses count like food cells; the nearest wins.
+  for (const c of w.carcasses ?? []) {
+    const d2 = (c.x - a.x) ** 2 + (c.y - a.y) ** 2;
+    if (d2 <= v2 && d2 < best) {
+      best = d2;
+      bx = c.x;
+      by = c.y;
+      found = true;
+    }
+  }
   return found ? { x: bx, y: by } : null;
 };
 
@@ -194,6 +204,8 @@ class TickContext {
   die(a: Actor, cause: TickDeath['cause'], killer?: Actor, disease?: number): void {
     if (this.dead.has(a.id)) return;
     this.dead.add(a.id);
+    const meat = (this.w.rules.carrionPerSize ?? 0) * a.genome.size;
+    if (meat > 0) (this.w.carcasses ??= []).push({ x: a.x, y: a.y, energy: meat });
     if (killer) killer.kills++;
     this.deaths.push({
       id: a.id,
@@ -673,6 +685,10 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
   );
   ctx.fx = eleEffects(w);
   regrowFood(w, ctx.fx);
+  if (w.carcasses?.length) {
+    const decay = rules.carrionDecay ?? 0;
+    w.carcasses = w.carcasses.filter((c) => (c.energy -= decay) > 0);
+  }
   stepMachines(
     w,
     w.actors.filter((a) => !ctx.dead.has(a.id)),
@@ -829,12 +845,22 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       a.energy -= h * rules.healCost;
     }
 
-    // 5. Eat from the current cell.
+    // 5. Eat from the current cell, and from a carcass within reach.
     const ci = cellIndex(w, a.x, a.y);
     if (w.food[ci] && a.energy < cap) {
       w.food[ci] = 0;
       a.foodEaten++;
       a.energy = Math.min(cap, a.energy + rules.foodEnergy);
+    }
+    if (a.energy < cap && w.carcasses?.length) {
+      for (const c of w.carcasses) {
+        if (c.energy <= 0 || (c.x - a.x) ** 2 + (c.y - a.y) ** 2 > (radius + 3) ** 2) continue;
+        const bite = Math.min(rules.carrionBite ?? 0, c.energy, cap - a.energy);
+        c.energy -= bite;
+        a.energy += bite;
+        if (bite > 0) a.foodEaten++;
+        break;
+      }
     }
 
     // Nursing: the child draws energy from its mother when close, not full, and she can spare it.

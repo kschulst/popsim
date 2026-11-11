@@ -22,6 +22,7 @@ Hver versjon er en git-tag (`v1`, `v2` …) og publiseres frosset under `/vN/` p
 - **Tid**: diskrete ticks. Aktørene oppdateres sekvensielt i tilfeldig rekkefølge hver tick.
 - **Tilfeldighet**: kjøringer er ikke-deterministiske (`Math.random`). Tilfeldighet brukes i retning, mutasjon, kjønn, arv, matvekst og oppdateringsrekkefølge.
 - **Miljø**: rutenett (64×48). Hver rute har mat eller ikke (binært), og en fast fruktbarhet (0,2–1). En tom rute får mat med sannsynlighet `fruktbarhet × (foodSpontaneous + foodSpreadRate × antall naboruter med mat)`. Et nedbeitet område gror derfor innover fra kantene, og beiting setter varige spor for senere generasjoner. Å spise tømmer ruten og gir `foodEnergy` energi, begrenset av kapasiteten.
+- **Åtsel** (v5): ved død legges `carrionPerSize × size` energi igjen der aktøren døde. Åtselet mister `carrionDecay` per tick. Aktører regner åtsel som mat når de leter, og spiser inntil `carrionBite` per tick innen rekkevidde.
 - **Regelbeskrivelser**: hver regel har en beskrivelse i UI-et (hover eller ?-knapp).
 - **Energi**: kapasitet = `energyPerSize × size`. Kostnad per tick = `baseCost × size × (1 + agingFactor × biologisk alder/1000) + moveCost × size × fart²`.
 - **Død og levetid**:

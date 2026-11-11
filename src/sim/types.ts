@@ -100,6 +100,12 @@ export interface Rules {
   purityWeight: number;
   /** Score lost per vision length of distance to the candidate. */
   mateDistanceWeight: number;
+  /** Energy in a carcass per unit of the dead actor's size (0 = no carcasses). */
+  carrionPerSize: number;
+  /** Energy a carcass loses per tick as it rots. */
+  carrionDecay: number;
+  /** Most energy an actor can eat from a carcass per tick. */
+  carrionBite: number;
   /** Lowest mate score both partners accept. */
   minMateScore: number;
   /**
@@ -235,6 +241,13 @@ export interface Courtship {
 }
 
 export type EleKey = 'meteor' | 'volcano' | 'plague' | 'iceAge' | 'locusts' | 'drought' | 'infertility' | 'radiation' | 'rage' | 'machines';
+
+/** Meat left by a dead actor. */
+export interface Carcass {
+  x: number;
+  y: number;
+  energy: number;
+}
 
 /** A machine from a machine awakening (not an actor: no kin, tribe or genealogy). */
 export interface Machine {
@@ -373,6 +386,8 @@ export interface World {
   diseases: Disease[];
   /** Every extinction level event so far. */
   events: EleEvent[];
+  /** Bodies of the dead that can be eaten until they rot away. */
+  carcasses: Carcass[];
   /** Machines from a machine awakening, and the last machine id used. */
   machines: Machine[];
   machineSeq?: number;

@@ -753,7 +753,9 @@ $('map-legend').innerHTML =
   '<span class="g">●</span>hvit prikk: gravid · stiplet farget ring: syk<br>' +
   '<strong>Ringer</strong><br>' +
   '<span class="g" style="color:#ffd25a">◯</span>slektning av valgt aktør (sterkere = nærmere slekt)<br>' +
-  '<span class="g" style="color:#ffdc78">○</span>tynn gul kant: flykter';
+  '<span class="g" style="color:#ffdc78">○</span>tynn gul kant: flykter<br>' +
+  '<strong>Annet</strong><br>' +
+  '<span class="g" style="color:#962823">✕</span>åtsel (kan spises, råtner bort) · <span class="g" style="color:#6b7079">■</span>maskin';
 $('extinct-back').onclick = () => {
   playing = false;
   seekLineage(Math.max(0, (extinctionTick() ?? tick) - EXTINCT_REWIND));
