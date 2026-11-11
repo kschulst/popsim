@@ -371,16 +371,35 @@ export class Renderer {
 
     if (opt.showCourtship) this.drawCourtship(w, byId, sx, sy, dpr);
 
-    // Fight lines from attacker to target.
+    // Fight lines with an arrowhead at the target's edge: the arrow points the way the attack goes.
     ctx.lineWidth = 1.5 * dpr;
-    ctx.strokeStyle = 'rgba(255, 70, 60, 0.75)';
+    ctx.strokeStyle = 'rgba(255, 70, 60, 0.8)';
+    ctx.fillStyle = 'rgba(255, 70, 60, 0.95)';
     for (const a of w.actors) {
       const t = a.target === null ? undefined : byId.get(a.target);
       if (!t) continue;
+      const x0 = sx(a);
+      const y0 = sy(a);
+      const x1 = sx(t);
+      const y1 = sy(t);
+      const len = Math.hypot(x1 - x0, y1 - y0);
+      if (len < 1) continue;
+      const ux = (x1 - x0) / len;
+      const uy = (y1 - y0) / len;
+      const tipBack = radiusOf(t) * s + 1.5 * dpr;
+      const tx = x1 - ux * tipBack;
+      const ty = y1 - uy * tipBack;
       ctx.beginPath();
-      ctx.moveTo(sx(a), sy(a));
-      ctx.lineTo(sx(t), sy(t));
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(tx, ty);
       ctx.stroke();
+      const head = Math.max(5 * dpr, Math.min(10 * dpr, 2.5 * s));
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(tx - ux * head - uy * head * 0.5, ty - uy * head + ux * head * 0.5);
+      ctx.lineTo(tx - ux * head + uy * head * 0.5, ty - uy * head - ux * head * 0.5);
+      ctx.closePath();
+      ctx.fill();
     }
 
     for (const a of w.actors) {
@@ -427,6 +446,41 @@ export class Renderer {
       }
       if (detail) this.hpBar(a, w, x, y, r);
     }
+
+    // Status badges above actors when zoomed in (and always for the selected one):
+    // ⚔ attacking, ! under attack, ♥ courting/being courted, ✿ pregnant, ↯ fleeing.
+    const attacked = new Set<number>();
+    const courted = new Set<number>();
+    for (const a of w.actors) {
+      if (a.target !== null) attacked.add(a.target);
+      if (a.mateTarget !== null) courted.add(a.mateTarget);
+    }
+    const badgeZoom = this.zoom >= 2;
+    ctx.font = `bold ${Math.round(13 * dpr)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    for (const a of w.actors) {
+      if (!badgeZoom && a.id !== opt.selectedId) continue;
+      const parts: [string, string][] = [];
+      if (a.target !== null) parts.push(['⚔', '#ff6a5a']);
+      if (attacked.has(a.id)) parts.push(['!', '#ff3b3b']);
+      if (a.fleeing > 0) parts.push(['↯', '#ffd27a']);
+      if (a.mateTarget !== null || courted.has(a.id)) parts.push(['♥', '#f28fb6']);
+      if (a.pregnancy) parts.push(['✿', '#ffffff']);
+      if (!parts.length) continue;
+      const r = radiusOf(a) * s;
+      const y = sy(a) - r - (detail ? Math.max(2, r * 0.3) + 6 * dpr : 3 * dpr);
+      const step = 12 * dpr;
+      let x = sx(a) - ((parts.length - 1) * step) / 2;
+      for (const [glyph, color] of parts) {
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillText(glyph, x + dpr, y + dpr);
+        ctx.fillStyle = color;
+        ctx.fillText(glyph, x, y);
+        x += step;
+      }
+    }
+    ctx.textAlign = 'start';
 
     const sel = opt.selectedId === null ? undefined : byId.get(opt.selectedId);
     if (sel) {

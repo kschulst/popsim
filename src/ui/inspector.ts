@@ -120,7 +120,7 @@ export class Inspector {
         <p class="muted">Gjennomsnittlig andel fra hver stamme blant de ${w.actors.length} levende.</p>
         <div class="ancestry-overall">${ancestryBreakdown(w, 72)}</div>
         <p class="muted">Klikk på en aktør i verdenen for å se detaljer og slektskap.</p>
-        <p class="muted">● hunn &nbsp; ◆ hann. Gjennomsiktighet viser energinivå. Rød strek: angriper → mål. Gul kant: flykter. Hvitt blink: treff. Stiplet rosa strek: søker partner. Grønn: paret seg. Grå med kryss: avvist, krysset står ved den som sa nei. Hvit prikk: gravid. Blå prikket strek: far som passer på den gravide. Farget stiplet ring: syk (fargen viser sykdommen).</p>
+        <p class="muted">● hunn &nbsp; ◆ hann. Gjennomsiktighet viser energinivå. Rød strek: angriper → mål. Gul kant: flykter. Hvitt blink: treff. Stiplet rosa strek: søker partner. Grønn: paret seg. Grå med kryss: avvist, krysset står ved den som sa nei. Hvit prikk: gravid. Symboler over aktørene (fra 2× zoom, alltid for valgt aktør): ⚔ angriper, ! blir angrepet, ↯ flykter, ♥ kurtiserer eller kurtiseres, ✿ gravid. Pilen på den røde streken peker mot den som blir angrepet. Blå prikket strek: far som passer på den gravide. Farget stiplet ring: syk (fargen viser sykdommen).</p>
         <p class="muted">Rull for å zoome, dra for å flytte, dobbeltklikk for å vise hele verdenen. Fra ${DETAIL_ZOOM}× zoom vises avstamning som kakediagram og helse som en bar.</p>`;
       return;
     }
@@ -190,7 +190,9 @@ export class Inspector {
         `tatt ${live.damageTaken.toFixed(0)}`,
         `drap ${live.kills}`,
       ];
-      if (live.target !== null) parts.unshift(`<strong>slåss med</strong> ${link(live.target)}`);
+      const attackers = w.actors.filter((x) => x.target === live.id).map((x) => x.id);
+      if (attackers.length) parts.unshift(`<strong>angripes av</strong> ${attackers.map(link).join(', ')}`);
+      if (live.target !== null) parts.unshift(`<strong>angriper</strong> ${link(live.target)} →`);
       else if (live.fleeing > 0) parts.unshift(`<strong>flykter</strong>${live.fleeFrom !== null ? ` fra ${link(live.fleeFrom)}` : ''}`);
       conflict = `<dt>Kamp</dt><dd>${parts.join(' · ')}</dd>`;
       const court = live.court;
@@ -201,7 +203,9 @@ export class Inspector {
         if (!court.selfAccepted) parts.push(`avviste ${link(court.with)}`);
         if (!court.otherAccepted) parts.push(`ble avvist av ${link(court.with)}`);
         courtText = parts.join(' og ');
-      } else if (live.mateTarget !== null) courtText = `søker ${link(live.mateTarget)}`;
+      } else if (live.mateTarget !== null) courtText = `kurtiserer ${link(live.mateTarget)}`;
+      const suitors = w.actors.filter((x) => x.mateTarget === live.id).map((x) => x.id);
+      if (suitors.length) courtText += `${courtText ? ' · ' : ''}kurtiseres av ${suitors.map(link).join(', ')}`;
       if (courtText) conflict += `<dt>Partner</dt><dd>${courtText}</dd>`;
       if (live.pregnancy) {
         const p = live.pregnancy;
