@@ -49,6 +49,12 @@ let revision = 0;
 const renderer = new Renderer($<HTMLCanvasElement>('world'));
 const charts = new Charts($('charts'));
 charts.onTab = () => touch();
+/** Branch shown dashed in the charts and simulated alongside the current one, or null. */
+let compareId: number | null = null;
+charts.onCompare = (id) => {
+  compareId = id;
+  touch();
+};
 
 /** Window for the "recent" mortality figures, in ticks. */
 const RECENT_TICKS = 500;
@@ -203,6 +209,11 @@ const stepForward = () => {
   } else {
     history.advance(branchId);
     tick = b.headTick;
+  }
+  // Keep the compared branch running alongside.
+  if (compareId !== null && history.branches.has(compareId) && compareId !== branchId) {
+    const c = history.get(compareId);
+    if (c.headTick < tick && c.head.actors.length) history.advance(compareId);
   }
   touch();
 };
@@ -884,10 +895,19 @@ const frame = (now: number) => {
     });
     const statsRows = history.statsPath(branchId);
     renderVitals(statsRows, w.tick, w);
-    charts.render(statsRows, w.tick, w.tribes, (t) => {
-      playing = false;
-      seekLineage(t);
-    });
+    const others = [...history.branches.values()].filter((x) => x.id !== branchId).map((x) => ({ id: x.id, name: x.name }));
+    if (compareId !== null && !others.some((o) => o.id === compareId)) compareId = null;
+    charts.setCompareOptions(others, compareId);
+    charts.render(
+      statsRows,
+      w.tick,
+      w.tribes,
+      (t) => {
+        playing = false;
+        seekLineage(t);
+      },
+      compareId === null ? [] : history.statsPath(compareId),
+    );
   }
   requestAnimationFrame(frame);
 };

@@ -24,6 +24,8 @@ interface ChartDef {
   domain?: [number, number];
   /** Rolling window sum instead of raw value. */
   rolling?: number;
+  /** Draw the series as stacked areas (a stream graph) instead of lines. */
+  stacked?: boolean;
 }
 
 const buildDefs = (tribes: Tribe[]): ChartDef[] => [
@@ -86,6 +88,13 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
     title: 'Syke',
     group: 'Kamp og sykdom',
     series: [{ label: 'syke', color: '#c6e85a', value: (s) => s.infected ?? 0 }],
+  },
+  {
+    title: 'Stammene over tid (strømgraf)',
+    group: 'Stammer',
+    domain: [0, 1],
+    stacked: true,
+    series: tribes.map((t, i) => ({ label: t.name, color: t.color, value: (s: TickStats) => s.tribeShare?.[i] ?? 0 })),
   },
   {
     title: 'Stammeandel (snitt avstamning)',
@@ -216,7 +225,11 @@ export class Charts {
     root.innerHTML = '<nav class="chart-tabs"></nav><div class="chart-grid"></div>';
     this.tabs = root.querySelector('.chart-tabs')!;
     this.grid = root.querySelector('.chart-grid')!;
-    this.tabs.innerHTML = CHART_GROUPS.map((g) => `<button data-group="${g}">${g}</button>`).join('');
+    this.tabs.innerHTML =
+      CHART_GROUPS.map((g) => `<button data-group="${g}">${g}</button>`).join('') +
+      '<select class="compare-select" hidden title="Vis en annen gren stiplet i grafene. Den simuleres videre sammen med grenen du ser på."></select>';
+    this.compareSelect = this.tabs.querySelector('.compare-select')!;
+    this.compareSelect.addEventListener('change', () => this.onCompare?.(this.compareSelect.value === '' ? null : Number(this.compareSelect.value)));
     this.tabs.addEventListener('click', (e) => {
       const g = (e.target as HTMLElement).closest<HTMLElement>('[data-group]')?.dataset.group as ChartGroup | undefined;
       if (!g) return;
@@ -239,7 +252,27 @@ export class Charts {
     for (const b of this.tabs.querySelectorAll<HTMLElement>('button')) b.classList.toggle('on', b.dataset.group === this.group);
   }
 
-  render(rows: TickStats[], cursorTick: number, tribes: Tribe[], onSeek: (tick: number) => void): void {
+  /** Branches offered for comparison, and the chosen one (null = none). */
+  setCompareOptions(branches: { id: number; name: string }[], selected: number | null): void {
+    const key = branches.map((b) => `${b.id}:${b.name}`).join('|') + `#${selected}`;
+    if (key === this.compareKey) return;
+    this.compareKey = key;
+    this.compareSelect.innerHTML =
+      '<option value="">Sammenlign med: ingen</option>' +
+      branches.map((b) => `<option value="${b.id}"${b.id === selected ? ' selected' : ''}>Sammenlign med: ${b.name}</option>`).join('');
+    this.compareSelect.hidden = branches.length === 0;
+  }
+
+  /** Called with the branch id (or null) when the user picks a branch to compare with. */
+  onCompare?: (id: number | null) => void;
+  private compareKey = '';
+  private compareSelect!: HTMLSelectElement;
+
+  /**
+   * Draws the charts of the active tab. `compareRows` (another branch) are drawn dashed on top of
+   * line charts with the same colours.
+   */
+  render(rows: TickStats[], cursorTick: number, tribes: Tribe[], onSeek: (tick: number) => void, compareRows: TickStats[] = []): void {
     const key = tribes.map((t) => t.name + t.color).join('|');
     if (key !== this.defsKey) {
       this.defs = buildDefs(tribes);
@@ -247,7 +280,7 @@ export class Charts {
     }
     const DEFS = this.defs.filter((d) => d.group === this.group);
     const root = d3.select(this.grid);
-    const maxTick = Math.max(1, rows.length ? rows[rows.length - 1].tick : 1);
+    const maxTick = Math.max(1, rows.length ? rows[rows.length - 1].tick : 1, compareRows.length ? compareRows[compareRows.length - 1].tick : 1);
     const x = d3.scaleLinear([0, maxTick], [M.left, W - M.right]);
 
     const charts = root
@@ -261,6 +294,7 @@ export class Charts {
         svg.append('g').attr('class', 'y-axis').attr('transform', `translate(${M.left},0)`);
         svg.append('path').attr('class', 'band');
         svg.append('g').attr('class', 'lines');
+        svg.append('g').attr('class', 'compare');
         svg.append('line').attr('class', 'cursor');
         return svg;
       });
@@ -272,26 +306,32 @@ export class Charts {
 
     charts.each(function (def) {
       const svg = d3.select(this);
-      const values = def.series.map((s) => {
-        if (!def.rolling) return null;
-        const num = rollingSum(rows, s.value, def.rolling);
-        if (!s.den) return num;
-        const den = rollingSum(rows, s.den, def.rolling);
-        const out = new Map<TickStats, number>();
-        for (const r of rows) {
-          const d = den.get(r)!;
-          out.set(r, d ? (num.get(r)! / d) * (s.scale ?? 1) : NaN);
-        }
-        return out;
-      });
+      /** Value accessor for a set of rows (rolling sums and ratios precomputed). */
+      const valuesFor = (rs: TickStats[]) => {
+        const values = def.series.map((s) => {
+          if (!def.rolling) return null;
+          const num = rollingSum(rs, s.value, def.rolling);
+          if (!s.den) return num;
+          const den = rollingSum(rs, s.den, def.rolling);
+          const out = new Map<TickStats, number>();
+          for (const r of rs) {
+            const d = den.get(r)!;
+            out.set(r, d ? (num.get(r)! / d) * (s.scale ?? 1) : NaN);
+          }
+          return out;
+        });
+        return (si: number, r: TickStats) => values[si]?.get(r) ?? def.series[si].value(r);
+      };
       const pts = downsample(rows);
-      const val = (si: number, r: TickStats) => values[si]?.get(r) ?? def.series[si].value(r);
+      const val = valuesFor(rows);
+      const cmpPts = def.stacked ? [] : downsample(compareRows);
+      const cmpVal = valuesFor(compareRows);
       let domain = def.domain;
       if (!domain) {
         let max = 1;
-        for (const r of pts) {
+        for (const [rs, f] of [[pts, val], [cmpPts, cmpVal]] as const) for (const r of rs) {
           for (let si = 0; si < def.series.length; si++) {
-            const v = val(si, r);
+            const v = f(si, r);
             if (Number.isFinite(v)) max = Math.max(max, v);
           }
         }
@@ -325,20 +365,51 @@ export class Charts {
             : null,
         );
 
+      // Stacked: each series is a band between the running sums below and including it.
+      const below = (si: number, r: TickStats) => {
+        let sum = 0;
+        for (let k = 0; k < si; k++) sum += val(k, r) || 0;
+        return sum;
+      };
       svg
         .select('.lines')
         .selectAll('path')
         .data(def.series)
         .join('path')
+        .attr('fill', (s) => (def.stacked ? s.color : 'none'))
+        .attr('fill-opacity', def.stacked ? 0.85 : 1)
+        .attr('stroke', (s) => (def.stacked ? 'none' : s.color))
+        .attr('stroke-width', 1.5)
+        .attr('d', (_, si) =>
+          def.stacked
+            ? d3
+                .area<TickStats>()
+                .x((r) => x(r.tick))
+                .y0((r) => y(below(si, r)))
+                .y1((r) => y(below(si, r) + (val(si, r) || 0)))(pts)
+            : d3
+                .line<TickStats>()
+                .defined((r) => Number.isFinite(val(si, r)))
+                .x((r) => x(r.tick))
+                .y((r) => y(val(si, r)))(pts),
+        );
+
+      svg
+        .select('.compare')
+        .selectAll('path')
+        .data(cmpPts.length ? def.series : [])
+        .join('path')
         .attr('fill', 'none')
         .attr('stroke', (s) => s.color)
-        .attr('stroke-width', 1.5)
+        .attr('stroke-width', 1.2)
+        .attr('stroke-dasharray', '3 3')
+        .attr('opacity', 0.75)
         .attr('d', (_, si) =>
           d3
             .line<TickStats>()
-            .defined((r) => Number.isFinite(val(si, r)))
+            .defined((r) => Number.isFinite(cmpVal(si, r)))
             .x((r) => x(r.tick))
-            .y((r) => y(val(si, r)))(pts),
+            .y((r) => y(cmpVal(si, r)))(cmpPts),
         );
 
       svg

@@ -109,7 +109,9 @@
       "Ekteskap: par kan gifte seg når de får barn sammen. Ektefeller foretrekker hverandre, holder sammen, deler mat og forsvarer hverandre, og ektemannen passer på en gravid kone. Nytt gen «troskap» avgjør hvor ofte en gift aktør sier ja til andre. Enker og enkemenn, sjelden skilsmisse, gullstrek mellom ektefeller, og topplister for utroskap og lengst gift.",
       "Kulturer: dannes blant naboer som har levd tett og ligner hverandre, sprer seg til naboer og kan splittes når de blir store og spredt. Hver kultur har navn («Elvefolket») og trekk: fredelighet, deling og fremmedfrykt. Medlemmer skåner og støtter hverandre og deler mat; drap mellom kulturer gir fiendskap som fører til kulturfeider (hvite angrepsstreker) og blekner med tiden. Fargemodus «kultur», kultur i inspektøren og tooltip, egen toppliste og kulturer i grafen over klaner.",
       "Grafikk: gresset er mørkere og frodigere på god jord, aktørene har korte spor bak seg, barn er mindre og vokser, og fødsler (grønn) og dødsfall (grå) gløder kort.",
-      "Kartlag (nedtrekksliste): fruktbarhet, befolkningstetthet, stammeområder, kulturområder, dødssteder de siste 500 ticks og smitte. Erstatter avkrysningen «Fruktbarhet»."
+      "Kartlag (nedtrekksliste): fruktbarhet, befolkningstetthet, stammeområder, kulturområder, dødssteder de siste 500 ticks og smitte. Erstatter avkrysningen «Fruktbarhet».",
+      "Strømgraf i Stammer-fanen: stammenes andel av bestanden gjennom hele historikken, stablet.",
+      "Sammenlign grener: velg en annen gren i grafene («Sammenlign med»). Den vises stiplet oppå, og simuleres videre samtidig med grenen du ser på."
     ]
   }
 }

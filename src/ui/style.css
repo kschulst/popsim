@@ -299,3 +299,5 @@ details.menu .menu-items button { text-align: left; }
 #ele-dialog { max-width: min(460px, calc(100vw - 32px)); }
 
 canvas#world.over-actor:not(.aiming):not(.panning) { cursor: pointer; }
+
+.chart-tabs .compare-select { margin-left: auto; }
