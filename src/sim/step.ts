@@ -3,7 +3,7 @@ import { inherit } from './genome';
 import { givenName } from './names';
 import { clamp, gaussian, rand, shuffle } from './random';
 import { SpatialHash } from './spatial';
-import { hostility, recordKill, stepCultures } from './culture';
+import { hostility, recordKill, sharedCultures, stepCultures } from './culture';
 import { maybeOutbreak, progressInfection } from './disease';
 import { activeEles, applyEles, createEle, eleEffects, floodReach, isFlooded, pickEle, waterDistance, type EleEffects } from './ele';
 import { MACHINE_SIZE, stepMachines, strikeMachine } from './machines';
@@ -372,8 +372,10 @@ class TickContext {
 
   /** Bond from a shared culture: cultureLoyalty × (0.5 + peace), or 0. */
   cultureBond(a: Actor, b: Actor): number {
-    const c = this.culture(a);
-    return c && a.culture === b.culture ? (this.w.rules.cultureLoyalty ?? 0) * (0.5 + c.peace) : 0;
+    // The most peaceful shared culture sets the bond.
+    let peace = -1;
+    for (const id of sharedCultures(a, b)) peace = Math.max(peace, this.w.cultures?.[id]?.peace ?? -1);
+    return peace < 0 ? 0 : (this.w.rules.cultureLoyalty ?? 0) * (0.5 + peace);
   }
 }
 
@@ -1145,7 +1147,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     const myCulture = ctx.culture(a);
     if (myCulture && myCulture.sharing > 0 && a.energy > 0.7 * cap) {
       for (const b of ctx.hash.near(a.x, a.y, 15)) {
-        if (b === a || b.culture !== a.culture || ctx.dead.has(b.id)) continue;
+        if (b === a || ctx.dead.has(b.id) || !sharedCultures(a, b).length) continue;
         const bCap = capacityOf(b, rules);
         if (b.energy >= 0.3 * bCap) continue;
         const give = Math.min(rules.provisionRate * myCulture.sharing, a.energy - 0.7 * cap, 0.3 * bCap - b.energy);

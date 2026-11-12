@@ -290,7 +290,8 @@ export class Inspector {
       }
       if (live.caresFor !== null) conflict += `<dt>Omsorg</dt><dd>passer på ${link(live.caresFor)} til fødselen</dd>`;
       const cul = live.culture !== null && live.culture !== undefined ? w.cultures?.[live.culture] : undefined;
-      conflict += `<dt>Kultur</dt><dd>${cul ? `<span style="color:${cul.color}">${esc(cul.name)}</span> <span class="muted">fred ${Math.round(cul.peace * 100)} % · deling ${Math.round(cul.sharing * 100)} % · fremmedfrykt ${Math.round(cul.xenophobia * 100)} %</span>` : '<span class="muted">ingen</span>'}</dd>`;
+      const extraCul = (live.extraCultures ?? []).map((id) => w.cultures?.[id]).filter(Boolean);
+      conflict += `<dt>Kultur</dt><dd>${extraCul.length ? `også ${extraCul.map((c) => `<span style="color:${c!.color}">${esc(c!.name)}</span>`).join(', ')} · ` : ''}${cul ? `<span style="color:${cul.color}">${esc(cul.name)}</span> <span class="muted">fred ${Math.round(cul.peace * 100)} % · deling ${Math.round(cul.sharing * 100)} % · fremmedfrykt ${Math.round(cul.xenophobia * 100)} %</span>` : '<span class="muted">ingen</span>'}</dd>`;
       if (live.spouse !== null) conflict += `<dt>Gift</dt><dd>med ${link(live.spouse)} siden tick ${live.marriedAt ?? 0}${live.affairs ? ` · ${live.affairs} utroskap` : ''}</dd>`;
       else if (live.widowOf !== null && live.widowOf !== undefined) conflict += `<dt>${live.sex === 'F' ? 'Enke' : 'Enkemann'}</dt><dd>etter ${link(live.widowOf)}</dd>`;
       const dz = w.diseases ?? [];

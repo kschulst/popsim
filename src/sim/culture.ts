@@ -22,6 +22,16 @@ const nameCulture = (w: World): string => {
   return `Folk ${w.cultures.length + 1}`;
 };
 
+/** Every culture an actor belongs to: main culture first, then extra ones. */
+export const memberships = (a: Actor): number[] =>
+  a.culture === null || a.culture === undefined ? [] : [a.culture, ...(a.extraCultures ?? [])];
+
+/** Cultures two actors share. */
+export const sharedCultures = (a: Actor, b: Actor): number[] => {
+  const mb = memberships(b);
+  return memberships(a).filter((c) => mb.includes(c));
+};
+
 /** Hostility between two cultures (symmetric). */
 export const hostility = (w: World, a: number | null, b: number | null): number => {
   if (a === null || b === null || a === b) return 0;
@@ -102,7 +112,7 @@ export const stepCultures = (w: World, near: (a: Actor, r: number) => Iterable<A
     // Assimilation: adopt the most common culture among neighbours, faster the more alike they are.
     const counts = new Map<number, { n: number; sim: number }>();
     for (const b of neighbours) {
-      if (b.culture === null || b.culture === undefined || b.culture === a.culture) continue;
+      if (b.culture === null || b.culture === undefined || memberships(a).includes(b.culture)) continue;
       const e = counts.get(b.culture) ?? { n: 0, sim: 0 };
       e.n++;
       e.sim += similarity(a.genome, b.genome);
@@ -116,7 +126,12 @@ export const stepCultures = (w: World, near: (a: Actor, r: number) => Iterable<A
     if (bestN <= own) continue;
     const e = counts.get(best)!;
     const p = (r.assimilationRate / sampleRate) * (bestN / neighbours.length) * (e.sim / e.n);
-    if (Math.random() < p) a.culture = best;
+    if (Math.random() < p) {
+      // With room for more cultures, join in addition; otherwise switch main culture.
+      const extra = a.extraCultures ?? [];
+      if (a.culture !== null && a.culture !== undefined && 1 + extra.length < (r.maxCultures ?? 1)) a.extraCultures = [...extra, best];
+      else a.culture = best;
+    }
   }
   // Traits drift slowly; hostility fades.
   for (const c of w.cultures) {

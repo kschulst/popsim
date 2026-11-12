@@ -112,7 +112,8 @@
       "Kartlag (nedtrekksliste): fruktbarhet, befolkningstetthet, stammeområder, kulturområder, dødssteder de siste 500 ticks og smitte. Erstatter avkrysningen «Fruktbarhet».",
       "Strømgraf i Stammer-fanen: stammenes andel av bestanden gjennom hele historikken, stablet.",
       "Sammenlign grener: velg en annen gren i grafene («Sammenlign med»). Den vises stiplet oppå, og simuleres videre samtidig med grenen du ser på.",
-      "Ny katastrofe: Storflom. Vannet stiger flere ruter inn over land og trekker seg tilbake; maten der forsvinner, og de som står i vannet, tar skade og søker høyere grunn."
+      "Ny katastrofe: Storflom. Vannet stiger flere ruter inn over land og trekker seg tilbake; maten der forsvinner, og de som står i vannet, tar skade og søker høyere grunn.",
+      "Regelen «Kulturer per aktør» (standard 1): med flere enn 1 kan en aktør høre til flere kulturer samtidig, og samhold og deling gjelder alle felles kulturer."
     ]
   }
 }

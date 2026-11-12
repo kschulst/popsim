@@ -133,6 +133,8 @@ export interface Rules {
   cultureMinGroup: number;
   assimilationRate: number;
   cultureLoyalty: number;
+  /** Most cultures one actor can belong to at once (1 = one culture). */
+  maxCultures: number;
   hostilityDecay: number;
   /** Schism: chance per tick and actor that a local group this far from its culture's centre splits off. */
   schismRate: number;
@@ -234,8 +236,10 @@ export interface Actor {
   foodEaten: number;
   /** Distance moved (world units). */
   distance: number;
-  /** Culture this actor belongs to, or null. */
+  /** Main culture (colour, feuds), or null. */
   culture: number | null;
+  /** Further cultures the actor also belongs to (up to maxCultures − 1). */
+  extraCultures?: number[];
   /** Spouse, or null. `widowOf` is the last spouse who died; `marriedAt` the tick of marriage. */
   spouse: number | null;
   widowOf: number | null;

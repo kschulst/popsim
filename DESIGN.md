@@ -156,7 +156,7 @@ Retningen får støy (`directionNoise`). Styringen er en akselerasjon mot ønske
 - **Splittelse**: i en kultur med over 3 × `cultureMinGroup` medlemmer kan en lokal gruppe over `schismDistance` fra kulturens sentrum bryte ut (sannsynlighet `schismRate`) som en datterkultur med trekk ±0,15.
 - **Samhold**: lojalitet og tilbakeholdenhet mot medlemmer øker med `cultureLoyalty × (0,5 + fredelighet)`. Medlemmer med over 70 % energi gir `provisionRate × deling` til medlemmer under 30 % innen 15 enheter.
 - **Fiendskap**: et drap mellom kulturer øker fiendskapet mellom dem med 1; det blekner med `hostilityDecay` per tick. Angrepsviljen mot en fiendtlig kultur øker med `min(2, fiendskap × fremmedfrykt)` (årsak «kulturfeide»).
-- `maxCultures` (flere kulturer per aktør) er ikke laget; hver aktør har én kultur eller ingen.
+- `maxCultures` (standard 1): med plass til flere legger en aktør til kulturen den tar etter i stedet for å bytte hovedkultur. Samhold bruker den mest fredelige felles kulturen, deling gjelder alle felles kulturer, og farge og feider følger hovedkulturen.
 
 ### Vurdering av andre
 
