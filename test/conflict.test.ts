@@ -35,8 +35,8 @@ describe('conflict', () => {
       w.rules.foodSpontaneous = 0;
       w.rules.foodSpreadRate = 0;
       const [a, b] = w.actors;
-      Object.assign(a, { x: 400, y: 300, energy: 60, sex: 'M' });
-      Object.assign(b, { x: 410, y: 300, energy: 60, sex: 'M' });
+      Object.assign(a, { x: 400, y: 300, energy: 60, sex: 'M', age: 300 });
+      Object.assign(b, { x: 410, y: 300, energy: 60, sex: 'M', age: 300 });
       a.genome.aggression = 1;
       b.genome.aggression = 0;
       // One food cell between them, closer to b, so a competes for it.
