@@ -3,10 +3,11 @@ import { normGene } from '../sim/genome';
 import { hexHue, mainTribe } from '../sim/tribes';
 import type { Actor, Tribe, World } from '../sim/types';
 
-export type ColorMode = 'tribe' | 'lineage' | 'generation' | 'genome' | 'aggression';
+export type ColorMode = 'tribe' | 'culture' | 'lineage' | 'generation' | 'genome' | 'aggression';
 
 export const COLOR_MODE_LABELS: Record<ColorMode, string> = {
   tribe: 'Farge: stamme',
+  culture: 'Farge: kultur',
   lineage: 'Farge: klan',
   generation: 'Farge: generasjon',
   genome: 'Farge: genom',
@@ -58,6 +59,10 @@ export const actorColor = (a: Actor, w: World, mode: ColorMode, maxGen: number):
       const i = mainTribe(a.ancestry);
       const p = a.ancestry[i] ?? 0;
       return `hsl(${hexHue(w.tribes[i].color)}, ${15 + 80 * p}%, ${50 + 12 * p}%)`;
+    }
+    case 'culture': {
+      const c = a.culture === null || a.culture === undefined ? undefined : w.cultures?.[a.culture];
+      return c ? c.color : '#5a6068';
     }
     case 'lineage':
       // Small per-individual lightness offset so members of one clan are distinguishable.

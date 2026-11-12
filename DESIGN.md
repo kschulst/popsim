@@ -148,11 +148,14 @@ Prioritet hver tick: flykt > kamp (mål) > bli med i en kamp > angrip > paring >
 
 Retningen får støy (`directionNoise`). Styringen er en akselerasjon mot ønsket hastighet, dempet av `friction`.
 
-### Kulturer og samarbeid (v3, planlagt)
+### Kulturer og samarbeid (v5)
 
-- Kulturer oppstår når aktører har levd nær andre med likhetstrekk (geografi, egenskaper, ikke nødvendigvis stamme). Eksplisitte kulturer med medlemskap, og kulturtrekk som sprer seg mellom naboer. Hver aktør kan være med i inntil `maxCultures` kulturer (standard 1). Barn blir med i foreldrenes kultur.
-- Samme kultur: høyere terskel for å angripe, større vilje til å hjelpe (energideling, felles forsvar).
-- Fiendskap mellom kulturer øker når et medlem blir drept av en fra en annen kultur.
+- **Dannelse**: hver tick ser 10 % av aktørene på naboene innen `cultureRadius`. En aktør uten kultur med minst `cultureMinGroup − 1` naboer uten kultur som ligner (genomlikhet over 0,8) danner en ny kultur med dem. Navn genereres som «<sted>folket». Trekk: fredelighet, deling og fremmedfrykt (0–1), som driver sakte.
+- **Spredning**: en aktør tar etter den vanligste nabokulturen hvis den har flere naboer enn egen kultur, med sannsynlighet `assimilationRate × andel naboer i kulturen × snittlikhet`. Barn får morens kultur.
+- **Splittelse**: i en kultur med over 3 × `cultureMinGroup` medlemmer kan en lokal gruppe over `schismDistance` fra kulturens sentrum bryte ut (sannsynlighet `schismRate`) som en datterkultur med trekk ±0,15.
+- **Samhold**: lojalitet og tilbakeholdenhet mot medlemmer øker med `cultureLoyalty × (0,5 + fredelighet)`. Medlemmer med over 70 % energi gir `provisionRate × deling` til medlemmer under 30 % innen 15 enheter.
+- **Fiendskap**: et drap mellom kulturer øker fiendskapet mellom dem med 1; det blekner med `hostilityDecay` per tick. Angrepsviljen mot en fiendtlig kultur øker med `min(2, fiendskap × fremmedfrykt)` (årsak «kulturfeide»).
+- `maxCultures` (flere kulturer per aktør) er ikke laget; hver aktør har én kultur eller ingen.
 
 ### Vurdering av andre
 

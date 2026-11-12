@@ -137,9 +137,12 @@ const buildDefs = (tribes: Tribe[]): ChartDef[] => [
     ],
   },
   {
-    title: 'Klaner (levende etternavn)',
+    title: 'Klaner og kulturer',
     group: 'Stammer',
-    series: [{ label: 'klaner', color: '#f2c94c', value: (s) => s.surnames }],
+    series: [
+      { label: 'klaner', color: '#f2c94c', value: (s) => s.surnames },
+      { label: 'kulturer', color: '#46f0f0', value: (s) => s.cultures ?? 0 },
+    ],
   },
   {
     title: 'Ruter med mat',

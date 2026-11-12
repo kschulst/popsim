@@ -175,6 +175,7 @@ export const spawnSeed = (world: World, opts: NewActor): Actor => {
     distance: 0,
     hydration: 1,
     lonely: 0,
+    culture: null,
     spouse: null,
     widowOf: null,
     marriedAt: 0,
@@ -254,6 +255,7 @@ export const createEmptyWorld = (config: WorldConfig = DEFAULT_CONFIG): World =>
     events: [],
     carcasses: [],
     shelters,
+    cultures: [],
     machines: [],
   };
 };

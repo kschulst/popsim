@@ -28,6 +28,7 @@ export const ATTACK_COLORS: Record<AttackReason, string> = {
   protect: '#4fa3ff',
   join: '#b77bff',
   defend: '#ffb23a',
+  feud: '#ffffff',
 };
 
 export const ATTACK_LABELS: Record<AttackReason, string> = {
@@ -36,6 +37,7 @@ export const ATTACK_LABELS: Record<AttackReason, string> = {
   protect: 'forsvarer gravid/partner',
   join: 'blander seg inn i kamp',
   defend: 'slår tilbake',
+  feud: 'kulturfeide (fiendskap mellom kulturer)',
 };
 
 /** Colours of partner lines and status badges; also used by the map legend. */

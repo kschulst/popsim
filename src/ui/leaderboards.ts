@@ -1,6 +1,7 @@
 import { kinship, type Death, type LifeRecord, type Registry } from '../sim/genealogy';
 import { fullName } from '../sim/names';
 import { attractiveness } from '../sim/attractiveness';
+import { cultureSizes, hostility } from '../sim/culture';
 import { ELE_DEFS } from '../sim/ele';
 import { mainTribe, purity } from '../sim/tribes';
 import type { Actor, DeathCause, GeneKey, Tally, World } from '../sim/types';
@@ -351,6 +352,29 @@ const BOARDS: Board[] = [
       return [...span]
         .filter(([, [, end]]) => end !== Infinity)
         .map(([label, [start, end]]) => ({ label, value: end - start, text: `${end - start} ticks (${start}–${end})`, color: surnameColor(c.w, label) }));
+    },
+  },
+  {
+    key: 'cultures',
+    group: 'Grupper',
+    title: 'Kulturer',
+    description: 'Kulturer med levende medlemmer, med trekk og det sterkeste fiendskapet.',
+    html: (c) => {
+      const sizes = cultureSizes(c.w);
+      const list = (c.w.cultures ?? []).filter((k) => sizes.has(k.id)).sort((a, b) => sizes.get(b.id)! - sizes.get(a.id)!);
+      if (!list.length) return '<p class="muted">Ingen kulturer ennå.</p>';
+      const pct = (v: number) => `${Math.round(v * 100)} %`;
+      return `<table class="matrix"><tr><th>Kultur</th><th>Medlemmer</th><th>Fra tick</th><th>Fred</th><th>Deling</th><th>Fremmedfrykt</th><th>Fiende</th></tr>${list
+        .map((k) => {
+          let foe = '';
+          let foeV = 0;
+          for (const o of c.w.cultures) {
+            const v = hostility(c.w, k.id, o.id);
+            if (v > foeV) [foe, foeV] = [o.name, v];
+          }
+          return `<tr><th style="color:${k.color}">${esc(k.name)}</th><td class="num">${sizes.get(k.id)}</td><td class="num">${k.founded}</td><td class="num">${pct(k.peace)}</td><td class="num">${pct(k.sharing)}</td><td class="num">${pct(k.xenophobia)}</td><td>${foe ? `${esc(foe)} (${foeV.toFixed(1).replace('.', ',')})` : ''}</td></tr>`;
+        })
+        .join('')}</table>`;
     },
   },
   {

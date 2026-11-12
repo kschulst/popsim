@@ -3,11 +3,12 @@ import { inherit } from './genome';
 import { givenName } from './names';
 import { clamp, gaussian, rand, shuffle } from './random';
 import { SpatialHash } from './spatial';
+import { hostility, recordKill, stepCultures } from './culture';
 import { maybeOutbreak, progressInfection } from './disease';
 import { activeEles, applyEles, createEle, eleEffects, pickEle, type EleEffects } from './ele';
 import { MACHINE_SIZE, stepMachines, strikeMachine } from './machines';
 import { mixAncestry, overlap, purity } from './tribes';
-import type { Actor, AttackReason, Embryo, TickDeath, TickEvents, World } from './types';
+import type { Actor, AttackReason, Culture, Embryo, TickDeath, TickEvents, World } from './types';
 import { capacityOf, hpFactor, isWater, maxHpOf, radiusOf } from './world';
 
 export type ParentsOf = (id: number) => [number, number] | null | undefined;
@@ -276,7 +277,11 @@ class TickContext {
   loyalty(a: Actor, b: Actor): number {
     const r = this.w.rules;
     const k = this.kin(a, b);
-    return r.tribeLoyalty * overlap(a.ancestry, b.ancestry) + (k ? r.kinLoyalty * kinWeight(k.relation, r.kinWeights) : 0);
+    return (
+      r.tribeLoyalty * overlap(a.ancestry, b.ancestry) +
+      (k ? r.kinLoyalty * kinWeight(k.relation, r.kinWeights) : 0) +
+      this.cultureBond(a, b)
+    );
   }
 
   private protecteeCache = new Map<number, { p: Actor; weight: number } | null>();
@@ -335,6 +340,18 @@ class TickContext {
 
   kill(victim: Actor, killer: Actor): void {
     this.die(victim, 'killed', killer);
+    recordKill(this.w, killer, victim);
+  }
+
+  /** Culture of an actor's culture id, or undefined. */
+  culture(a: Actor): Culture | undefined {
+    return a.culture === null || a.culture === undefined ? undefined : this.w.cultures?.[a.culture];
+  }
+
+  /** Bond from a shared culture: cultureLoyalty × (0.5 + peace), or 0. */
+  cultureBond(a: Actor, b: Actor): number {
+    const c = this.culture(a);
+    return c && a.culture === b.culture ? (this.w.rules.cultureLoyalty ?? 0) * (0.5 + c.peace) : 0;
   }
 }
 
@@ -556,16 +573,20 @@ const considerAttack = (ctx: TickContext, a: Actor, vision: number, food: { x: n
     const foodComp = food && (food.x - b.x) ** 2 + (food.y - b.y) ** 2 < foodD2 ? 1 : 0;
     const nearProtectee =
       prot && b !== prot.p && Math.hypot(b.x - prot.p.x, b.y - prot.p.y) <= r.guardDistance ? 1 : 0;
+    // Feud: hostility between the cultures, scaled by a's culture's xenophobia.
+    const feud = Math.min(2, hostility(w, a.culture ?? null, b.culture ?? null) * (ctx.culture(a)?.xenophobia ?? 0));
     const motive =
       r.hungerWeight * hunger +
       r.foodCompetitionWeight * foodComp +
       r.rivalryWeight * rival +
-      nearProtectee * r.hungerWeight * protHunger * (prot?.weight ?? 0);
+      nearProtectee * r.hungerWeight * protHunger * (prot?.weight ?? 0) +
+      feud;
     // Upper bound with odds = 1, before loyalty: skip the costly part when it cannot pass.
     if (aggr * motive * 2 <= bestDesire) continue;
     const k = ctx.kin(a, b);
     const restraint =
-      restraintFactor * (r.tribeLoyalty * overlap(a.ancestry, b.ancestry) + (k ? r.kinLoyalty * kinWeight(k.relation, r.kinWeights) : 0));
+      restraintFactor *
+      (r.tribeLoyalty * overlap(a.ancestry, b.ancestry) + (k ? r.kinLoyalty * kinWeight(k.relation, r.kinWeights) : 0) + ctx.cultureBond(a, b));
     if (aggr * motive * 2 - restraint <= bestDesire) continue;
     const desire = aggr * motive * 2 * odds(ctx, a, b) - restraint;
     if (desire > bestDesire) {
@@ -576,8 +597,8 @@ const considerAttack = (ctx: TickContext, a: Actor, vision: number, food: { x: n
       const foodTerm = r.foodCompetitionWeight * foodComp;
       const rivalTerm = r.rivalryWeight * rival;
       const protectTerm = nearProtectee * r.hungerWeight * protHunger * (prot?.weight ?? 0);
-      bestReason =
-        rivalTerm > foodTerm && rivalTerm >= protectTerm ? 'rival' : protectTerm > foodTerm ? 'protect' : 'food';
+      const top = Math.max(foodTerm, rivalTerm, protectTerm, feud);
+      bestReason = top === 0 || top === foodTerm ? 'food' : top === feud ? 'feud' : top === rivalTerm ? 'rival' : 'protect';
     }
   }
   if (best) {
@@ -723,6 +744,7 @@ const deliver = (ctx: TickContext, mother: Actor): Actor[] => {
       genome: e.genome,
       dominance: e.dominance,
       ancestry: e.ancestry,
+      culture: mother.culture ?? null,
       x: clamp(mother.x + Math.cos(angle) * 4, 0, w.width),
       y: clamp(mother.y + Math.sin(angle) * 4, 0, w.height),
       vx: 0,
@@ -826,6 +848,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
   );
   ctx.fx = eleEffects(w);
   regrowFood(w, ctx.fx);
+  stepCultures(w, (a, r) => ctx.hash.near(a.x, a.y, r), (id) => ctx.dead.has(id));
   if (w.carcasses?.length) {
     const decay = rules.carrionDecay ?? 0;
     w.carcasses = w.carcasses.filter((c) => (c.energy -= decay) > 0);
@@ -1081,6 +1104,22 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       a.energy -= pay;
       preg.motherPaid += pay;
       if (w.tick >= preg.due && a.energy > 0) births.push(...deliver(ctx, a));
+    }
+
+    // Culture members share with members in need nearby, as much as the culture's sharing trait says.
+    const myCulture = ctx.culture(a);
+    if (myCulture && myCulture.sharing > 0 && a.energy > 0.7 * cap) {
+      for (const b of ctx.hash.near(a.x, a.y, 15)) {
+        if (b === a || b.culture !== a.culture || ctx.dead.has(b.id)) continue;
+        const bCap = capacityOf(b, rules);
+        if (b.energy >= 0.3 * bCap) continue;
+        const give = Math.min(rules.provisionRate * myCulture.sharing, a.energy - 0.7 * cap, 0.3 * bCap - b.energy);
+        if (give > 0) {
+          a.energy -= give;
+          b.energy += give * 0.9;
+        }
+        break;
+      }
     }
 
     // Spouses share energy when one is low and the other can spare it.

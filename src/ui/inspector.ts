@@ -110,6 +110,7 @@ export const describeActor = (w: World, reg: Registry, a: Actor): string[] => {
     protect: 'for å beskytte en gravid',
     join: 'i andres kamp',
     defend: 'slår tilbake',
+    feud: 'i kulturfeide',
   };
   const lines: string[] = [];
   const attackers = w.actors.filter((x) => x.target === a.id);
@@ -118,6 +119,8 @@ export const describeActor = (w: World, reg: Registry, a: Actor): string[] => {
   if (a.target !== null) lines.push(`Angriper ${name(a.target)}${rel(a.target)} ${REASONS[a.targetReason ?? 'food'] ?? ''}`.trim());
   if (attackers.length) lines.push(`Blir angrepet av ${attackers.map((x) => name(x.id) + rel(x.id)).join(', ')}`);
   if (a.caresFor !== null) lines.push(`Passer på ${name(a.caresFor)} som er gravid`);
+  const cul = a.culture !== null && a.culture !== undefined ? w.cultures?.[a.culture] : undefined;
+  if (cul) lines.push(`Kultur: ${cul.name}`);
   if (a.spouse !== null && a.spouse !== undefined) lines.push(`Gift med ${name(a.spouse)}`);
   else if (a.widowOf !== null && a.widowOf !== undefined) lines.push(`${a.sex === 'F' ? 'Enke' : 'Enkemann'} etter ${name(a.widowOf)}`);
   if (a.pregnancy) {
@@ -286,6 +289,8 @@ export class Inspector {
         conflict += `<dt>Gravid</dt><dd>${n === 1 ? 'ett barn' : n === 2 ? 'tvillinger' : n === 3 ? 'trillinger' : `${n} barn`} med ${link(p.father)} · termin tick ${p.due} · betalt ${p.motherPaid.toFixed(0)}/${p.motherNeed.toFixed(0)} energi</dd>`;
       }
       if (live.caresFor !== null) conflict += `<dt>Omsorg</dt><dd>passer på ${link(live.caresFor)} til fødselen</dd>`;
+      const cul = live.culture !== null && live.culture !== undefined ? w.cultures?.[live.culture] : undefined;
+      conflict += `<dt>Kultur</dt><dd>${cul ? `<span style="color:${cul.color}">${esc(cul.name)}</span> <span class="muted">fred ${Math.round(cul.peace * 100)} % · deling ${Math.round(cul.sharing * 100)} % · fremmedfrykt ${Math.round(cul.xenophobia * 100)} %</span>` : '<span class="muted">ingen</span>'}</dd>`;
       if (live.spouse !== null) conflict += `<dt>Gift</dt><dd>med ${link(live.spouse)} siden tick ${live.marriedAt ?? 0}${live.affairs ? ` · ${live.affairs} utroskap` : ''}</dd>`;
       else if (live.widowOf !== null && live.widowOf !== undefined) conflict += `<dt>${live.sex === 'F' ? 'Enke' : 'Enkemann'}</dt><dd>etter ${link(live.widowOf)}</dd>`;
       const dz = w.diseases ?? [];

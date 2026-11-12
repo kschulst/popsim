@@ -127,6 +127,16 @@ export interface Rules {
   carrionBite: number;
   /** Lowest mate score both partners accept. */
   minMateScore: number;
+  /** Cultures: neighbourhood radius, smallest founding group, assimilation per tick, restraint/support
+   * for members, and how fast hostility fades per tick. cultureRadius 0 turns cultures off. */
+  cultureRadius: number;
+  cultureMinGroup: number;
+  assimilationRate: number;
+  cultureLoyalty: number;
+  hostilityDecay: number;
+  /** Schism: chance per tick and actor that a local group this far from its culture's centre splits off. */
+  schismRate: number;
+  schismDistance: number;
   /** Chance that a couple marries at a conception when neither is married. */
   marriageRate: number;
   /** Extra partner score for the spouse. */
@@ -224,6 +234,8 @@ export interface Actor {
   foodEaten: number;
   /** Distance moved (world units). */
   distance: number;
+  /** Culture this actor belongs to, or null. */
+  culture: number | null;
   /** Spouse, or null. `widowOf` is the last spouse who died; `marriedAt` the tick of marriage. */
   spouse: number | null;
   widowOf: number | null;
@@ -361,7 +373,23 @@ export interface Disease {
  * Why an actor attacks: hunger (competition for food), rival (same partner), protect (a pregnant
  * relative or partner), join (took a side in someone else's fight), defend (fought back).
  */
-export type AttackReason = 'food' | 'rival' | 'protect' | 'join' | 'defend';
+export type AttackReason = 'food' | 'rival' | 'protect' | 'join' | 'defend' | 'feud';
+
+/** A culture: formed among neighbours who are alike; traits drift slowly. */
+export interface Culture {
+  id: number;
+  name: string;
+  color: string;
+  founded: number;
+  /** The culture it split from, or null if it formed on its own. */
+  parent: number | null;
+  /** 0–1: restraint towards members. */
+  peace: number;
+  /** 0–1: energy sharing with members in need. */
+  sharing: number;
+  /** 0–1: aggression towards cultures it is hostile to. */
+  xenophobia: number;
+}
 
 export interface Tribe {
   name: string;
@@ -394,6 +422,8 @@ export interface TickStats {
   deathsDisease: number;
   deathsCatastrophe: number;
   deathsThirst: number;
+  /** Cultures with living members. */
+  cultures: number;
   /** Actors ill at the end of the tick. */
   infected: number;
   /** Embryos lost because the mother died while pregnant. */
@@ -435,6 +465,10 @@ export interface World {
   diseases: Disease[];
   /** Every extinction level event so far. */
   events: EleEvent[];
+  /** Every culture that has formed, indexed by id. */
+  cultures: Culture[];
+  /** Hostility between cultures, keyed "a-b" with a < b. */
+  hostility?: Record<string, number>;
   /** Caves: places that shelter from cold, ice and disease. */
   shelters: { x: number; y: number; r: number }[];
   /** Bodies of the dead that can be eaten until they rot away. */
