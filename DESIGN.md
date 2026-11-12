@@ -105,6 +105,7 @@ Svært sjeldne hendelser (`eleRate`, standard 0,00002 per tick ≈ én per 50 00
 | Ufruktbarhetsplage | Unnfangelse −95 % |
 | Strålingsstorm | Mutasjonsstyrke × 10 |
 | Raseri | Alle har maks aggresjon, halv lojalitet |
+| Storflom | Vannet stiger inntil 4 × √alvorlighet ruter inn over land (avstand til nærmeste vann), holder seg og trekker seg tilbake. Mat i flomområdet forsvinner; aktører der bruker dobbel grunnkostnad, mister 2 helse per tick og går mot ruter lenger fra vann |
 | Maskinoppvåkning | 3 maskiner (× alvorlighet) våkner; de søker mat, bygger en ny maskin per 120 energi (maks 60 × alvorlighet), bruker 0,25 energi per tick og slår aktører innen 7 enheter hvert 15. tick. Aktører som er truffet, eller har aggresjon over 0,3, slår maskiner ved siden av seg. Over når alle er ødelagt eller tiden løper ut |
 
 Fruktbarhetskartet endres ikke (det deles mellom lagrede tilstander); romlige effekter er en multiplikator som regnes ut fra aktive hendelser.

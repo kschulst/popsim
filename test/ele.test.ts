@@ -30,3 +30,28 @@ describe('extinction level events', () => {
     }
   });
 });
+
+describe('flood', () => {
+  it('rises inland and clears food on flooded land', async () => {
+    const { floodReach, isFlooded, waterDistance } = await import('../src/sim/ele');
+    const w = createWorld();
+    if (!w.fertility.some((f) => f < 0)) return; // map without water
+    const e = createEle(w, 'flood', true);
+    e.end = e.tick + 100;
+    for (let t = 0; t < 45; t++) step(w, () => null);
+    const reach = floodReach(w);
+    expect(reach).toBeGreaterThan(0);
+    const dist = waterDistance(w);
+    let flooded = 0;
+    let withFood = 0;
+    for (let i = 0; i < dist.length; i++) {
+      if (dist[i] > 0 && dist[i] <= reach) {
+        flooded++;
+        if (w.food[i]) withFood++;
+      }
+    }
+    expect(flooded).toBeGreaterThan(0);
+    expect(withFood).toBe(0);
+    expect(isFlooded(w, -1, -1, 0)).toBe(false);
+  });
+});

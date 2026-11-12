@@ -18,7 +18,7 @@ export interface EleDef {
   duration: [number, number];
 }
 
-export const ELE_KEYS: EleKey[] = ['meteor', 'volcano', 'plague', 'iceAge', 'locusts', 'drought', 'infertility', 'radiation', 'rage', 'machines'];
+export const ELE_KEYS: EleKey[] = ['meteor', 'volcano', 'plague', 'iceAge', 'locusts', 'drought', 'infertility', 'radiation', 'rage', 'machines', 'flood'];
 
 export const ELE_DEFS: Record<EleKey, EleDef> = {
   meteor: {
@@ -68,6 +68,12 @@ export const ELE_DEFS: Record<EleKey, EleDef> = {
     icon: '☢',
     description: 'Mutasjonsstyrken ganges med 10: rask og kaotisk evolusjon.',
     duration: [200, 400],
+  },
+  flood: {
+    name: 'Storflom',
+    icon: '🌊',
+    description: 'Vannet stiger opp til flere ruter inn over land og trekker seg så tilbake. Maten i flomområdet forsvinner, og de som står i vannet, tar skade og bruker mer energi. Krever vann på kartet.',
+    duration: [300, 700],
   },
   machines: {
     name: 'Maskinoppvåkning',
@@ -134,6 +140,61 @@ export const createEle = (w: World, key: EleKey, manual: boolean, at?: { x: numb
   }
   w.events.push(ev);
   return ev;
+};
+
+/** Distance in cells from each cell to the nearest water cell (255 = far), cached per terrain. */
+const waterDistCache = new WeakMap<Float32Array, Uint8Array>();
+export const waterDistance = (w: World): Uint8Array => {
+  const cached = waterDistCache.get(w.fertility);
+  if (cached) return cached;
+  const { cols, rows, fertility } = w;
+  const dist = new Uint8Array(cols * rows).fill(255);
+  const queue: number[] = [];
+  for (let i = 0; i < dist.length; i++) if (fertility[i] < 0) {
+    dist[i] = 0;
+    queue.push(i);
+  }
+  for (let q = 0; q < queue.length; q++) {
+    const i = queue[q];
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const rr = r + dr;
+      const cc = c + dc;
+      if (rr < 0 || rr >= rows || cc < 0 || cc >= cols) continue;
+      const j = rr * cols + cc;
+      if (dist[j] > dist[i] + 1) {
+        dist[j] = dist[i] + 1;
+        queue.push(j);
+      }
+    }
+  }
+  waterDistCache.set(w.fertility, dist);
+  return dist;
+};
+
+/** How many cells inland the flood of event e reaches now: rises over 30 %, holds, recedes over 40 %. */
+export const floodLevel = (w: World, e: EleEvent): number => {
+  const p = clamp((w.tick - e.tick) / Math.max(1, e.end - e.tick), 0, 1);
+  const max = Math.round(4 * Math.sqrt(e.severity));
+  const f = p < 0.3 ? p / 0.3 : p < 0.6 ? 1 : (1 - p) / 0.4;
+  return Math.round(max * f);
+};
+
+/** Current flood reach in cells (0 when no flood is active). */
+export const floodReach = (w: World): number => {
+  let level = 0;
+  for (const e of activeEles(w)) if (e.key === 'flood') level = Math.max(level, floodLevel(w, e));
+  return level;
+};
+
+/** True if (x, y) is flooded land right now. */
+export const isFlooded = (w: World, x: number, y: number, reach = floodReach(w)): boolean => {
+  if (reach <= 0) return false;
+  const c = Math.min(w.cols - 1, Math.max(0, Math.floor(x / w.cellSize)));
+  const r = Math.min(w.rows - 1, Math.max(0, Math.floor(y / w.cellSize)));
+  const d = waterDistance(w)[r * w.cols + c];
+  return d > 0 && d <= reach;
 };
 
 export const activeEles = (w: World): EleEvent[] => (w.events ?? []).filter((e) => e.applied && w.tick < e.end);
@@ -226,6 +287,8 @@ export const eleEffects = (w: World): EleEffects => {
         break;
     }
   }
+  const reach = floodReach(w);
+  if (reach > 0) spatial.push((x, y) => (isFlooded(w, x, y, reach) ? 0 : 1));
   if (spatial.length) fx.cellFactor = (x, y) => spatial.reduce((m, f) => m * f(x, y), 1);
   if (ices.length) fx.costFactor = (x, y) => (ices.some((e) => underIce(w, e, x, y)) ? 3 : 1);
   return fx;

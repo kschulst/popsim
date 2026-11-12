@@ -1,4 +1,4 @@
-import { activeEles, ELE_DEFS, eleEffects, iceCover } from '../sim/ele';
+import { activeEles, ELE_DEFS, eleEffects, floodLevel, iceCover, waterDistance } from '../sim/ele';
 import { seasonFactor } from '../sim/step';
 import type { Actor, AttackReason, World } from '../sim/types';
 import { capacityOf, maxHpOf, radiusOf } from '../sim/world';
@@ -414,6 +414,18 @@ export class Renderer {
             const d = r * Math.sqrt(((i * 0.618 + w.tick * 0.013) % 1));
             ctx.fillRect(X(e.x!) + Math.cos(a) * d, Y(e.y!) + Math.sin(a) * d, 2 * dpr, 2 * dpr);
           }
+          break;
+        }
+        case 'flood': {
+          const reach = floodLevel(w, e);
+          if (reach <= 0) break;
+          const dist = waterDistance(w);
+          ctx.fillStyle = 'rgba(70, 130, 200, 0.55)';
+          for (let r = 0; r < w.rows; r++)
+            for (let c = 0; c < w.cols; c++) {
+              const d = dist[r * w.cols + c];
+              if (d > 0 && d <= reach) ctx.fillRect(X(c * w.cellSize), Y(r * w.cellSize), w.cellSize * s + 0.5, w.cellSize * s + 0.5);
+            }
           break;
         }
         case 'drought':

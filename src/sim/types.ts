@@ -297,7 +297,7 @@ export interface Courtship {
   ttl: number;
 }
 
-export type EleKey = 'meteor' | 'volcano' | 'plague' | 'iceAge' | 'locusts' | 'drought' | 'infertility' | 'radiation' | 'rage' | 'machines';
+export type EleKey = 'meteor' | 'volcano' | 'plague' | 'iceAge' | 'locusts' | 'drought' | 'infertility' | 'radiation' | 'rage' | 'machines' | 'flood';
 
 /** Meat left by a dead actor. */
 export interface Carcass {

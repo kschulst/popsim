@@ -53,7 +53,7 @@ export const DEFAULT_RULES: Rules = {
   sicknessWeakness: 0.3,
   eleRate: 0.00002,
   eleSeverity: 1,
-  eleWeights: { meteor: 1, volcano: 1, plague: 1, iceAge: 1, locusts: 1, drought: 1, infertility: 1, radiation: 1, rage: 1, machines: 1 },
+  eleWeights: { meteor: 1, volcano: 1, plague: 1, iceAge: 1, locusts: 1, drought: 1, infertility: 1, radiation: 1, rage: 1, machines: 1, flood: 1 },
   friction: 0.1,
   steerStrength: 0.25,
   directionNoise: 0.3,

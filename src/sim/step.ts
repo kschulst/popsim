@@ -5,7 +5,7 @@ import { clamp, gaussian, rand, shuffle } from './random';
 import { SpatialHash } from './spatial';
 import { hostility, recordKill, stepCultures } from './culture';
 import { maybeOutbreak, progressInfection } from './disease';
-import { activeEles, applyEles, createEle, eleEffects, pickEle, type EleEffects } from './ele';
+import { activeEles, applyEles, createEle, eleEffects, floodReach, isFlooded, pickEle, waterDistance, type EleEffects } from './ele';
 import { MACHINE_SIZE, stepMachines, strikeMachine } from './machines';
 import { mixAncestry, overlap, purity } from './tribes';
 import type { Actor, AttackReason, Culture, Embryo, TickDeath, TickEvents, World } from './types';
@@ -174,6 +174,24 @@ const seekShelter = (a: Actor, w: World, range: number): { x: number; y: number 
   return out;
 };
 
+/** A point one step further from water than the actor's cell (uphill out of a flood), or null. */
+const dryLand = (w: World, a: Actor): { x: number; y: number } | null => {
+  const dist = waterDistance(w);
+  const c = Math.floor(a.x / w.cellSize);
+  const r = Math.floor(a.y / w.cellSize);
+  let best: { x: number; y: number } | null = null;
+  let bd = dist[Math.min(w.rows - 1, Math.max(0, r)) * w.cols + Math.min(w.cols - 1, Math.max(0, c))];
+  for (let dr = -2; dr <= 2; dr++)
+    for (let dc = -2; dc <= 2; dc++) {
+      const rr = r + dr;
+      const cc = c + dc;
+      if (rr < 0 || rr >= w.rows || cc < 0 || cc >= w.cols) continue;
+      const d = dist[rr * w.cols + cc];
+      if (d > bd) [bd, best] = [d, { x: (cc + 0.5) * w.cellSize, y: (rr + 0.5) * w.cellSize }];
+    }
+  return best;
+};
+
 /** Hydration below which an actor goes looking for water before anything but fighting. */
 const THIRSTY = 0.35;
 
@@ -243,6 +261,8 @@ class TickContext {
   hasWater: boolean;
   /** Season growth factor this tick (1 = no seasons, below 1 = winter). */
   season: number;
+  /** Current flood reach in cells (0 = no flood). */
+  flood: number;
   private readonly ancestorCache = new Map<number, Map<number, number>>();
 
   constructor(
@@ -252,6 +272,7 @@ class TickContext {
     this.fx = eleEffects(w);
     this.hasWater = w.fertility.some((f) => f < 0);
     this.season = seasonFactor(w);
+    this.flood = floodReach(w);
     this.hash = new SpatialHash(40, w.width);
     for (const a of w.actors) {
       this.hash.insert(a);
@@ -928,6 +949,8 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
     if (a.hydration === undefined) a.hydration = 1;
     const thirstGoal = ctx.hasWater && a.hydration < THIRSTY && !nursingMother ? seekWater(a, w, vision) : null;
     // Shelter: in harsh cold (deep winter or ice nearby) weak actors head for the nearest cave they know of (2 × vision).
+    // In a flood, head away from the water (towards higher ground).
+    const floodGoal = ctx.flood > 0 && isFlooded(w, a.x, a.y, ctx.flood) ? dryLand(w, a) : null;
     const inShelter = shelterAt(w, a.x, a.y) !== undefined;
     const harsh = ctx.season < 0.75 || ctx.fx.costFactor(a.x, a.y) > 1;
     const shelterGoal =
@@ -958,6 +981,9 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       speed = maxSpeed;
     } else if (target) {
       goal = target;
+      speed = maxSpeed;
+    } else if (floodGoal) {
+      goal = floodGoal;
       speed = maxSpeed;
     } else if (thirstGoal) {
       goal = thirstGoal;
@@ -1051,6 +1077,13 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
       if (nursingMother) a.hydration = 1;
       else if (nearWater(w, a.x, a.y, radius + w.cellSize * 0.75)) a.hydration = Math.min(1, a.hydration + 0.1);
       else a.hydration -= rules.thirstRate ?? 0;
+    }
+
+    // Flood: wading costs double and slowly drowns.
+    if (ctx.flood > 0 && isFlooded(w, a.x, a.y, ctx.flood)) {
+      a.energy -= rules.baseCost * a.genome.size;
+      a.hp -= 2;
+      if (a.hp <= 0) ctx.die(a, 'catastrophe');
     }
 
     // 4. Energy cost and healing.
