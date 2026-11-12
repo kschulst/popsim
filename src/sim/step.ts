@@ -315,6 +315,7 @@ class TickContext {
   die(a: Actor, cause: TickDeath['cause'], killer?: Actor, disease?: number): void {
     if (this.dead.has(a.id)) return;
     this.dead.add(a.id);
+    (this.w.recentDeaths ??= []).push({ x: a.x, y: a.y, tick: this.w.tick, cause });
     const meat = (this.w.rules.carrionPerSize ?? 0) * a.genome.size;
     if (meat > 0) (this.w.carcasses ??= []).push({ x: a.x, y: a.y, energy: meat });
     if (killer) killer.kills++;
@@ -849,6 +850,7 @@ export const step = (w: World, parentsOf: ParentsOf): TickEvents => {
   ctx.fx = eleEffects(w);
   regrowFood(w, ctx.fx);
   stepCultures(w, (a, r) => ctx.hash.near(a.x, a.y, r), (id) => ctx.dead.has(id));
+  if (w.recentDeaths?.length) w.recentDeaths = w.recentDeaths.filter((d) => w.tick - d.tick <= 500);
   if (w.carcasses?.length) {
     const decay = rules.carrionDecay ?? 0;
     w.carcasses = w.carcasses.filter((c) => (c.energy -= decay) > 0);

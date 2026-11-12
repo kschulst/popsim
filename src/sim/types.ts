@@ -465,6 +465,8 @@ export interface World {
   diseases: Disease[];
   /** Every extinction level event so far. */
   events: EleEvent[];
+  /** Where actors died in the last 500 ticks (for the deaths map layer). */
+  recentDeaths?: { x: number; y: number; tick: number; cause: DeathCause }[];
   /** Every culture that has formed, indexed by id. */
   cultures: Culture[];
   /** Hostility between cultures, keyed "a-b" with a < b. */

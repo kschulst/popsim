@@ -16,7 +16,7 @@ import { ancestryBreakdown, CAUSE_LABELS, describeActor, Inspector, kinMap, life
 import { surnameColor } from './colors';
 import { Leaderboards } from './leaderboards';
 import { createEle, ELE_DEFS, ELE_KEYS } from '../sim/ele';
-import { ATTACK_COLORS, ATTACK_LABELS, MARK_COLORS, Renderer } from './renderer';
+import { ATTACK_COLORS, ATTACK_LABELS, LAYER_LABELS, MARK_COLORS, Renderer, type MapLayer } from './renderer';
 import { Timeline } from './timeline';
 
 /** Oldest export version this build can read (v3 adds pregnancy, ageing and disease to actors). */
@@ -39,7 +39,7 @@ let tickBudget = 0;
 let lastFrame = 0;
 let colorMode: ColorMode = 'tribe';
 let selectedId: number | null = null;
-let showFertility = false;
+let mapLayer: MapLayer = 'none';
 let showCourtship = true;
 let brushPos: { x: number; y: number } | null = null;
 let painting = false;
@@ -540,9 +540,9 @@ updateSpeed();
 $<HTMLInputElement>('show-courtship').onchange = (e) => {
   showCourtship = (e.target as HTMLInputElement).checked;
 };
-$<HTMLInputElement>('show-fertility').onchange = (e) => {
-  showFertility = (e.target as HTMLInputElement).checked;
-};
+const layerSelect = $<HTMLSelectElement>('map-layer');
+layerSelect.innerHTML = (Object.keys(LAYER_LABELS) as MapLayer[]).map((k) => `<option value="${k}">${LAYER_LABELS[k]}</option>`).join('');
+layerSelect.onchange = () => (mapLayer = layerSelect.value as MapLayer);
 
 const colorSelect = $<HTMLSelectElement>('color-mode');
 colorSelect.innerHTML = Object.entries(COLOR_MODE_LABELS)
@@ -854,7 +854,8 @@ const frame = (now: number) => {
     colorMode,
     selectedId,
     kin,
-    showFertility: showFertility || placing !== null || (editor.active && editor.brushOn && editor.brushMode.endsWith('Fertile')),
+    showFertility: placing !== null || (editor.active && editor.brushOn && editor.brushMode.endsWith('Fertile')),
+    layer: mapLayer,
     markers: placing ? placing.homes.map((h, k) => ({ ...h, color: placing!.world.tribes[placing!.order[k]].color, label: placing!.world.tribes[placing!.order[k]].name })) : undefined,
     showCourtship,
     brush: brushPos ? { ...brushPos, r: editor.brushRadius } : null,

@@ -108,7 +108,12 @@ const carveWater = (fert: Float32Array, cols: number, rows: number, lakes: numbe
 export const capacityOf = (a: { genome: Genome }, rules: Rules): number =>
   rules.energyPerSize * a.genome.size;
 
-export const radiusOf = (a: { genome: Genome }): number => 1.5 + a.genome.size * 2;
+/** Ticks for a newborn to reach full body size. */
+export const GROWTH_TICKS = 150;
+
+/** Body radius: grows from 60 % at birth to full size at GROWTH_TICKS. */
+export const radiusOf = (a: { genome: Genome; age?: number }): number =>
+  (1.5 + a.genome.size * 2) * (0.6 + 0.4 * Math.min(1, (a.age ?? GROWTH_TICKS) / GROWTH_TICKS));
 
 export const maxHpOf = (a: { genome: Genome }, rules: Rules): number => rules.hpPerSize * a.genome.size;
 

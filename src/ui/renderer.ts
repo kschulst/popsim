@@ -10,12 +10,26 @@ export interface RenderOptions {
   /** Actor id → kin weight relative to the selected actor (excluding self). */
   kin: Map<number, number>;
   showFertility: boolean;
+  /** Map layer drawn over the terrain. */
+  layer?: MapLayer;
   /** Draw partner search and courtship lines. */
   showCourtship: boolean;
   brush: { x: number; y: number; r: number } | null;
   /** Placed tribe homes while the user places tribes. */
   markers?: { x: number; y: number; color: string; label: string }[];
 }
+
+export type MapLayer = 'none' | 'fertility' | 'density' | 'territory' | 'deaths' | 'disease' | 'culture';
+
+export const LAYER_LABELS: Record<MapLayer, string> = {
+  none: 'Lag: ingen',
+  fertility: 'Lag: fruktbarhet',
+  density: 'Lag: tetthet',
+  territory: 'Lag: stammeområder',
+  culture: 'Lag: kulturområder',
+  deaths: 'Lag: dødssteder',
+  disease: 'Lag: smitte',
+};
 
 /** Zoom level from which every actor is drawn as an ancestry pie with a health bar. */
 export const DETAIL_ZOOM = 3;
@@ -140,7 +154,11 @@ export class Renderer {
     this.oy = canvas.height / 2 - this.cy * this.scale;
   }
 
-  private drawField(w: World, showFertility: boolean): void {
+  /** Per-cell tribe/culture presence, decaying, for the territory layers (renderer-side memory). */
+  private territory: Float32Array | null = null;
+  private territoryKey = '';
+
+  private drawField(w: World, showFertility: boolean, layer: MapLayer): void {
     const fc = this.fieldCanvas;
     if (fc.width !== w.cols || fc.height !== w.rows) {
       fc.width = w.cols;
@@ -148,36 +166,129 @@ export class Renderer {
     }
     const fctx = fc.getContext('2d')!;
     const img = fctx.createImageData(w.cols, w.rows);
-    for (let i = 0; i < w.food.length; i++) {
+    const n = w.cols * w.rows;
+    const cellOf = (x: number, y: number) =>
+      Math.min(w.rows - 1, Math.max(0, Math.floor(y / w.cellSize))) * w.cols + Math.min(w.cols - 1, Math.max(0, Math.floor(x / w.cellSize)));
+    // Heat value per cell for density / deaths / disease layers.
+    let heat: Float32Array | null = null;
+    let heatColor: [number, number, number] = [255, 255, 255];
+    let heatMax = 1;
+    if (layer === 'density' || layer === 'disease' || layer === 'deaths') {
+      heat = new Float32Array(n);
+      if (layer === 'deaths') for (const d of w.recentDeaths ?? []) heat[cellOf(d.x, d.y)]++;
+      else for (const a of w.actors) if (layer === 'density' || a.infection) heat[cellOf(a.x, a.y)]++;
+      heatColor = layer === 'density' ? [255, 210, 90] : layer === 'disease' ? [198, 232, 90] : [255, 90, 80];
+      heatMax = layer === 'density' ? 4 : 2;
+    }
+    // Territory: who has been in each cell lately (decaying), by main tribe or culture.
+    let terr: { idx: Int16Array; strength: Float32Array } | null = null;
+    if (layer === 'territory' || layer === 'culture') {
+      const groups = layer === 'territory' ? w.tribes.length : Math.max(1, w.cultures?.length ?? 0);
+      const key = `${layer}:${groups}:${n}`;
+      if (!this.territory || this.territoryKey !== key) {
+        this.territory = new Float32Array(n * groups);
+        this.territoryKey = key;
+      }
+      const t = this.territory;
+      for (let i = 0; i < t.length; i++) t[i] *= 0.98;
+      for (const a of w.actors) {
+        const g = layer === 'territory' ? a.ancestry.indexOf(Math.max(...a.ancestry)) : a.culture;
+        if (g === null || g === undefined || g < 0 || g >= groups) continue;
+        t[cellOf(a.x, a.y) * groups + g] += 1;
+      }
+      const idx = new Int16Array(n).fill(-1);
+      const strength = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        let best = -1;
+        let bv = 0.05;
+        for (let g = 0; g < groups; g++) {
+          const v = t[i * groups + g];
+          if (v > bv) [best, bv] = [g, v];
+        }
+        idx[i] = best;
+        strength[i] = Math.min(1, bv / 3);
+      }
+      terr = { idx, strength };
+    }
+    const groupRgb = (g: number): [number, number, number] => {
+      const hex = layer === 'territory' ? w.tribes[g]?.color : w.cultures?.[g]?.color;
+      const v = parseInt((hex ?? '#888888').slice(1), 16);
+      return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+    };
+    for (let i = 0; i < n; i++) {
       const fert = w.fertility[i];
       const o = i * 4;
+      let r: number;
+      let g: number;
+      let b: number;
       if (fert < 0) {
-        img.data[o] = 30;
-        img.data[o + 1] = 70;
-        img.data[o + 2] = 120;
+        [r, g, b] = [30, 70, 120];
       } else if (showFertility) {
         // Fertility overlay: dark purple (barren) to blue (fertile); food cells stay marked.
-        img.data[o] = w.food[i] ? 70 : 40 + 60 * (1 - fert);
-        img.data[o + 1] = w.food[i] ? 150 : 30 + 40 * fert;
-        img.data[o + 2] = w.food[i] ? 90 : 60 + 120 * fert;
+        r = w.food[i] ? 70 : 40 + 60 * (1 - fert);
+        g = w.food[i] ? 150 : 30 + 40 * fert;
+        b = w.food[i] ? 90 : 60 + 120 * fert;
       } else if (w.food[i] === 2) {
-        img.data[o] = 120;
-        img.data[o + 1] = 40;
-        img.data[o + 2] = 110;
+        [r, g, b] = [120, 40, 110];
       } else if (w.food[i]) {
-        img.data[o] = 38;
-        img.data[o + 1] = 92;
-        img.data[o + 2] = 52;
+        // Grass: lusher (darker, richer green) on fertile ground, paler on poor ground.
+        const f = Math.min(1, fert);
+        r = 58 - 30 * f;
+        g = 100 + 10 * f;
+        b = 60 - 15 * f;
       } else {
-        img.data[o] = 18;
-        img.data[o + 1] = 22;
-        img.data[o + 2] = 26;
+        [r, g, b] = [18, 22, 26];
       }
+      if (heat && heat[i] > 0 && fert >= 0) {
+        const k = Math.min(1, heat[i] / heatMax) * 0.85;
+        r += (heatColor[0] - r) * k;
+        g += (heatColor[1] - g) * k;
+        b += (heatColor[2] - b) * k;
+      }
+      if (terr && terr.idx[i] >= 0 && fert >= 0) {
+        const [tr, tg, tb] = groupRgb(terr.idx[i]);
+        const k = 0.15 + 0.5 * terr.strength[i];
+        r += (tr - r) * k;
+        g += (tg - g) * k;
+        b += (tb - b) * k;
+      }
+      img.data[o] = r;
+      img.data[o + 1] = g;
+      img.data[o + 2] = b;
       img.data[o + 3] = 255;
     }
     fctx.putImageData(img, 0, 0);
     this.ctx.imageSmoothingEnabled = false;
     this.ctx.drawImage(fc, this.ox, this.oy, w.width * this.scale, w.height * this.scale);
+  }
+
+  /** Recent positions per actor (for trails) and birth/death glows, kept between frames. */
+  private trails = new Map<number, { x: number; y: number }[]>();
+  private lastTick = -1;
+  private glows: { x: number; y: number; t0: number; color: string }[] = [];
+  private seen = new Map<number, { x: number; y: number }>();
+
+  /** Updates trails and detects births/deaths when the shown tick advances by one. */
+  private updateMotion(w: World): void {
+    if (w.tick === this.lastTick) return;
+    const continuous = w.tick === this.lastTick + 1;
+    this.lastTick = w.tick;
+    const now = performance.now();
+    const alive = new Set<number>();
+    for (const a of w.actors) {
+      alive.add(a.id);
+      const tr = continuous ? (this.trails.get(a.id) ?? []) : [];
+      tr.push({ x: a.x, y: a.y });
+      if (tr.length > 8) tr.shift();
+      this.trails.set(a.id, tr);
+      if (continuous && !this.seen.has(a.id) && a.age <= 1) this.glows.push({ x: a.x, y: a.y, t0: now, color: '110, 230, 140' });
+    }
+    if (continuous) {
+      for (const [id, p] of this.seen) if (!alive.has(id)) this.glows.push({ x: p.x, y: p.y, t0: now, color: '200, 200, 210' });
+    }
+    for (const id of this.trails.keys()) if (!alive.has(id)) this.trails.delete(id);
+    this.seen = new Map(w.actors.map((a) => [a.id, { x: a.x, y: a.y }]));
+    if (this.glows.length > 300) this.glows.splice(0, this.glows.length - 300);
   }
 
   /** Female circle or male diamond path, in screen coordinates. */
@@ -443,7 +554,8 @@ export class Renderer {
     this.updateTransform();
     ctx.fillStyle = '#0b0d10';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    this.drawField(w, opt.showFertility);
+    this.drawField(w, opt.showFertility || opt.layer === 'fertility', opt.layer ?? 'none');
+    this.updateMotion(w);
     // Winter: a faint blue veil, stronger the lower the growth.
     const season = seasonFactor(w);
     if (season < 0.98) {
@@ -472,6 +584,31 @@ export class Renderer {
     const byId = new Map(w.actors.map((a) => [a.id, a]));
     const sx = (a: { x: number }) => this.ox + a.x * s;
     const sy = (a: { y: number }) => this.oy + a.y * s;
+
+    // Trails: short fading lines behind moving actors.
+    ctx.lineWidth = dpr;
+    for (const a of w.actors) {
+      const tr = this.trails.get(a.id);
+      if (!tr || tr.length < 3) continue;
+      ctx.strokeStyle = 'rgba(220, 225, 235, 0.18)';
+      ctx.beginPath();
+      ctx.moveTo(sx(tr[0]), sy(tr[0]));
+      for (let k = 1; k < tr.length; k++) ctx.lineTo(sx(tr[k]), sy(tr[k]));
+      ctx.stroke();
+    }
+    // Glows: births (green) and deaths (grey) fade over 0.8 s.
+    const nowMs = performance.now();
+    this.glows = this.glows.filter((gl) => nowMs - gl.t0 < 800);
+    for (const gl of this.glows) {
+      const k = 1 - (nowMs - gl.t0) / 800;
+      const grad = ctx.createRadialGradient(sx(gl), sy(gl), 0, sx(gl), sy(gl), 14 * dpr);
+      grad.addColorStop(0, `rgba(${gl.color}, ${0.55 * k})`);
+      grad.addColorStop(1, `rgba(${gl.color}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(sx(gl), sy(gl), 14 * dpr, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Kin rings below the actors.
     if (opt.kin.size) {
